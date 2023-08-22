@@ -20,22 +20,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // ElementalClusterTemplateSpec defines the desired state of ElementalClusterTemplate
 type ElementalClusterTemplateSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of ElementalClusterTemplate. Edit elementalclustertemplate_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Template ElementalClusterTemplateResource `json:"template"`
 }
 
-// ElementalClusterTemplateStatus defines the observed state of ElementalClusterTemplate
-type ElementalClusterTemplateStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+type ElementalClusterTemplateResource struct {
+	// Standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	// +optional
+	ObjectMeta metav1.ObjectMeta    `json:"metadata,omitempty"`
+	Spec       ElementalClusterSpec `json:"spec"`
 }
 
 //+kubebuilder:object:root=true
@@ -46,8 +41,7 @@ type ElementalClusterTemplate struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ElementalClusterTemplateSpec   `json:"spec,omitempty"`
-	Status ElementalClusterTemplateStatus `json:"status,omitempty"`
+	Spec ElementalClusterTemplateSpec `json:"spec,omitempty"`
 }
 
 //+kubebuilder:object:root=true

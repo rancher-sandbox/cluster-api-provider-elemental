@@ -20,34 +20,30 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // ElementalMachineTemplateSpec defines the desired state of ElementalMachineTemplate
 type ElementalMachineTemplateSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of ElementalMachineTemplate. Edit elementalmachinetemplate_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Template InfraMachineTemplateResource `json:"template"`
 }
 
-// ElementalMachineTemplateStatus defines the observed state of ElementalMachineTemplate
-type ElementalMachineTemplateStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+type InfraMachineTemplateResource struct {
+	// Standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	// +optional
+	ObjectMeta metav1.ObjectMeta `json:"metadata,omitempty"`
+	// +optional
+	Spec ElementalMachineSpec `json:"spec"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:resource:path=elementalmachinetemplates,scope=Namespaced,categories=cluster-api,shortName=emt
+// +kubebuilder:storageversion
 
 // ElementalMachineTemplate is the Schema for the elementalmachinetemplates API
 type ElementalMachineTemplate struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ElementalMachineTemplateSpec   `json:"spec,omitempty"`
-	Status ElementalMachineTemplateStatus `json:"status,omitempty"`
+	Spec ElementalMachineTemplateSpec `json:"spec,omitempty"`
 }
 
 //+kubebuilder:object:root=true
