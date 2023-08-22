@@ -1,0 +1,8 @@
+## Append samples of your project ##
+resources:
+- infrastructure_v1beta3_elementalhost.yaml
+- infrastructure_v1beta3_elementalmachine.yaml
+- infrastructure_v1beta3_elementalmachinetemplate.yaml
+- infrastructure_v1beta3_elementalcluster.yaml
+- infrastructure_v1beta3_elementalclustertemplate.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples

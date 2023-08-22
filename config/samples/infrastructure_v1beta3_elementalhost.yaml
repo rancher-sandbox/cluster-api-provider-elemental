@@ -1,0 +1,12 @@
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta3
+kind: ElementalHost
+metadata:
+  labels:
+    app.kubernetes.io/name: elementalhost
+    app.kubernetes.io/instance: elementalhost-sample
+    app.kubernetes.io/part-of: cluster-api-provider-elemental
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: cluster-api-provider-elemental
+  name: elementalhost-sample
+spec:
+  # TODO(user): Add fields here
