@@ -61,6 +61,7 @@ func (r *ElementalClusterReconciler) SetupWithManager(ctx context.Context, mgr c
 // - https://cluster-api.sigs.k8s.io/developer/providers/cluster-infrastructure
 func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
+	logger.Info("Reconciling ElementalCluster")
 
 	// Fetch the ElementalCluster
 	elementalCluster := &infrastructurev1beta3.ElementalCluster{}
@@ -87,7 +88,7 @@ func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	// Create the patch helper.
 	patchHelper, err := patch.NewHelper(elementalCluster, r.Client)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("could not init patch helper: %w", err)
+		return ctrl.Result{}, fmt.Errorf("initing patch helper: %w", err)
 	}
 	// Always issue a patch when exiting this function so changes to the
 	// resource are patched back to the API server.

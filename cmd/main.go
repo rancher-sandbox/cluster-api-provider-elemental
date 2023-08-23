@@ -100,7 +100,7 @@ func main() {
 	if err = (&controller.ElementalMachineReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ElementalMachine")
 		os.Exit(1)
 	}

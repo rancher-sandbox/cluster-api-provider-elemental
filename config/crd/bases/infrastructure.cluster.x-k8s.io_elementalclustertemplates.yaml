@@ -45,10 +45,21 @@ spec:
                     description: ElementalClusterSpec defines the desired state of
                       ElementalCluster
                     properties:
-                      foo:
-                        description: Foo is an example field of ElementalCluster.
-                          Edit elementalcluster_types.go to remove/update
-                        type: string
+                      controlPlaneEndpoint:
+                        description: ControlPlaneEndpoint represents the endpoint
+                          used to communicate with the control plane.
+                        properties:
+                          host:
+                            description: The hostname on which the API server is serving.
+                            type: string
+                          port:
+                            description: The port on which the API server is serving.
+                            format: int32
+                            type: integer
+                        required:
+                        - host
+                        - port
+                        type: object
                     type: object
                 required:
                 - spec
