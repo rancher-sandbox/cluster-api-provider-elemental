@@ -88,7 +88,7 @@ func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	// Create the patch helper.
 	patchHelper, err := patch.NewHelper(elementalCluster, r.Client)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("initing patch helper: %w", err)
+		return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
 	}
 	// Always issue a patch when exiting this function so changes to the
 	// resource are patched back to the API server.
