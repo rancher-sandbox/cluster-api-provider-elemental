@@ -53,4 +53,13 @@ resources:
   kind: ElementalClusterTemplate
   path: github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta3
   version: v1beta3
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: cluster.x-k8s.io
+  group: infrastructure
+  kind: ElementalMachineRegistration
+  path: github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta3
+  version: v1beta3
 version: "3"

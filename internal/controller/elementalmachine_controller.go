@@ -62,7 +62,7 @@ func (r *ElementalMachineReconciler) SetupWithManager(ctx context.Context, mgr c
 
 // ClusterToElementalMachines is a handler.ToRequestsFunc to be used to enqeue requests for reconciliation of ElementalMachines.
 func (r *ElementalMachineReconciler) ClusterToElementalMachines(ctx context.Context, obj client.Object) []ctrl.Request {
-	logger := log.FromContext(ctx).WithValues("cluster", obj.GetName())
+	logger := log.FromContext(ctx).WithValues("cluster", fmt.Sprintf("%s/%s", obj.GetNamespace(), obj.GetName()))
 	logger.Info("Enqueueing ElementalMachines reconciliation from Cluster")
 
 	requests := []ctrl.Request{}
@@ -94,7 +94,7 @@ func (r *ElementalMachineReconciler) ClusterToElementalMachines(ctx context.Cont
 		if m.Spec.InfrastructureRef.Namespace != "" {
 			name = client.ObjectKey{Namespace: m.Spec.InfrastructureRef.Namespace, Name: m.Spec.InfrastructureRef.Name}
 		}
-		logger = logger.WithValues("elementalMachine", capiMachineList.Items[i].Name)
+		logger = logger.WithValues("elementalMachine", fmt.Sprintf("%s/%s", capiMachineList.Items[i].Namespace, capiMachineList.Items[i].Name))
 		logger.Info("Adding ElementalMachine to reconciliation request")
 		requests = append(requests, ctrl.Request{NamespacedName: name})
 	}
@@ -114,7 +114,7 @@ func (r *ElementalMachineReconciler) ClusterToElementalMachines(ctx context.Cont
 // For more details about the reconciliation loop, check the official CAPI documentation:
 // - https://cluster-api.sigs.k8s.io/developer/providers/machine-infrastructure
 func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx).WithValues("elementalMachine", req.NamespacedName)
 	logger.Info("Reconciling ElementalMachine")
 
 	// Fetch the ElementalMachine
@@ -129,7 +129,7 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	// Reconciliation step #1: If the resource does not have a Machine owner, exit the reconciliation
 	machine, err := util.GetOwnerMachine(ctx, r.Client, elementalMachine.ObjectMeta)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("getting Machine owner: %w")
+		return ctrl.Result{}, fmt.Errorf("getting Machine owner: %w", err)
 	}
 	if machine == nil {
 		logger.Info("ElementalMachine resource has no Machine owner")
@@ -215,7 +215,7 @@ func (r *ElementalMachineReconciler) reconcile(ctx context.Context, elementalMac
 }
 
 func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context, elementalMachine *infrastructurev1beta3.ElementalMachine) error {
-	logger := log.FromContext(ctx).WithValues("elementalMachine", elementalMachine.Name)
+	logger := log.FromContext(ctx).WithValues("elementalMachine", elementalMachine)
 	// elementalMachine.Spec.ProviderID is used to mark a link between the ElementalMachine and an ElementalHost
 	// If this ElementalMachine was already associated, we have nothing to do.
 	// TODO: Actually, we may as well check the ElementalHost status to update the ElementalMachine status as well.
@@ -244,7 +244,7 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 
 		// Just pick the first in the list
 		elementalHostCandidate := elementalHosts.Items[0]
-		logger = logger.WithValues("elementalHost", elementalHostCandidate.Name)
+		logger = logger.WithValues("elementalHost", fmt.Sprintf("%s/%s", elementalHostCandidate.Namespace, elementalHostCandidate.Name))
 		logger.Info("Associating ElementalMachine to ElementalHost")
 
 		// Reconciliation step #8: Set spec.providerID to the provider-specific identifier for the provider’s machine instance

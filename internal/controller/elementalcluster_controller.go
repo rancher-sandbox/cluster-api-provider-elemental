@@ -60,7 +60,7 @@ func (r *ElementalClusterReconciler) SetupWithManager(ctx context.Context, mgr c
 // For more details about the reconciliation loop, check the official CAPI documentation:
 // - https://cluster-api.sigs.k8s.io/developer/providers/cluster-infrastructure
 func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx).WithValues("elementalCluster", req.NamespacedName)
 	logger.Info("Reconciling ElementalCluster")
 
 	// Fetch the ElementalCluster
@@ -75,7 +75,7 @@ func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	// Reconciliation step #2: If the resource does not have a Cluster owner, exit the reconciliation
 	cluster, err := util.GetOwnerCluster(ctx, r.Client, elementalCluster.ObjectMeta)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("getting Cluster owner: %w")
+		return ctrl.Result{}, fmt.Errorf("getting Cluster owner: %w", err)
 	}
 	if cluster == nil {
 		logger.Info("Current resource has no Cluster owner")
@@ -101,12 +101,12 @@ func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	if elementalCluster.GetDeletionTimestamp() == nil || elementalCluster.GetDeletionTimestamp().IsZero() {
 		// The object is not being deleted, handle reconcile
 		if err := r.reconcile(ctx, elementalCluster); err != nil {
-			return ctrl.Result{}, fmt.Errorf("reconciling ElementalCluster: %w")
+			return ctrl.Result{}, fmt.Errorf("reconciling ElementalCluster: %w", err)
 		}
 	} else {
 		// The object is up for deletion, handle deletion reconcile
 		if err := r.reconcileDelete(ctx, elementalCluster); err != nil {
-			return ctrl.Result{}, fmt.Errorf("reconciling ElementalCluster deletion: %w")
+			return ctrl.Result{}, fmt.Errorf("reconciling ElementalCluster deletion: %w", err)
 		}
 	}
 
