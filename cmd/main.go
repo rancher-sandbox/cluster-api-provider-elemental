@@ -34,6 +34,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	infrastructurev1beta3 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta3"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/controller"
 	//+kubebuilder:scaffold:imports
 )
@@ -148,9 +149,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	elementalAPIServer := api.NewServer(ctx, mgr.GetClient())
+	go func() {
+		if err := elementalAPIServer.Start(); err != nil {
+			setupLog.Error(err, "running Elemental API server")
+			os.Exit(1)
+		}
+	}()
+
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
+		os.Exit(1)
+	}
+
+	if err := elementalAPIServer.Stop(); err != nil {
+		setupLog.Error(err, "shutting down Elemental API Server")
 		os.Exit(1)
 	}
 }

@@ -16,3 +16,10 @@ var (
 const (
 	FinalizerElementalMachine = "elementalmachine.infrastructure.cluster.x-k8s.io"
 )
+
+// Annotations
+const (
+	AnnotationElementalMachineRegistrationName      = "elementalmachineregistration.infrastructure.cluster.x-k8s.io/name"
+	AnnotationElementalMachineRegistrationNamespace = "elementalmachineregistration.infrastructure.cluster.x-k8s.io/namespace"
+	AnnotationElementalHostPublicKey                = "elementalhost.infrastructure.cluster.x-k8s.io/pubkey"
+)

@@ -18,22 +18,15 @@ package controller
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
 
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	bootstraputil "k8s.io/cluster-bootstrap/token/util"
-	"k8s.io/utils/pointer"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/go-logr/logr"
 	infrastructurev1beta3 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta3"
 )
 
@@ -81,73 +74,7 @@ func (r *ElementalMachineRegistrationReconciler) Reconcile(ctx context.Context, 
 		patchHelper.Patch(ctx, elementalMachineRegistration)
 	}()
 
-	// If no Bootstrap token was generated yet, let's create one
-	if elementalMachineRegistration.Spec.BootstrapTokenRef == nil {
-		if err := r.generateBoostrapToken(ctx, logger, elementalMachineRegistration); err != nil {
-			return ctrl.Result{}, fmt.Errorf("initializing bootstrap token secret: %w", err)
-		}
-	}
-
 	return ctrl.Result{}, nil
-}
-
-// TODO: This entire logic should be moved to the SeedImage controller.
-//
-//		The bootstrap token is 1:1 coupled with an image.
-//		For better security it would be best to generate different tokens for each different image,
-//		for example when building for multiple architectures, versions, or when refreshing/rebuilding an expired image.
-//		It's important to tie the token expiration to the image expiration, and set some sane defaults so that they will expire.
-//
-//	 See: https://kubernetes.io/docs/reference/access-authn-authz/bootstrap-tokens/#bootstrap-token-secret-format
-func (r *ElementalMachineRegistrationReconciler) generateBoostrapToken(ctx context.Context, logger logr.Logger, registration *infrastructurev1beta3.ElementalMachineRegistration) error {
-	logger.Info("Generating new Bootstrap Token Secret")
-	// Generate a valid token
-	token, err := bootstraputil.GenerateBootstrapToken()
-	if err != nil {
-		return fmt.Errorf("generating bootstrap token: %w", err)
-	}
-
-	// Extract the ID and Secret (Format is "{tokenID}.{tokenSecret}")
-	// TODO: Would be nice to have this in "k8s.io/cluster-bootstrap/token/util"
-	tokenParts := strings.Split(token, ".")
-	if len(tokenParts) < 2 {
-		return errors.New("expected Bootstrap Token to be formatted as:'{tokenID}.{tokenSecret}'")
-	}
-	tokenID := tokenParts[0]
-	tokenSecret := tokenParts[1]
-
-	// Get valid secret name
-	secretName := bootstraputil.BootstrapTokenSecretName(tokenID)
-
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName,
-			Namespace: registration.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion: registration.APIVersion,
-					Kind:       registration.Kind,
-					Name:       registration.Name,
-					UID:        registration.UID,
-					Controller: pointer.Bool(true),
-				},
-			},
-		},
-		Type: corev1.SecretTypeBootstrapToken,
-		StringData: map[string]string{
-			"description":  "Elemental Bootstrap Token",
-			"token-id":     tokenID,
-			"token-secret": tokenSecret,
-			// "expiration": "" //TODO: Would be great to implement expiration. This can be coupled to the seed image.
-			"usage-bootstrap-authentication": `"true"`,
-			"usage-bootstrap-signing":        `"true"`,
-		},
-	}
-
-	if err := r.Client.Create(ctx, secret); err != nil {
-		return fmt.Errorf("creating Bootstrap Token Secret: %w", err)
-	}
-	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

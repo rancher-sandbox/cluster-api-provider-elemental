@@ -77,6 +77,10 @@ spec:
           capabilities:
             drop:
               - "ALL"
+        ports:
+        - containerPort: 9090
+          protocol: TCP
+          name: http
         livenessProbe:
           httpGet:
             path: /healthz
