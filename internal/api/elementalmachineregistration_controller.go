@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	infrastructurev1beta3 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta3"
+	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -17,7 +17,7 @@ func (s *Server) GetMachineRegistration(response http.ResponseWriter, request *h
 	registrationName := pathVars["registrationName"]
 
 	// Fetch registration
-	registration := &infrastructurev1beta3.ElementalMachineRegistration{}
+	registration := &infrastructurev1beta1.ElementalMachineRegistration{}
 	if err := s.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: registrationName}, registration); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			response.WriteHeader(http.StatusNotFound)

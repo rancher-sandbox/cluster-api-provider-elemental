@@ -14,47 +14,45 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta3
+package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ElementalMachineTemplateSpec defines the desired state of ElementalMachineTemplate
-type ElementalMachineTemplateSpec struct {
-	Template InfraMachineTemplateResource `json:"template"`
+// ElementalClusterTemplateSpec defines the desired state of ElementalClusterTemplate
+type ElementalClusterTemplateSpec struct {
+	Template ElementalClusterTemplateResource `json:"template"`
 }
 
-type InfraMachineTemplateResource struct {
+type ElementalClusterTemplateResource struct {
 	// Standard object's metadata.
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	// +optional
-	ObjectMeta metav1.ObjectMeta `json:"metadata,omitempty"`
-	// +optional
-	Spec ElementalMachineSpec `json:"spec"`
+	ObjectMeta metav1.ObjectMeta    `json:"metadata,omitempty"`
+	Spec       ElementalClusterSpec `json:"spec"`
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:path=elementalmachinetemplates,scope=Namespaced,categories=cluster-api,shortName=emt
-// +kubebuilder:storageversion
+//+kubebuilder:object:root=true
+//+kubebuilder:subresource:status
 
-// ElementalMachineTemplate is the Schema for the elementalmachinetemplates API
-type ElementalMachineTemplate struct {
+// ElementalClusterTemplate is the Schema for the elementalclustertemplates API
+type ElementalClusterTemplate struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec ElementalMachineTemplateSpec `json:"spec,omitempty"`
+	Spec ElementalClusterTemplateSpec `json:"spec,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// ElementalMachineTemplateList contains a list of ElementalMachineTemplate
-type ElementalMachineTemplateList struct {
+// ElementalClusterTemplateList contains a list of ElementalClusterTemplate
+type ElementalClusterTemplateList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ElementalMachineTemplate `json:"items"`
+	Items           []ElementalClusterTemplate `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&ElementalMachineTemplate{}, &ElementalMachineTemplateList{})
+	SchemeBuilder.Register(&ElementalClusterTemplate{}, &ElementalClusterTemplateList{})
 }

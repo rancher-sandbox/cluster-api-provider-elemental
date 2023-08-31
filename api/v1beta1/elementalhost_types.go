@@ -14,9 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta3
+package v1beta1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -25,17 +26,18 @@ import (
 
 // ElementalHostSpec defines the desired state of ElementalHost
 type ElementalHostSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of ElementalHost. Edit elementalhost_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// BootstrapSecret is an optional reference to a Cluster API Secret
+	// for bootstrap purpose
+	// +optional
+	BootstrapSecret *corev1.ObjectReference `json:"bootstrapSecret,omitempty"`
 }
 
 // ElementalHostStatus defines the observed state of ElementalHost
 type ElementalHostStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// MachineRef is an optional reference to a Cluster API Machine
+	// using this host.
+	// +optional
+	MachineRef *corev1.ObjectReference `json:"machineRef,omitempty"`
 }
 
 //+kubebuilder:object:root=true

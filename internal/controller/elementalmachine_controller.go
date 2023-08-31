@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -36,7 +37,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	infrastructurev1beta3 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta3"
+	"github.com/go-logr/logr"
+	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 )
 
 // ElementalMachineReconciler reconciles a ElementalMachine object
@@ -48,7 +50,7 @@ type ElementalMachineReconciler struct {
 // SetupWithManager sets up the controller with the Manager.
 func (r *ElementalMachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&infrastructurev1beta3.ElementalMachine{}).
+		For(&infrastructurev1beta1.ElementalMachine{}).
 		Watches(
 			&clusterv1.Cluster{},
 			handler.EnqueueRequestsFromMapFunc(r.ClusterToElementalMachines),
@@ -122,7 +124,7 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	logger.Info("Reconciling ElementalMachine")
 
 	// Fetch the ElementalMachine
-	elementalMachine := &infrastructurev1beta3.ElementalMachine{}
+	elementalMachine := &infrastructurev1beta1.ElementalMachine{}
 	if err := r.Client.Get(ctx, req.NamespacedName, elementalMachine); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -131,6 +133,7 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	// Reconciliation step #1: If the resource does not have a Machine owner, exit the reconciliation
+	logger.Info("Step #1")
 	machine, err := util.GetOwnerMachine(ctx, r.Client, elementalMachine.ObjectMeta)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("getting Machine owner: %w", err)
@@ -141,6 +144,7 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	// Reconciliation step #2: If the resource has status.failureReason or status.failureMessage set, exit the reconciliation
+	logger.Info("Step #2")
 	// TODO: status.failureReason and failureMessage not status.implemented yet.
 
 	// Fetch the Cluster
@@ -150,6 +154,7 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	// Reconciliation step #3: If the Cluster to which this resource belongs cannot be found, exit the reconciliation
+	logger.Info("Step #3")
 	if cluster == nil {
 		logger.Info("ElementalMachine resource is not associated with any Cluster")
 		return ctrl.Result{}, nil
@@ -164,34 +169,38 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	// resource are patched back to the API server.
 	defer func() {
 		// Reconciliation step #12: Patch the resource to persist changes
+		logger.Info("Step #12")
 		patchHelper.Patch(ctx, elementalMachine)
 	}()
 
 	if elementalMachine.GetDeletionTimestamp() == nil || elementalMachine.GetDeletionTimestamp().IsZero() {
 		// The object is not being deleted, so register the finalizer
-		if !controllerutil.ContainsFinalizer(elementalMachine, infrastructurev1beta3.FinalizerElementalMachine) {
+		if !controllerutil.ContainsFinalizer(elementalMachine, infrastructurev1beta1.FinalizerElementalMachine) {
 			// Reconciliation step #4: Add the provider-specific finalizer, if needed
-			controllerutil.AddFinalizer(elementalMachine, infrastructurev1beta3.FinalizerElementalMachine)
-			// Reconciliation step #5: If the associated Cluster‘s status.infrastructureReady is false, exit the reconciliation
-			if !cluster.Status.InfrastructureReady {
-				logger.Info("Cluster status.infrastructureReady is false")
-				return ctrl.Result{}, nil
-			}
-			// Reconciliation step #6: If the associated Machine‘s spec.bootstrap.dataSecretName is nil, exit the reconciliation
-			if machine.Spec.Bootstrap.DataSecretName == nil {
-				logger.Info("Machine spec.bootstrap.dataSecretName is nil")
-				return ctrl.Result{}, nil
-			}
-			// Reconciliation step #7: Reconcile provider-specific machine infrastructure
-			if err := r.reconcile(ctx, elementalMachine); err != nil {
-				// Reconciliation step #7-1: If they are terminal failures, set status.failureReason and status.failureMessage
-				// TODO: Consider implementing status.failureReason and status.failureMessage
-				return ctrl.Result{}, fmt.Errorf("reconciling ElementalMachine: %w", err)
-			}
+			controllerutil.AddFinalizer(elementalMachine, infrastructurev1beta1.FinalizerElementalMachine)
+		}
+		// Reconciliation step #5: If the associated Cluster‘s status.infrastructureReady is false, exit the reconciliation
+		logger.Info("Step #5")
+		if !cluster.Status.InfrastructureReady {
+			logger.Info("Cluster status.infrastructureReady is false")
+			return ctrl.Result{}, nil
+		}
+		// Reconciliation step #6: If the associated Machine‘s spec.bootstrap.dataSecretName is nil, exit the reconciliation
+		logger.Info("Step #6")
+		if machine.Spec.Bootstrap.DataSecretName == nil {
+			logger.Info("Machine spec.bootstrap.dataSecretName is nil")
+			return ctrl.Result{}, nil
+		}
+		// Reconciliation step #7: Reconcile provider-specific machine infrastructure
+		logger.Info("Step #7")
+		if err := r.reconcile(ctx, logger, elementalMachine, *machine); err != nil {
+			// Reconciliation step #7-1: If they are terminal failures, set status.failureReason and status.failureMessage
+			// TODO: Consider implementing status.failureReason and status.failureMessage
+			return ctrl.Result{}, fmt.Errorf("reconciling ElementalMachine: %w", err)
 		}
 	} else {
 		// The object is up for deletion
-		if controllerutil.ContainsFinalizer(elementalMachine, infrastructurev1beta3.FinalizerElementalMachine) {
+		if controllerutil.ContainsFinalizer(elementalMachine, infrastructurev1beta1.FinalizerElementalMachine) {
 			if err := r.reconcileDelete(ctx, elementalMachine); err != nil {
 				return ctrl.Result{}, fmt.Errorf("reconciling ElementalMachine deletion: %w", err)
 			}
@@ -201,12 +210,20 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	return ctrl.Result{}, nil
 }
 
-func (r *ElementalMachineReconciler) reconcile(ctx context.Context, elementalMachine *infrastructurev1beta3.ElementalMachine) error {
+func (r *ElementalMachineReconciler) reconcile(ctx context.Context, logger logr.Logger, elementalMachine *infrastructurev1beta1.ElementalMachine, machine clusterv1.Machine) error {
 	// Reconciliation step #7-2: If this is a control plane machine, register the instance with the provider’s control plane load balancer (optional)
 	// TODO: Not implemented yet.
 
-	if err := r.associateElementalHost(ctx, elementalMachine); err != nil {
-		return fmt.Errorf("associating ElementalMachine to a suitable ElementalHost: %w", err)
+	logger.Info("Inner ElementalMachine reconcile")
+	// elementalMachine.Spec.ProviderID is used to mark a link between the ElementalMachine and an ElementalHost
+	// If this ElementalMachine was already associated, we have nothing to do.
+	// TODO: Actually, we may as well check the ElementalHost status to update the ElementalMachine status as well.
+	if elementalMachine.Spec.ProviderID == nil {
+		if err := r.associateElementalHost(ctx, logger, elementalMachine, machine); err != nil {
+			return fmt.Errorf("associating ElementalMachine to a suitable ElementalHost: %w", err)
+		}
+	} else {
+		logger.Info("ElementalMachine is already associated")
 	}
 
 	// Reconciliation step #9: Set status.ready to true
@@ -218,63 +235,74 @@ func (r *ElementalMachineReconciler) reconcile(ctx context.Context, elementalMac
 	return nil
 }
 
-func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context, elementalMachine *infrastructurev1beta3.ElementalMachine) error {
-	logger := log.FromContext(ctx).WithValues("elementalMachine", elementalMachine)
-	// elementalMachine.Spec.ProviderID is used to mark a link between the ElementalMachine and an ElementalHost
-	// If this ElementalMachine was already associated, we have nothing to do.
-	// TODO: Actually, we may as well check the ElementalHost status to update the ElementalMachine status as well.
-	if elementalMachine.Spec.ProviderID == nil {
-		logger.Info("Finding a suitable ElementalHost to associate")
-		elementalHosts := &infrastructurev1beta3.ElementalHostList{}
-		var selector labels.Selector
-		var selectorErr error
-		// Use the label selector defined in the ElementalMachine, or select any ElementalHost available if no selector has been defined.
-		if elementalMachine.Spec.Selector != nil {
-			if selector, selectorErr = metav1.LabelSelectorAsSelector(elementalMachine.Spec.Selector); selectorErr != nil {
-				return fmt.Errorf("converting LabelSelector to Selector: %w", selectorErr)
-			}
-		} else {
-			selector = labels.NewSelector()
+func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context, logger logr.Logger, elementalMachine *infrastructurev1beta1.ElementalMachine, machine clusterv1.Machine) error {
+	logger.Info("Finding a suitable ElementalHost to associate")
+	elementalHosts := &infrastructurev1beta1.ElementalHostList{}
+	var selector labels.Selector
+	var selectorErr error
+	// Use the label selector defined in the ElementalMachine, or select any ElementalHost available if no selector has been defined.
+	if elementalMachine.Spec.Selector != nil {
+		if selector, selectorErr = metav1.LabelSelectorAsSelector(elementalMachine.Spec.Selector); selectorErr != nil {
+			return fmt.Errorf("converting LabelSelector to Selector: %w", selectorErr)
 		}
-
-		if err := r.Client.List(ctx, elementalHosts, &client.ListOptions{LabelSelector: selector}); err != nil {
-			return fmt.Errorf("listing available ElementalHosts: %w", err)
-		}
-
-		if len(elementalHosts.Items) == 0 {
-			logger.Info("No ElementalHosts available for association. Waiting for new hosts to be provisioned.")
-			return nil
-		}
-
-		// Just pick the first in the list
-		elementalHostCandidate := elementalHosts.Items[0]
-		logger = logger.WithValues("elementalHost", fmt.Sprintf("%s/%s", elementalHostCandidate.Namespace, elementalHostCandidate.Name))
-		logger.Info("Associating ElementalMachine to ElementalHost")
-
-		// Reconciliation step #8: Set spec.providerID to the provider-specific identifier for the provider’s machine instance
-		providerID := fmt.Sprintf("elemental://%s/%s", elementalHostCandidate.Namespace, elementalHostCandidate.Name)
-		elementalMachine.Spec.ProviderID = &providerID
-
-		// Create the patch helper.
-		patchHelper, err := patch.NewHelper(&elementalHostCandidate, r.Client)
-		if err != nil {
-			return fmt.Errorf("initializing patch helper: %w", err)
-		}
-
-		// TODO: Decorate the ElementalHost with useful labels, for example the Cluster name, Control Plane endpoint, etc.
-
-		// Reconciliation step #10: Set status.addresses to the provider-specific set of instance addresses
-		// TODO: Fetch the addresses from ElementalHost to update the associated ElementalMachine
-
-		// Patch the associated ElementalHost
-		patchHelper.Patch(ctx, &elementalHostCandidate)
-
-		logger.Info("Association successful")
+	} else {
+		selector = labels.NewSelector()
 	}
+
+	if err := r.Client.List(ctx, elementalHosts, &client.ListOptions{LabelSelector: selector}); err != nil {
+		return fmt.Errorf("listing available ElementalHosts: %w", err)
+	}
+
+	if len(elementalHosts.Items) == 0 {
+		logger.Info("No ElementalHosts available for association. Waiting for new hosts to be provisioned.")
+		return nil
+	}
+
+	// Just pick the first in the list
+	elementalHostCandidate := elementalHosts.Items[0]
+	logger = logger.WithValues("elementalHost", fmt.Sprintf("%s/%s", elementalHostCandidate.Namespace, elementalHostCandidate.Name))
+	logger.Info("Associating ElementalMachine to ElementalHost")
+
+	// Reconciliation step #8: Set spec.providerID to the provider-specific identifier for the provider’s machine instance
+	providerID := fmt.Sprintf("elemental://%s/%s", elementalHostCandidate.Namespace, elementalHostCandidate.Name)
+	elementalMachine.Spec.ProviderID = &providerID
+
+	// Create the patch helper.
+	patchHelper, err := patch.NewHelper(&elementalHostCandidate, r.Client)
+	if err != nil {
+		return fmt.Errorf("initializing patch helper: %w", err)
+	}
+
+	// Link the ElementalMachine to ElementalHost
+	elementalHostCandidate.Status.MachineRef = &corev1.ObjectReference{
+		APIVersion: elementalMachine.APIVersion,
+		Kind:       elementalMachine.Kind,
+		Namespace:  elementalMachine.Namespace,
+		Name:       elementalMachine.Name,
+		UID:        elementalMachine.UID,
+	}
+
+	// Link Bootstrap Secret to ElementalHost
+	elementalHostCandidate.Spec.BootstrapSecret = &corev1.ObjectReference{
+		Kind:      "Secret",
+		Namespace: machine.Namespace,
+		Name:      *machine.Spec.Bootstrap.DataSecretName,
+	}
+
+	// TODO: Decorate the ElementalHost with useful labels, for example the Cluster name, Control Plane endpoint, etc.
+
+	// Reconciliation step #10: Set status.addresses to the provider-specific set of instance addresses
+	// TODO: Fetch the addresses from ElementalHost to update the associated ElementalMachine
+
+	// Patch the associated ElementalHost
+	patchHelper.Patch(ctx, &elementalHostCandidate)
+
+	logger.Info("Association successful")
+
 	return nil
 }
 
-func (r *ElementalMachineReconciler) reconcileDelete(ctx context.Context, elementalCluster *infrastructurev1beta3.ElementalMachine) error {
-
+func (r *ElementalMachineReconciler) reconcileDelete(ctx context.Context, elementalMachine *infrastructurev1beta1.ElementalMachine) error {
+	controllerutil.RemoveFinalizer(elementalMachine, infrastructurev1beta1.FinalizerElementalMachine)
 	return nil
 }

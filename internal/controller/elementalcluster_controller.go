@@ -29,7 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	infrastructurev1beta3 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta3"
+	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 )
 
 // ElementalClusterReconciler reconciles a ElementalCluster object
@@ -41,7 +41,7 @@ type ElementalClusterReconciler struct {
 // SetupWithManager sets up the controller with the Manager.
 func (r *ElementalClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&infrastructurev1beta3.ElementalCluster{}).
+		For(&infrastructurev1beta1.ElementalCluster{}).
 		// Reconciliation step #1: If the resource is externally managed, exit the reconciliation
 		WithEventFilter(predicates.ResourceIsNotExternallyManaged(log.FromContext(ctx))).
 		Complete(r)
@@ -65,7 +65,7 @@ func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	logger.Info("Reconciling ElementalCluster")
 
 	// Fetch the ElementalCluster
-	elementalCluster := &infrastructurev1beta3.ElementalCluster{}
+	elementalCluster := &infrastructurev1beta1.ElementalCluster{}
 	if err := r.Client.Get(ctx, req.NamespacedName, elementalCluster); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -124,13 +124,13 @@ func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	return ctrl.Result{}, nil
 }
 
-func (r *ElementalClusterReconciler) reconcile(ctx context.Context, elementalCluster *infrastructurev1beta3.ElementalCluster) error {
+func (r *ElementalClusterReconciler) reconcile(ctx context.Context, elementalCluster *infrastructurev1beta1.ElementalCluster) error {
 	// TODO: Most likely nothing.
 	//       Steps #5, #6, and #7 may be moved here though.
 	return nil
 }
 
-func (r *ElementalClusterReconciler) reconcileDelete(ctx context.Context, elementalCluster *infrastructurev1beta3.ElementalCluster) error {
+func (r *ElementalClusterReconciler) reconcileDelete(ctx context.Context, elementalCluster *infrastructurev1beta1.ElementalCluster) error {
 	// TODO: Most likely nothing.
 	//       Expect CAPI controller to delete the Machine objects as well and on cascade the owned ElementalMachines.
 	//       ElementalMachine controller can handle infra deletion reconciliation (for ex. reset)

@@ -14,7 +14,7 @@ spec:
     singular: elementalmachineregistration
   scope: Namespaced
   versions:
-  - name: v1beta3
+  - name: v1beta1
     schema:
       openAPIV3Schema:
         description: ElementalMachineRegistration is the Schema for the elementalmachineregistrations

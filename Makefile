@@ -163,6 +163,10 @@ $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
 .PHONY: kind-deploy
-kind-deploy: docker-build
+kind-deploy: deploy docker-build
 	kind load docker-image docker.io/library/controller:latest
 	kubectl -n elemental-system rollout restart deployment/elemental-controller-manager
+
+.PHONY: generate-local-infra-yaml
+generate-local-infra-yaml:kustomize # Generate infrastructure-components.yaml for the provider
+	$(KUSTOMIZE) build config/default > infrastructure-elemental/v0.0.1/infrastructure-components.yaml

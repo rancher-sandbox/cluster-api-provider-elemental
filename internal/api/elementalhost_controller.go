@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	infrastructurev1beta3 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta3"
+	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -22,7 +22,7 @@ func (s *Server) PatchMachineHost(response http.ResponseWriter, request *http.Re
 	hostName := pathVars["hostName"]
 
 	// Fetch registration
-	registration := &infrastructurev1beta3.ElementalMachineRegistration{}
+	registration := &infrastructurev1beta1.ElementalMachineRegistration{}
 	if err := s.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: registrationName}, registration); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			response.WriteHeader(http.StatusNotFound)
@@ -36,7 +36,7 @@ func (s *Server) PatchMachineHost(response http.ResponseWriter, request *http.Re
 	}
 
 	// Fetch host
-	host := &infrastructurev1beta3.ElementalHost{}
+	host := &infrastructurev1beta1.ElementalHost{}
 	if err := s.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: hostName}, host); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			response.WriteHeader(http.StatusNotFound)
@@ -50,7 +50,7 @@ func (s *Server) PatchMachineHost(response http.ResponseWriter, request *http.Re
 	}
 
 	// Unmarshal PATCH request body.
-	hostPatch := &infrastructurev1beta3.ElementalMachineRegistration{}
+	hostPatch := &infrastructurev1beta1.ElementalMachineRegistration{}
 	if err := json.NewDecoder(request.Body).Decode(hostPatch); err != nil {
 		response.WriteHeader(http.StatusBadRequest)
 		response.Write([]byte(err.Error()))
@@ -75,7 +75,7 @@ func (s *Server) PatchMachineHost(response http.ResponseWriter, request *http.Re
 	}
 
 	// Fetch the updated host
-	host = &infrastructurev1beta3.ElementalHost{}
+	host = &infrastructurev1beta1.ElementalHost{}
 	if err := s.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: hostName}, host); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			response.WriteHeader(http.StatusNotFound)
@@ -108,7 +108,7 @@ func (s *Server) PostMachineHost(response http.ResponseWriter, request *http.Req
 	registrationName := pathVars["registrationName"]
 
 	// Fetch registration
-	registration := &infrastructurev1beta3.ElementalMachineRegistration{}
+	registration := &infrastructurev1beta1.ElementalMachineRegistration{}
 	if err := s.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: registrationName}, registration); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			response.WriteHeader(http.StatusNotFound)
@@ -122,7 +122,7 @@ func (s *Server) PostMachineHost(response http.ResponseWriter, request *http.Req
 	}
 
 	// Unmarshal POST request body.
-	newHost := &infrastructurev1beta3.ElementalHost{}
+	newHost := &infrastructurev1beta1.ElementalHost{}
 	if err := json.NewDecoder(request.Body).Decode(newHost); err != nil {
 		response.WriteHeader(http.StatusBadRequest)
 		response.Write([]byte(fmt.Errorf("Could not decode request body: %w", err).Error()))
@@ -165,7 +165,7 @@ func (s *Server) PostMachineHost(response http.ResponseWriter, request *http.Req
 	response.Header().Add("Location", fmt.Sprintf("%s%s/namespaces/%s/registrations/%s/hosts/%s", PrefixAPI, PrefixV1, namespace, registrationName, newHost.Name))
 }
 
-func validateNewHost(newHost *infrastructurev1beta3.ElementalHost, registration *infrastructurev1beta3.ElementalMachineRegistration) error {
+func validateNewHost(newHost *infrastructurev1beta1.ElementalHost, registration *infrastructurev1beta1.ElementalMachineRegistration) error {
 	if newHost.Namespace != registration.Namespace {
 		return errors.New("Invalid namespace")
 	}

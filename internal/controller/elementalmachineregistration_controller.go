@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	infrastructurev1beta3 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta3"
+	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 )
 
 // ElementalMachineRegistrationReconciler reconciles a ElementalMachineRegistration object
@@ -55,7 +55,7 @@ func (r *ElementalMachineRegistrationReconciler) Reconcile(ctx context.Context, 
 	logger.Info("Reconciling ElementalMachineRegistration")
 
 	// Fetch the ElementalMachineRegistration
-	elementalMachineRegistration := &infrastructurev1beta3.ElementalMachineRegistration{}
+	elementalMachineRegistration := &infrastructurev1beta1.ElementalMachineRegistration{}
 	if err := r.Client.Get(ctx, req.NamespacedName, elementalMachineRegistration); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -80,6 +80,6 @@ func (r *ElementalMachineRegistrationReconciler) Reconcile(ctx context.Context, 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ElementalMachineRegistrationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&infrastructurev1beta3.ElementalMachineRegistration{}).
+		For(&infrastructurev1beta1.ElementalMachineRegistration{}).
 		Complete(r)
 }

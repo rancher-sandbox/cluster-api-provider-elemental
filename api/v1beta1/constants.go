@@ -1,11 +1,11 @@
-package v1beta3
+package v1beta1
 
 import "k8s.io/apimachinery/pkg/runtime/schema"
 
 // API Info
 const (
 	InfraGroup   = "infrastructure.cluster.x-k8s.io"
-	InfraVersion = "v1beta3"
+	InfraVersion = "v1beta1"
 )
 
 var (
