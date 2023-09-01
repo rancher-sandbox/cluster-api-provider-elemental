@@ -59,6 +59,29 @@ kubectl -n elemental-system port-forward deployments/elemental-controller-manage
 1. Create 2 dummy ElementalHosts:
 
 ```bash
-curl -v -X POST localhost:9090/elemental/v1/namespaces/default/registrations/my-registration/hosts -d '{"metadata":{"name":"host-1","namespace":"default"}}'
-curl -v -X POST localhost:9090/elemental/v1/namespaces/default/registrations/my-registration/hosts -d '{"metadata":{"name":"host-2","namespace":"default"}}'
+curl -v -X POST localhost:9090/elemental/v1/namespaces/default/registrations/my-registration/hosts -d '{"name":"host-1"}'
+curl -v -X POST localhost:9090/elemental/v1/namespaces/default/registrations/my-registration/hosts -d '{"name":"host-2"}'
+```
+
+1. Fake installation complete successfully
+
+```bash
+curl -v -X PATCH localhost:9090/elemental/v1/namespaces/default/registrations/my-registration/hosts/host-1 -d '{"installed":true}'
+curl -v -X PATCH localhost:9090/elemental/v1/namespaces/default/registrations/my-registration/hosts/host-2 -d '{"installed":true}'
+```
+
+1. Continue PATCHing both hosts until one receive a response that contains `"bootstrapReady":true`
+
+1. Fetch the bootstrap configs
+
+```bash
+curl -v -X GET localhost:9090/elemental/v1/namespaces/default/registrations/my-registration/hosts/host-1/bootstrap
+curl -v -X GET localhost:9090/elemental/v1/namespaces/default/registrations/my-registration/hosts/host-2/bootstrap
+```
+
+1. Fake bootstrap complete successfully
+
+```bash
+curl -v -X PATCH localhost:9090/elemental/v1/namespaces/default/registrations/my-registration/hosts/host-1 -d '{"bootstrapped":true}'
+curl -v -X PATCH localhost:9090/elemental/v1/namespaces/default/registrations/my-registration/hosts/host-2 -d '{"bootstrapped":true}'
 ```

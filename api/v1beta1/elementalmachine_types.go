@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
@@ -38,6 +39,11 @@ type ElementalMachineStatus struct {
 	// +kubebuilder:default=false
 	// Ready indicates the provider-specific infrastructure has been provisioned and is ready
 	Ready bool `json:"ready,omitempty"`
+
+	// HostRef is an optional reference to a ElementalHost
+	// using this host.
+	// +optional
+	HostRef *corev1.ObjectReference `json:"hostRef,omitempty"`
 
 	// Conditions defines current service state of the ElementalCluster.
 	// +optional

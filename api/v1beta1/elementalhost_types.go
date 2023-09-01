@@ -34,10 +34,16 @@ type ElementalHostSpec struct {
 
 // ElementalHostStatus defines the observed state of ElementalHost
 type ElementalHostStatus struct {
-	// MachineRef is an optional reference to a Cluster API Machine
+	// MachineRef is an optional reference to a Cluster API ElementalMachine
 	// using this host.
 	// +optional
 	MachineRef *corev1.ObjectReference `json:"machineRef,omitempty"`
+	// Installed references this host to have been successfully installed by Elemental
+	// +optional
+	Installed bool `json:"installed,omitempty"`
+	// Bootstrapped references this host to have applied the Boostrap instructions successfully
+	// +optional
+	Bootstrapped bool `json:"bootstrapped,omitempty"`
 }
 
 //+kubebuilder:object:root=true

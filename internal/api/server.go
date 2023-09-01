@@ -44,11 +44,15 @@ func (s *Server) Start() error {
 
 	elementalV1.Path("/namespaces/{namespace}/registrations/{registrationName}/hosts").
 		Methods("POST").
-		HandlerFunc(s.PostMachineHost) // TODO: Wrap me with RegistrationToken auth handler
+		HandlerFunc(s.PostMachineHost) // TODO: Wrap me with RegistrationToken + Host auth handler
 
 	elementalV1.Path("/namespaces/{namespace}/registrations/{registrationName}/hosts/{hostName}").
 		Methods("PATCH").
 		HandlerFunc(s.PatchMachineHost) // TODO: Wrap me with RegistrationToken + Host auth handler
+
+	elementalV1.Path("/namespaces/{namespace}/registrations/{registrationName}/hosts/{hostName}/bootstrap").
+		Methods("GET").
+		HandlerFunc(s.GetMachineHostBootstrap) // TODO: Wrap me with RegistrationToken + Host auth handler
 
 	s.httpServer = &http.Server{
 		Handler: router,

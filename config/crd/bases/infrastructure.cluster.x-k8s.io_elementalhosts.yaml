@@ -76,9 +76,17 @@ spec:
           status:
             description: ElementalHostStatus defines the observed state of ElementalHost
             properties:
+              bootstrapped:
+                description: Bootstrapped references this host to have applied the
+                  Boostrap instructions successfully
+                type: boolean
+              installed:
+                description: Installed references this host to have been successfully
+                  installed by Elemental
+                type: boolean
               machineRef:
                 description: MachineRef is an optional reference to a Cluster API
-                  Machine using this host.
+                  ElementalMachine using this host.
                 properties:
                   apiVersion:
                     description: API version of the referent.

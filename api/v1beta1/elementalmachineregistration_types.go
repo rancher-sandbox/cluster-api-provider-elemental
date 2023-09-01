@@ -17,25 +17,25 @@ limitations under the License.
 package v1beta1
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtime "k8s.io/apimachinery/pkg/runtime"
 )
-
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // ElementalMachineRegistrationSpec defines the desired state of ElementalMachineRegistration
 type ElementalMachineRegistrationSpec struct {
-	// BootstrapTokenRef is a reference to the object containing a Kubernetes token.
-	// This token will be used by ElementalHosts to perform the initial registration.
+	// MachineLabels are labels propagated to each ElementalHost object linked to this registration.
 	// +optional
-	BootstrapTokenRef *corev1.ObjectReference `json:"bootstrapTokenRef"`
+	MachineLabels map[string]string `json:"machineLabels,omitempty"`
+	// MachineAnnotations are labels propagated to each ElementalHost object linked to this registration.
+	// +optional
+	MachineAnnotations map[string]string `json:"machineAnnotations,omitempty"`
+	// Config points to Elemental machine configuration.
+	// +optional
+	Config *Config `json:"config,omitempty"`
 }
 
 // ElementalMachineRegistrationStatus defines the observed state of ElementalMachineRegistration
 type ElementalMachineRegistrationStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 }
 
 //+kubebuilder:object:root=true
@@ -61,4 +61,83 @@ type ElementalMachineRegistrationList struct {
 
 func init() {
 	SchemeBuilder.Register(&ElementalMachineRegistration{}, &ElementalMachineRegistrationList{})
+}
+
+type Config struct {
+	// +optional
+	Elemental Elemental `json:"elemental,omitempty" yaml:"elemental"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
+	// +optional
+	CloudConfig map[string]runtime.RawExtension `json:"cloud-config,omitempty" yaml:"cloud-config,omitempty"`
+}
+
+type Install struct {
+	// +optional
+	Firmware string `json:"firmware,omitempty" yaml:"firmware,omitempty"`
+	// +optional
+	Device string `json:"device,omitempty" yaml:"device,omitempty"`
+	// +optional
+	NoFormat bool `json:"no-format,omitempty" yaml:"no-format,omitempty"`
+	// +optional
+	ConfigURLs []string `json:"config-urls,omitempty" yaml:"config-urls,omitempty"`
+	// +optional
+	ISO string `json:"iso,omitempty" yaml:"iso,omitempty"`
+	// +optional
+	SystemURI string `json:"system-uri,omitempty" yaml:"system-uri,omitempty"`
+	// +optional
+	Debug bool `json:"debug,omitempty" yaml:"debug,omitempty"`
+	// +optional
+	TTY string `json:"tty,omitempty" yaml:"tty,omitempty"`
+	// +optional
+	PowerOff bool `json:"poweroff,omitempty" yaml:"poweroff,omitempty"`
+	// +optional
+	Reboot bool `json:"reboot,omitempty" yaml:"reboot,omitempty"`
+	// +optional
+	EjectCD bool `json:"eject-cd,omitempty" yaml:"eject-cd,omitempty"`
+	// +optional
+	DisableBootEntry bool `json:"disable-boot-entry,omitempty" yaml:"disable-boot-entry,omitempty"`
+	// +optional
+	ConfigDir string `json:"config-dir,omitempty" yaml:"config-dir,omitempty"`
+}
+
+type Reset struct {
+	// +optional
+	Enabled bool `json:"enabled,omitempty" yaml:"enabled,omitempty" mapstructure:"enabled"`
+	// +optional
+	// +kubebuilder:default:=true
+	ResetPersistent bool `json:"reset-persistent,omitempty" yaml:"reset-persistent,omitempty" mapstructure:"reset-persistent"`
+	// +optional
+	// +kubebuilder:default:=true
+	ResetOEM bool `json:"reset-oem,omitempty" yaml:"reset-oem,omitempty" mapstructure:"reset-oem"`
+	// +optional
+	ConfigURLs []string `json:"config-urls,omitempty" yaml:"config-urls,omitempty" mapstructure:"config-urls"`
+	// +optional
+	SystemURI string `json:"system-uri,omitempty" yaml:"system-uri,omitempty" mapstructure:"system-uri"`
+	// +optional
+	Debug bool `json:"debug,omitempty" yaml:"debug,omitempty" mapstructure:"debug"`
+	// +optional
+	PowerOff bool `json:"poweroff,omitempty" yaml:"poweroff,omitempty" mapstructure:"poweroff"`
+	// +optional
+	// +kubebuilder:default:=true
+	Reboot bool `json:"reboot,omitempty" yaml:"reboot,omitempty" mapstructure:"reboot"`
+}
+
+type Registration struct {
+	// +optional
+	URL string `json:"url,omitempty" yaml:"url,omitempty" mapstructure:"url"`
+	// +optional
+	CACert string `json:"ca-cert,omitempty" yaml:"ca-cert,omitempty" mapstructure:"ca-cert"`
+	// +optional
+	NoSMBIOS bool `json:"no-smbios,omitempty" yaml:"no-smbios,omitempty" mapstructure:"no-smbios"`
+}
+
+type Elemental struct {
+	// +optional
+	Install Install `json:"install,omitempty" yaml:"install,omitempty"`
+	// +optional
+	// +kubebuilder:default:={"reset-persistent":true,"reset-oem":true,"reboot":true}
+	Reset Reset `json:"reset,omitempty" yaml:"reset,omitempty"`
+	// +optional
+	Registration Registration `json:"registration,omitempty" yaml:"registration,omitempty"`
 }

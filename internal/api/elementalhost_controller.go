@@ -2,12 +2,12 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -42,7 +42,7 @@ func (s *Server) PatchMachineHost(response http.ResponseWriter, request *http.Re
 			response.WriteHeader(http.StatusNotFound)
 			response.Write([]byte(fmt.Sprintf("ElementalHost '%s' not found", hostName)))
 		} else {
-			s.logger.Error(err, "Could not fetch ElementalHost", "namespace", namespace, "hostName", hostName)
+			s.logger.Error(err, "Could not fetch ElementalHost", "namespace", namespace, "hostName", hostName) // FIXME: Why is logger not printing anything at all?
 			response.WriteHeader(http.StatusInternalServerError)
 			response.Write([]byte(fmt.Sprintf("Could not fetch ElementalHost '%s'", hostName)))
 		}
@@ -50,11 +50,20 @@ func (s *Server) PatchMachineHost(response http.ResponseWriter, request *http.Re
 	}
 
 	// Unmarshal PATCH request body.
-	hostPatch := &infrastructurev1beta1.ElementalMachineRegistration{}
-	if err := json.NewDecoder(request.Body).Decode(hostPatch); err != nil {
+	hostPatchRequest := &HostPatchRequest{}
+	if err := json.NewDecoder(request.Body).Decode(hostPatchRequest); err != nil {
 		response.WriteHeader(http.StatusBadRequest)
-		response.Write([]byte(err.Error()))
+		response.Write([]byte(fmt.Errorf("Could not decode request: %w", err).Error()))
 		return
+	}
+
+	// Validate PATCH request
+	if hostPatchRequest.Bootstrapped != nil {
+		if *hostPatchRequest.Bootstrapped && host.Spec.BootstrapSecret == nil {
+			response.WriteHeader(http.StatusBadRequest)
+			response.Write([]byte("Can't mark the Host as bootstrapped if no bootstrap secret has been associated yet."))
+			return
+		}
 	}
 
 	// Create the patch helper.
@@ -67,10 +76,12 @@ func (s *Server) PatchMachineHost(response http.ResponseWriter, request *http.Re
 	}
 
 	// Patch the object.
-	if err := patchHelper.Patch(request.Context(), hostPatch); err != nil {
+	hostPatchRequest.mergeWithElementalHost(host)
+	if err := patchHelper.Patch(request.Context(), host); err != nil {
 		s.logger.Error(err, "Could not patch ElementalHost", "namespace", namespace, "hostName", hostName)
 		response.WriteHeader(http.StatusInternalServerError)
-		response.Write([]byte(fmt.Sprintf("Could not patch ElementalHost '%s'", hostName)))
+		// response.Write([]byte(fmt.Sprintf("Could not patch ElementalHost '%s'", hostName)))
+		response.Write([]byte(err.Error()))
 		return
 	}
 
@@ -88,16 +99,18 @@ func (s *Server) PatchMachineHost(response http.ResponseWriter, request *http.Re
 		return
 	}
 
+	hostResponse := HostResponse{}
+	hostResponse.fromElementalHost(*host)
 	// Serialize to JSON
-	responseBytes, err := json.Marshal(host)
+	responseBytes, err := json.Marshal(hostResponse)
 	if err != nil {
-		s.logger.Error(err, "Could not encode response body", "host", fmt.Sprintf("%+v", host))
+		s.logger.Error(err, "Could not encode response body", "host", fmt.Sprintf("%+v", hostResponse))
 		response.WriteHeader(http.StatusInternalServerError)
 		response.Write([]byte(fmt.Errorf("Could not encode response body: %w", err).Error()))
 		return
 	}
 
-	response.Header().Add("Content-Type", "application/json")
+	response.Header().Set("Content-Type", "application/json")
 	response.WriteHeader(http.StatusOK)
 	response.Write(responseBytes)
 }
@@ -122,21 +135,15 @@ func (s *Server) PostMachineHost(response http.ResponseWriter, request *http.Req
 	}
 
 	// Unmarshal POST request body.
-	newHost := &infrastructurev1beta1.ElementalHost{}
-	if err := json.NewDecoder(request.Body).Decode(newHost); err != nil {
+	hostCreateRequest := &HostCreateRequest{}
+	if err := json.NewDecoder(request.Body).Decode(hostCreateRequest); err != nil {
 		response.WriteHeader(http.StatusBadRequest)
 		response.Write([]byte(fmt.Errorf("Could not decode request body: %w", err).Error()))
 		return
 	}
 
-	// Validate new Host
-	if err := validateNewHost(newHost, registration); err != nil {
-		response.WriteHeader(http.StatusBadRequest)
-		response.Write([]byte(err.Error()))
-		return
-	}
-
 	// Set Registration Owner
+	newHost := hostCreateRequest.toElementalHost(namespace)
 	newHost.ObjectMeta.OwnerReferences = []metav1.OwnerReference{
 		{
 			APIVersion: registration.APIVersion,
@@ -148,7 +155,7 @@ func (s *Server) PostMachineHost(response http.ResponseWriter, request *http.Req
 	}
 
 	// Create new Host
-	if err := s.k8sClient.Create(request.Context(), newHost); err != nil {
+	if err := s.k8sClient.Create(request.Context(), &newHost); err != nil {
 		if k8sapierrors.IsAlreadyExists(err) {
 			response.WriteHeader(http.StatusConflict)
 			response.Write([]byte(fmt.Sprintf("Host '%s' in namespace '%s' already exists", namespace, newHost.Name)))
@@ -160,15 +167,79 @@ func (s *Server) PostMachineHost(response http.ResponseWriter, request *http.Req
 		return
 	}
 
+	response.Header().Set("Location", fmt.Sprintf("%s%s/namespaces/%s/registrations/%s/hosts/%s", PrefixAPI, PrefixV1, namespace, registrationName, newHost.Name))
 	response.WriteHeader(http.StatusCreated)
-	response.Header().Add("Content-Type", "application/json")
-	response.Header().Add("Location", fmt.Sprintf("%s%s/namespaces/%s/registrations/%s/hosts/%s", PrefixAPI, PrefixV1, namespace, registrationName, newHost.Name))
 }
 
-func validateNewHost(newHost *infrastructurev1beta1.ElementalHost, registration *infrastructurev1beta1.ElementalMachineRegistration) error {
-	if newHost.Namespace != registration.Namespace {
-		return errors.New("Invalid namespace")
+func (s *Server) GetMachineHostBootstrap(response http.ResponseWriter, request *http.Request) {
+	pathVars := mux.Vars(request)
+	namespace := pathVars["namespace"]
+	registrationName := pathVars["registrationName"]
+	hostName := pathVars["hostName"]
+
+	// Fetch registration
+	registration := &infrastructurev1beta1.ElementalMachineRegistration{}
+	if err := s.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: registrationName}, registration); err != nil {
+		if k8sapierrors.IsNotFound(err) {
+			response.WriteHeader(http.StatusNotFound)
+			response.Write([]byte(fmt.Sprintf("ElementalMachineRegistration '%s' not found", registrationName)))
+		} else {
+			s.logger.Error(err, "Could not fetch ElementalMachineRegistration", "namespace", namespace, "registrationName", registrationName)
+			response.WriteHeader(http.StatusInternalServerError)
+			response.Write([]byte(fmt.Sprintf("Could not fetch ElementalMachineRegistration '%s'", registrationName)))
+		}
+		return
 	}
-	// TODO: Add more to validate
-	return nil
+
+	// Fetch host
+	host := &infrastructurev1beta1.ElementalHost{}
+	if err := s.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: hostName}, host); err != nil {
+		if k8sapierrors.IsNotFound(err) {
+			response.WriteHeader(http.StatusNotFound)
+			response.Write([]byte(fmt.Sprintf("ElementalHost '%s' not found", hostName)))
+		} else {
+			s.logger.Error(err, "Could not fetch ElementalHost", "namespace", namespace, "hostName", hostName)
+			response.WriteHeader(http.StatusInternalServerError)
+			response.Write([]byte(fmt.Sprintf("Could not fetch ElementalHost '%s'", hostName)))
+		}
+		return
+	}
+
+	// Check if there is any Bootstrap secret associated to this host
+	if host.Spec.BootstrapSecret == nil {
+		response.WriteHeader(http.StatusNotFound)
+		response.Write([]byte("There is no associated boostrap secret yet"))
+		return
+	}
+
+	// Fetch bootstrap secret
+	bootstrapSecret := &corev1.Secret{}
+	if err := s.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: host.Spec.BootstrapSecret.Namespace, Name: host.Spec.BootstrapSecret.Name}, bootstrapSecret); err != nil {
+		if k8sapierrors.IsNotFound(err) {
+			s.logger.Error(err, "Could not find expected Bootstrap secret", "namespace", namespace, "hostName", hostName, "secretName", host.Spec.BootstrapSecret.Name)
+			response.WriteHeader(http.StatusInternalServerError)
+			response.Write([]byte("Could not find expected Bootstrap secret"))
+		} else {
+			s.logger.Error(err, "Could not fetch Bootstrap secret", "namespace", namespace, "hostName", hostName)
+			response.WriteHeader(http.StatusInternalServerError)
+			response.Write([]byte("Could not fetch Bootstrap secret"))
+		}
+		return
+	}
+
+	// Encode response
+	bootstrapResponse := &BootstrapResponse{}
+	bootstrapResponse.fromSecret(bootstrapSecret)
+
+	responseBytes, err := json.Marshal(bootstrapResponse)
+	if err != nil {
+		s.logger.Error(err, "Could not encode bootstrap response body")
+		response.WriteHeader(http.StatusInternalServerError)
+		response.Write([]byte(fmt.Errorf("Could not encode bootstrap response body: %w", err).Error()))
+		return
+	}
+
+	response.Header().Set("Content-Type", "application/json")
+	response.WriteHeader(http.StatusOK)
+	response.Write(responseBytes)
 }

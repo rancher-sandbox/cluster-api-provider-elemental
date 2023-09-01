@@ -36,45 +36,95 @@ spec:
             description: ElementalMachineRegistrationSpec defines the desired state
               of ElementalMachineRegistration
             properties:
-              bootstrapTokenRef:
-                description: BootstrapTokenRef is a reference to the object containing
-                  a Kubernetes token. This token will be used by ElementalHosts to
-                  perform the initial registration.
+              config:
+                description: Config points to Elemental machine configuration.
                 properties:
-                  apiVersion:
-                    description: API version of the referent.
-                    type: string
-                  fieldPath:
-                    description: 'If referring to a piece of an object instead of
-                      an entire object, this string should contain a valid JSON/Go
-                      field access statement, such as desiredState.manifest.containers[2].
-                      For example, if the object reference is to a container within
-                      a pod, this would take on a value like: "spec.containers{name}"
-                      (where "name" refers to the name of the container that triggered
-                      the event) or if no container name is specified "spec.containers[2]"
-                      (container with index 2 in this pod). This syntax is chosen
-                      only to have some well-defined way of referencing a part of
-                      an object. TODO: this design is not final and this field is
-                      subject to change in the future.'
-                    type: string
-                  kind:
-                    description: 'Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-                    type: string
-                  name:
-                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
-                    type: string
-                  namespace:
-                    description: 'Namespace of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/'
-                    type: string
-                  resourceVersion:
-                    description: 'Specific resourceVersion to which this reference
-                      is made, if any. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency'
-                    type: string
-                  uid:
-                    description: 'UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids'
-                    type: string
+                  cloud-config:
+                    x-kubernetes-preserve-unknown-fields: true
+                  elemental:
+                    properties:
+                      install:
+                        properties:
+                          config-dir:
+                            type: string
+                          config-urls:
+                            items:
+                              type: string
+                            type: array
+                          debug:
+                            type: boolean
+                          device:
+                            type: string
+                          disable-boot-entry:
+                            type: boolean
+                          eject-cd:
+                            type: boolean
+                          firmware:
+                            type: string
+                          iso:
+                            type: string
+                          no-format:
+                            type: boolean
+                          poweroff:
+                            type: boolean
+                          reboot:
+                            type: boolean
+                          system-uri:
+                            type: string
+                          tty:
+                            type: string
+                        type: object
+                      registration:
+                        properties:
+                          ca-cert:
+                            type: string
+                          no-smbios:
+                            type: boolean
+                          url:
+                            type: string
+                        type: object
+                      reset:
+                        default:
+                          reboot: true
+                          reset-oem: true
+                          reset-persistent: true
+                        properties:
+                          config-urls:
+                            items:
+                              type: string
+                            type: array
+                          debug:
+                            type: boolean
+                          enabled:
+                            type: boolean
+                          poweroff:
+                            type: boolean
+                          reboot:
+                            default: true
+                            type: boolean
+                          reset-oem:
+                            default: true
+                            type: boolean
+                          reset-persistent:
+                            default: true
+                            type: boolean
+                          system-uri:
+                            type: string
+                        type: object
+                    type: object
                 type: object
-                x-kubernetes-map-type: atomic
+              machineAnnotations:
+                additionalProperties:
+                  type: string
+                description: MachineAnnotations are labels propagated to each ElementalHost
+                  object linked to this registration.
+                type: object
+              machineLabels:
+                additionalProperties:
+                  type: string
+                description: MachineLabels are labels propagated to each ElementalHost
+                  object linked to this registration.
+                type: object
             type: object
           status:
             description: ElementalMachineRegistrationStatus defines the observed state
