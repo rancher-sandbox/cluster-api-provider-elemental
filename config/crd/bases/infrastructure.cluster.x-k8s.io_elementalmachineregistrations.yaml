@@ -78,6 +78,13 @@ spec:
                         properties:
                           ca-cert:
                             type: string
+                          hostname:
+                            properties:
+                              prefix:
+                                type: string
+                              use-existing:
+                                type: boolean
+                            type: object
                           no-smbios:
                             type: boolean
                           url:

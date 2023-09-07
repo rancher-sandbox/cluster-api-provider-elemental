@@ -1,0 +1,5 @@
+registration:
+  uri: http://172.17.0.1:9090/namespaces/default/registrations/my-registration
+agent:
+  debug: true
+  reconciliation: 10s

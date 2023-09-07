@@ -46,6 +46,8 @@ type HostResponse struct {
 	Annotations    map[string]string `json:"annotations,omitempty"`
 	Labels         map[string]string `json:"labels,omitempty"`
 	BootstrapReady bool              `json:"bootstrapReady,omitempty"`
+	Bootstrapped   bool              `json:"bootstrapped,omitempty"`
+	Installed      bool              `json:"installed,omitempty"`
 }
 
 func (h *HostResponse) fromElementalHost(elementalHost infrastructurev1beta1.ElementalHost) {
@@ -53,6 +55,8 @@ func (h *HostResponse) fromElementalHost(elementalHost infrastructurev1beta1.Ele
 	h.Annotations = elementalHost.Annotations
 	h.Labels = elementalHost.Labels
 	h.BootstrapReady = elementalHost.Spec.BootstrapSecret != nil
+	h.Bootstrapped = elementalHost.Status.Bootstrapped
+	h.Installed = elementalHost.Status.Installed
 }
 
 type RegistrationResponse struct {

@@ -1,4 +1,6 @@
-
+GIT_COMMIT?=$(shell git rev-parse HEAD)
+GIT_COMMIT_SHORT?=$(shell git rev-parse --short HEAD)
+GIT_TAG?=$(shell git describe --abbrev=0 --tags 2>/dev/null || echo "v0.0.0" )
 # Image URL to use all building/pushing image targets
 IMG ?= controller:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
@@ -22,8 +24,13 @@ CONTAINER_TOOL ?= docker
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
+LDFLAGS := -w -s
+LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.Version=${GIT_TAG}"
+LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.Commit=${GIT_COMMIT}"
+LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.CommitDate=${COMMITDATE}"
+
 .PHONY: all
-all: build
+all: build-provider
 
 ##@ General
 
@@ -66,20 +73,34 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 ##@ Build
 
-.PHONY: build
-build: manifests generate fmt vet ## Build manager binary.
-	go build -o bin/manager cmd/main.go
+.PHONY: build-agent
+build-agent: manifests generate fmt vet ## Build manager binary.
+	CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o bin/agent cmd/agent/main.go
+
+.PHONY: build-manager
+build-manager: manifests generate fmt vet ## Build manager binary.
+	go build -ldflags '$(LDFLAGS)' -o bin/manager cmd/manager/main.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./cmd/main.go
+	go run ./cmd/manager/main.go
 
 # If you wish built the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
 docker-build: test ## Build docker image with the manager.
-	$(CONTAINER_TOOL) build -t ${IMG} .
+	$(CONTAINER_TOOL) build \
+		--build-arg "TAG=${GIT_TAG}" \
+		--build-arg "COMMIT=${GIT_COMMIT}" \
+		--build-arg "COMMITDATE=${COMMITDATE}" \
+		-t ${IMG} .
+
+.PHONY: docker-build-agent
+docker-build-agent: test build-agent ## Build docker image with the manager.
+	mkdir -p demo/bin
+	cp bin/agent demo/bin/agent
+	$(CONTAINER_TOOL) build -t agent:latest ./demo
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.

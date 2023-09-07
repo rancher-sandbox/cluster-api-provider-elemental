@@ -130,6 +130,15 @@ type Registration struct {
 	CACert string `json:"ca-cert,omitempty" yaml:"ca-cert,omitempty" mapstructure:"ca-cert"`
 	// +optional
 	NoSMBIOS bool `json:"no-smbios,omitempty" yaml:"no-smbios,omitempty" mapstructure:"no-smbios"`
+	// +optional
+	Hostname Hostname `json:"hostname,omitempty" yaml:"hostname,omitempty" mapstructure:"hostname"`
+}
+
+type Hostname struct {
+	// +optional
+	UseExisting bool `json:"use-existing,omitempty" yaml:"use-existing,omitempty" mapstructure:"use-existing"`
+	// +optional
+	Prefix string `json:"prefix,omitempty" yaml:"prefix,omitempty" mapstructure:"prefix"`
 }
 
 type Elemental struct {

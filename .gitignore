@@ -27,3 +27,6 @@ Dockerfile.cross
 
 # Local infrastructure template files
 infrastructure-elemental/**
+
+# Demo stuff
+demo/bin/**
