@@ -3,7 +3,7 @@
 1. Initialize a cluster:
 
 ```bash
-kind create cluster
+kind create cluster --config=demo/kind.yaml
 ```
 
 1. Install CAPI controllers and Kubeadm providers:
@@ -44,19 +44,30 @@ EOF
 kubectl apply -f demo/cluster.yaml
 ```
 
-1. Create ElementalMachineRegistration:
+1. Apply Demo manifest:
 
 ```bash
-kubectl apply -f demo/registration.yaml
+kubectl apply -f demo/demo-manifest.yaml
 ```
 
-1. Port-forward the Elemental API:
+1. Build the agent container:
 
 ```bash
-kubectl -n elemental-system port-forward deployments/elemental-controller-manager 9090
+make docker-build-agent
 ```
 
-1. Create 2 dummy ElementalHosts:
+1. Start a couple of containers:
+
+```bash
+docker run --privileged -h host-1 --name host-1 -ti --tmpfs /run -v /sys/fs/cgroup:/sys/fs/cgroup:rw --cgroupns=host docker.io/library/agent:latest
+docker exec -it host-1 /agent
+
+
+docker run --privileged -h host-2 --name host-2 -ti --tmpfs /run -v /sys/fs/cgroup:/sys/fs/cgroup:rw --cgroupns=host docker.io/library/agent:latest
+docker exec -it host-2 /agent
+```
+
+<!-- 1. Create 2 dummy ElementalHosts:
 
 ```bash
 curl -v -X POST localhost:9090/elemental/v1/namespaces/default/registrations/my-registration/hosts -d '{"name":"host-1"}'
@@ -66,7 +77,7 @@ curl -v -X POST localhost:9090/elemental/v1/namespaces/default/registrations/my-
 1. Fake installation complete successfully
 
 ```bash
-curl -v -X PATCH localhost:9090/elemental/v1/namespaces/default/registrations/my-registration/hosts/host-1 -d '{"installed":true}'
+curl -v -X PATCH localhost:9090/elemental/v1/namespaces/default/registrations/my-registration/hosts/demo-host-1 -d '{"installed":true}'
 curl -v -X PATCH localhost:9090/elemental/v1/namespaces/default/registrations/my-registration/hosts/host-2 -d '{"installed":true}'
 ```
 
@@ -84,4 +95,4 @@ curl -v -X GET localhost:9090/elemental/v1/namespaces/default/registrations/my-r
 ```bash
 curl -v -X PATCH localhost:9090/elemental/v1/namespaces/default/registrations/my-registration/hosts/host-1 -d '{"bootstrapped":true}'
 curl -v -X PATCH localhost:9090/elemental/v1/namespaces/default/registrations/my-registration/hosts/host-2 -d '{"bootstrapped":true}'
-```
+``` -->

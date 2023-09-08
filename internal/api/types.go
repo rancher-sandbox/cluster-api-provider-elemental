@@ -1,7 +1,10 @@
 package api
 
 import (
+	"fmt"
+
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -30,7 +33,7 @@ type HostPatchRequest struct {
 	Installed    *bool             `json:"installed,omitempty"`
 }
 
-func (h *HostPatchRequest) mergeWithElementalHost(elementalHost *infrastructurev1beta1.ElementalHost) {
+func (h *HostPatchRequest) fromElementalHost(elementalHost *infrastructurev1beta1.ElementalHost) {
 	elementalHost.Annotations = h.Annotations
 	elementalHost.Labels = h.Labels
 	if h.Installed != nil {
@@ -78,11 +81,21 @@ func (r *RegistrationResponse) fromElementalMachineRegistration(elementalRegistr
 }
 
 type BootstrapResponse struct {
-	Format      string `json:"format,omitempty"`
-	EncodedData string `json:"encodedData,omitempty"`
+	Files    []BootstrapFile `json:"write_files" yaml:"write_files"`
+	Commands []string        `json:"runcmd" yaml:"runcmd"`
 }
 
-func (b *BootstrapResponse) fromSecret(secret *corev1.Secret) {
-	b.Format = string(secret.Data["format"])
-	b.EncodedData = string(secret.Data["value"]) //FIXME: Should keep using base64 encoding
+type BootstrapFile struct {
+	Path        string `json:"path" yaml:"path"`
+	Owner       string `json:"owner" yaml:"owner"`
+	Permissions string `json:"permissions" yaml:"permissions"`
+	Content     string `json:"content" yaml:"content"`
+}
+
+func (b *BootstrapResponse) fromSecret(secret *corev1.Secret) error {
+	data := secret.Data["value"]
+	if err := yaml.Unmarshal(data, b); err != nil {
+		return fmt.Errorf("unmarshalling bootstrap secret value: %w", err)
+	}
+	return nil
 }

@@ -76,7 +76,7 @@ func (s *Server) PatchMachineHost(response http.ResponseWriter, request *http.Re
 	}
 
 	// Patch the object.
-	hostPatchRequest.mergeWithElementalHost(host)
+	hostPatchRequest.fromElementalHost(host)
 	if err := patchHelper.Patch(request.Context(), host); err != nil {
 		s.logger.Error(err, "Could not patch ElementalHost", "namespace", namespace, "hostName", hostName)
 		response.WriteHeader(http.StatusInternalServerError)
@@ -229,7 +229,11 @@ func (s *Server) GetMachineHostBootstrap(response http.ResponseWriter, request *
 
 	// Encode response
 	bootstrapResponse := &BootstrapResponse{}
-	bootstrapResponse.fromSecret(bootstrapSecret)
+	if err := bootstrapResponse.fromSecret(bootstrapSecret); err != nil {
+		s.logger.Error(err, "Could not prepare bootstrap response")
+		response.WriteHeader(http.StatusInternalServerError)
+		response.Write([]byte(fmt.Errorf("Could not prepare bootstrap response: %w", err).Error()))
+	}
 
 	responseBytes, err := json.Marshal(bootstrapResponse)
 	if err != nil {

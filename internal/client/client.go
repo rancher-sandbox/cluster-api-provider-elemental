@@ -106,7 +106,13 @@ func (c *client) PatchMachineHost(patch api.HostPatchRequest, hostname string) (
 		return api.HostResponse{}, fmt.Errorf("marshalling patch host request body: %w", err)
 	}
 
-	response, err := c.HttpClient.Post(fmt.Sprintf("%s/hosts/%s", c.RegistrationURI, hostname), "application/json", bytes.NewBuffer(requestBody))
+	request, err := http.NewRequest("PATCH", fmt.Sprintf("%s/hosts/%s", c.RegistrationURI, hostname), bytes.NewBuffer(requestBody))
+	if err != nil {
+		return api.HostResponse{}, fmt.Errorf("preparing host patch request: %w", err)
+	}
+	request.Header.Set("Content-Type", "application/json")
+
+	response, err := c.HttpClient.Do(request)
 	if err != nil {
 		return api.HostResponse{}, fmt.Errorf("patching host: %w", err)
 	}

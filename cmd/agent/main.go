@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"time"
 
-	"github.com/mudler/yip/pkg/executor"
-	"github.com/mudler/yip/pkg/schema"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent"
 	log "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
@@ -17,7 +18,6 @@ import (
 	"github.com/spf13/viper"
 	"github.com/twpayne/go-vfs"
 	"github.com/twpayne/go-vfsafero"
-	"gopkg.in/yaml.v3"
 	"k8s.io/utils/ptr"
 )
 
@@ -160,25 +160,32 @@ func newCommand(fs vfs.FS) *cobra.Command {
 
 				host, err := client.PatchMachineHost(api.HostPatchRequest{}, hname)
 				if err != nil {
-					return fmt.Errorf("patching ElementalHost during normal reconcile: %w", err)
+					log.Error(fmt.Errorf("patching ElementalHost during normal reconcile: %w", err), "")
 				}
 
 				if host.BootstrapReady && !host.Bootstrapped {
 					log.Info("Fetching bootstrap instructions")
 					bootstrap, err := client.GetBootstrap(hname)
 					if err != nil {
-						return fmt.Errorf("fetching bootstrap instructions: %w", err)
+						log.Error(fmt.Errorf("fetching bootstrap instructions: %w", err), "")
 					}
 
-					def := executor.NewExecutor()
-					config := schema.YipConfig{}
-					if err := yaml.Unmarshal([]byte(bootstrap.EncodedData), &config); err != nil {
-						return fmt.Errorf("umarshalling bootstrap config: %w", err)
+					for _, file := range bootstrap.Files {
+						if err := writeFile(fs, file); err != nil {
+							log.Error(err, "writing bootstrap file")
+						}
 					}
-					if err := def.Apply("bootstrap", config, fs, nil); err != nil {
-						return fmt.Errorf("applyig bootstrap config: %w", err)
+
+					for _, command := range bootstrap.Commands {
+						if err := runCommand(command); err != nil {
+							log.Error(err, "running bootstrap command")
+						}
 					}
+
 					log.Info("Applied bootstrap instructions")
+					if _, err := client.PatchMachineHost(api.HostPatchRequest{Bootstrapped: ptr.To(true)}, hname); err != nil {
+						log.Error(fmt.Errorf("patching ElementalHost after bootstrap: %w", err), "")
+					}
 				}
 
 				time.Sleep(config.Agent.Reconciliation)
@@ -212,4 +219,41 @@ func getConfig(fs vfs.FS) (agent.Config, error) {
 	}
 
 	return config, nil
+}
+
+func writeFile(fs vfs.FS, file api.BootstrapFile) error {
+	log.Debugf("Writing file: %s", file.Path)
+	dir := filepath.Dir(file.Path)
+	if _, err := fs.Stat(dir); os.IsNotExist(err) {
+		log.Debugf("File dir '%s' does not exist. Creating now.", dir)
+		if err := vfs.MkdirAll(fs, dir, 0700); err != nil {
+			return fmt.Errorf("creating file directory: %w", err)
+		}
+	}
+
+	f, err := fs.Create(file.Path)
+	if err != nil {
+		return fmt.Errorf("creating file: %w", err)
+	}
+
+	if n, err := f.WriteString(file.Content); err != nil {
+		return fmt.Errorf("writing file, wrote %d bytes: %w", n, err)
+	}
+
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("closing file: %w", err)
+	}
+
+	return nil
+}
+
+func runCommand(command string) error {
+	log.Debugf("Running command: %s", command)
+	cmd := exec.CommandContext(context.Background(), "/bin/bash", "-c", command)
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("running command: %w", err)
+	}
+	return nil
 }

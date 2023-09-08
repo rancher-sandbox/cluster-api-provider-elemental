@@ -30,8 +30,11 @@ func (s *Server) GetMachineRegistration(response http.ResponseWriter, request *h
 		return
 	}
 
+	registrationResponse := RegistrationResponse{}
+	registrationResponse.fromElementalMachineRegistration(*registration)
+
 	// Serialize to JSON
-	responseBytes, err := json.Marshal(registration)
+	responseBytes, err := json.Marshal(registrationResponse)
 	if err != nil {
 		s.logger.Error(err, "Could not encode response body", "registration", fmt.Sprintf("%+v", registration))
 		response.WriteHeader(http.StatusInternalServerError)
