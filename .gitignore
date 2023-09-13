@@ -25,8 +25,5 @@ Dockerfile.cross
 *.swo
 *~
 
-# Local infrastructure template files
-infrastructure-elemental/**
-
 # Demo stuff
 demo/bin/**

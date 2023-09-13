@@ -6,22 +6,57 @@
     kind create cluster --config=demo/kind.yaml
     ```
 
-1. Install CAPI controllers and Kubeadm providers:
+1. Build the operator docker and load it to kind:
 
     ```bash
-    clusterctl init
+    make kind-load
     ```
 
-1. Deploy CAPI Elemental provider:
+1. Generate local release files:
 
     ```bash
-    make kind-deploy
+    make generate-infra-yaml
     ```
 
-1. Apply pre-generated `cluster.yaml` config:
+1. Configure `clusterctl` to use local release files:
+
+    **Note:** This step assumes your local repository is located in `$HOME/repos/cluster-api-provider-elemental` .  
+    If you have it in a different location, you can change the **url** in the snippet below.
 
     ```bash
-    kubectl apply -f demo/cluster.yaml
+    mkdir -p $HOME/.cluster-api 
+
+    cat << EOF > $HOME/.cluster-api/clusterctl.yaml
+    providers:
+      # add a custom provider
+      - name: "elemental"
+        url: "file:///${HOME}/repos/cluster-api-provider-elemental/infrastructure-elemental/v0.0.1/infrastructure-components.yaml"
+        type: "InfrastructureProvider"
+    EOF
+    ```
+
+1. Install CAPI controllers, Kubeadm providers, and the Elemental provider:
+
+    ```bash
+    clusterctl init --infrastructure elemental:v0.0.1
+    ```
+
+1. Generate `cluster.yaml` config:
+
+    ```bash
+    CONTROL_PLANE_ENDPOINT_IP=172.18.0.10 clusterctl generate cluster \
+    --infrastructure elemental:v0.0.1 \
+    --flavor docker \
+    --kubernetes-version v1.27.4 \
+    --control-plane-machine-count 1 \
+    --worker-machine-count 1 \
+    elemental-cluster > $HOME/cluster.yaml
+    ```
+
+1. Apply `cluster.yaml` config:
+
+    ```bash
+    kubectl apply -f $HOME/cluster.yaml
     ```
 
 1. Apply Demo manifest:
@@ -36,16 +71,12 @@
     make docker-build-agent
     ```
 
-1. Start the first container and wait for `kubeadm init` to end successfully:
+1. Start a couple of containers and wait for `kubeadm` to initialize successfully:
 
     ```bash
     docker run -d --privileged -h host-1 --name host-1 -ti --tmpfs /run -v /sys/fs/cgroup:/sys/fs/cgroup:rw --cgroupns=host --network=kind docker.io/library/agent:latest
     docker exec -it host-1 /agent
-    ```
 
-1. Start the second container and wait for `kubeadm join` to end successfully:
-
-    ```bash
     docker run -d --privileged -h host-2 --name host-2 -ti --tmpfs /run -v /sys/fs/cgroup:/sys/fs/cgroup:rw --cgroupns=host --network=kind docker.io/library/agent:latest
     docker exec -it host-2 /agent
     ```
@@ -53,7 +84,7 @@
 1. Verify that both CAPI Machine resources are provisioned:
 
     ```bash
-    kubectl get machines -o wide
+    kubectl get machines -o wide -w
     ```
 
     ```text
@@ -69,27 +100,3 @@ kind delete cluster
 docker stop host-1 && docker rm host-1
 docker stop host-2 && docker rm host-2
 ```
-
-<!---
-## FIXME:
-
-1. Generate local release files:
-
-```bash
-make generate-local-infra-yaml
-```
-
-1. Configure `clusterctl` to use local release files:
-
-```bash
-mkdir -p $HOME/.cluster-api 
-
-cat << EOF > $HOME/.cluster-api/clusterctl.yaml
-providers:
-  # add a custom provider
-  - name: "elemental"
-    url: "file:///${HOME}/repos/cluster-api-provider-elemental/infrastructure-elemental/v0.0.1/infrastructure-components.yaml"
-    type: "InfrastructureProvider"
-EOF
-``` 
---->
