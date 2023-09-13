@@ -17,13 +17,11 @@ metadata:
   namespace: default
 spec:
   clusterNetwork:
-    pods:
-      cidrBlocks:
-      - 192.168.0.0/16
-    serviceDomain: cluster.local
     services:
-      cidrBlocks:
-      - 10.128.0.0/12
+      cidrBlocks: ["10.96.0.0/12"]
+    pods:
+      cidrBlocks: ["192.168.0.0/16"]
+    serviceDomain: cluster.local
   controlPlaneRef:
     apiVersion: controlplane.cluster.x-k8s.io/v1beta1
     kind: KubeadmControlPlane
@@ -68,6 +66,14 @@ metadata:
   name: elemental-cluster-control-plane
   namespace: default
 spec:
+  replicas: 1
+  version: v1.27.4
+  machineTemplate:
+    infrastructureRef:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      kind: ElementalMachineTemplate
+      name: elemental-cluster-control-plane
+      namespace: default
   kubeadmConfigSpec:
     clusterConfiguration:
       apiServer:
@@ -75,32 +81,17 @@ spec:
         - localhost
         - 127.0.0.1
         - 0.0.0.0
-        - host.docker.internal
       controllerManager:
         extraArgs:
           enable-hostpath-provisioner: "true"
     initConfiguration:
       nodeRegistration:
-        criSocket: /var/run/containerd/containerd.sock
-        ignorePreflightErrors:
-        - Swap
-        - DirAvailable--etc-kubernetes-manifests
-        - FileAvailable--etc-kubernetes-kubelet.conf
+        kubeletExtraArgs:
+          eviction-hard: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
     joinConfiguration:
       nodeRegistration:
-        criSocket: /var/run/containerd/containerd.sock
-        ignorePreflightErrors:
-        - Swap
-        - DirAvailable--etc-kubernetes-manifests
-        - FileAvailable--etc-kubernetes-kubelet.conf
-  machineTemplate:
-    infrastructureRef:
-      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-      kind: ElementalMachineTemplate
-      name: elemental-cluster-control-plane
-      namespace: default
-  replicas: 1
-  version: v1.27.4
+        kubeletExtraArgs:
+          eviction-hard: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: ElementalCluster
@@ -109,7 +100,7 @@ metadata:
   namespace: default
 spec:
   controlPlaneEndpoint:
-    host: 172.17.0.2
+    host: 172.18.0.3
     port: 6443
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1

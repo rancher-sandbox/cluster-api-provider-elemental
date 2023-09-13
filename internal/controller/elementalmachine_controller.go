@@ -311,7 +311,8 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 	// Associate the first ElementalHost in the list that is ready to be bootstrapped
 	var elementalHostCandidate *infrastructurev1beta1.ElementalHost
 	for _, host := range elementalHosts.Items {
-		if host.Status.Installed {
+		// Only if this ElementalHost is installed and not already associated
+		if host.Status.Installed && host.Status.MachineRef == nil {
 			elementalHostCandidate = &host
 		}
 	}
