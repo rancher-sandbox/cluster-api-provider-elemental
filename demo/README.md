@@ -3,7 +3,7 @@
 1. Initialize a cluster:
 
     ```bash
-    kind create cluster --network=capi-demo --config=demo/kind.yaml
+    kind create cluster --config=demo/kind.yaml
     ```
 
 1. Install CAPI controllers and Kubeadm providers:
