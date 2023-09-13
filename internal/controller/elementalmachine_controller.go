@@ -314,6 +314,7 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 		// Only if this ElementalHost is installed and not already associated
 		if host.Status.Installed && host.Status.MachineRef == nil {
 			elementalHostCandidate = &host
+			break
 		}
 	}
 	if elementalHostCandidate == nil {
