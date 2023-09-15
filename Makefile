@@ -194,7 +194,7 @@ generate-infra-yaml:kustomize # Generate infrastructure-components.yaml for the 
 .PHONY: lint
 lint: ## See: https://golangci-lint.run/usage/linters/
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.2
-	golangci-lint run -v \
+	golangci-lint run -v --timeout 10m \
 		-E bodyclose \
 		-E contextcheck \
 		-E errname \
