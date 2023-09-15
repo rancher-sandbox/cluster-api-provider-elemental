@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -39,13 +38,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	ilog "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/log"
 )
 
 const (
 	defaultRequeuePeriod = 10 * time.Second
 )
 
-// ElementalMachineReconciler reconciles a ElementalMachine object
+// ElementalMachineReconciler reconciles a ElementalMachine object.
 type ElementalMachineReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -53,7 +53,7 @@ type ElementalMachineReconciler struct {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ElementalMachineReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	if err := ctrl.NewControllerManagedBy(mgr).
 		For(&infrastructurev1beta1.ElementalMachine{}).
 		Watches(
 			&infrastructurev1beta1.ElementalHost{},
@@ -71,11 +71,16 @@ func (r *ElementalMachineReconciler) SetupWithManager(ctx context.Context, mgr c
 			// Note: This check should only be performed after appropriate owner references (if any) are updated.
 			builder.WithPredicates(predicates.ClusterUnpausedAndInfrastructureReady(ctrl.LoggerFrom(ctx))),
 		).
-		Complete(r)
+		Complete(r); err != nil {
+		return fmt.Errorf("initializing ElementalMachineReconciler builder: %w", err)
+	}
+	return nil
 }
 
 func (r *ElementalMachineReconciler) ElementalHostToElementalMachine(ctx context.Context, obj client.Object) []ctrl.Request {
-	logger := log.FromContext(ctx).WithValues("host", fmt.Sprintf("%s/%s", obj.GetNamespace(), obj.GetName()))
+	logger := log.FromContext(ctx).
+		WithValues(ilog.KeyNamespace, obj.GetNamespace()).
+		WithValues(ilog.KeyElementalHost, obj.GetName())
 	logger.Info("Enqueueing ElementalMachine reconciliation from ElementalHost")
 
 	requests := []ctrl.Request{}
@@ -83,14 +88,13 @@ func (r *ElementalMachineReconciler) ElementalHostToElementalMachine(ctx context
 	// Verify we are actually handling a ElementalHost object
 	host, ok := obj.(*infrastructurev1beta1.ElementalHost)
 	if !ok {
-		errMsg := fmt.Sprintf("Expected a ElementalHost object, but got %T", obj)
-		logger.Error(errors.New(errMsg), errMsg)
+		logger.Error(ErrEnqueueing, fmt.Sprintf("Expected a ElementalHost object, but got %T", obj))
 		return []ctrl.Request{}
 	}
 
 	// Check the ElementalHost was associated to any ElementalMachine
 	if host.Status.MachineRef != nil {
-		logger.Info("Adding ElementalMachine to reconciliation request", "elementalMachine", fmt.Sprintf("%s/%s", host.Status.MachineRef.Namespace, host.Status.MachineRef.Name))
+		logger.Info("Adding ElementalMachine to reconciliation request", ilog.KeyElementalMachine, host.Status.MachineRef.Name)
 		name := client.ObjectKey{Namespace: host.Status.MachineRef.Namespace, Name: host.Status.MachineRef.Name}
 		requests = append(requests, ctrl.Request{NamespacedName: name})
 	}
@@ -99,21 +103,22 @@ func (r *ElementalMachineReconciler) ElementalHostToElementalMachine(ctx context
 }
 
 func (r *ElementalMachineReconciler) MachineToElementalMachine(ctx context.Context, obj client.Object) []ctrl.Request {
-	logger := log.FromContext(ctx).WithValues("host", fmt.Sprintf("%s/%s", obj.GetNamespace(), obj.GetName()))
+	logger := log.FromContext(ctx).
+		WithValues(ilog.KeyNamespace, obj.GetNamespace()).
+		WithValues(ilog.KeyMachine, obj.GetName())
 	logger.Info("Enqueueing ElementalMachine reconciliation from Machine")
 
 	requests := []ctrl.Request{}
 	// Verify we are actually handling a Machine object
 	machine, ok := obj.(*clusterv1.Machine)
 	if !ok {
-		errMsg := fmt.Sprintf("Expected a Machine object, but got %T", obj)
-		logger.Error(errors.New(errMsg), errMsg)
+		logger.Error(ErrEnqueueing, fmt.Sprintf("Expected a Machine object, but got %T", obj))
 		return []ctrl.Request{}
 	}
 
 	// Check the Machine was associated to any ElementalMachine
 	if machine.Spec.InfrastructureRef.Kind == "ElementalMachine" {
-		logger.Info("Adding ElementalMachine to reconciliation request", "elementalMachine", fmt.Sprintf("%s/%s", machine.Spec.InfrastructureRef.Namespace, machine.Spec.InfrastructureRef.Name))
+		logger.Info("Adding ElementalMachine to reconciliation request", ilog.KeyElementalMachine, machine.Spec.InfrastructureRef.Name)
 		name := client.ObjectKey{Namespace: machine.Spec.InfrastructureRef.Namespace, Name: machine.Spec.InfrastructureRef.Name}
 		requests = append(requests, ctrl.Request{NamespacedName: name})
 	}
@@ -123,7 +128,10 @@ func (r *ElementalMachineReconciler) MachineToElementalMachine(ctx context.Conte
 
 // ClusterToElementalMachines is a handler.ToRequestsFunc to be used to enqeue requests for reconciliation of ElementalMachines.
 func (r *ElementalMachineReconciler) ClusterToElementalMachines(ctx context.Context, obj client.Object) []ctrl.Request {
-	logger := log.FromContext(ctx).WithValues("cluster", fmt.Sprintf("%s/%s", obj.GetNamespace(), obj.GetName()))
+	logger := log.FromContext(ctx).
+		WithValues(ilog.KeyNamespace, obj.GetNamespace()).
+		WithValues(ilog.KeyCluster, obj.GetName())
+
 	logger.Info("Enqueueing ElementalMachines reconciliation from Cluster")
 
 	requests := []ctrl.Request{}
@@ -131,8 +139,7 @@ func (r *ElementalMachineReconciler) ClusterToElementalMachines(ctx context.Cont
 	// Verify we are actually handling a Cluster object
 	cluster, ok := obj.(*clusterv1.Cluster)
 	if !ok {
-		errMsg := fmt.Sprintf("Expected a Cluster object, but got %T", obj)
-		logger.Error(errors.New(errMsg), errMsg)
+		logger.Error(ErrEnqueueing, fmt.Sprintf("Expected a Cluster object, but got %T", obj))
 		return []ctrl.Request{}
 	}
 
@@ -155,7 +162,7 @@ func (r *ElementalMachineReconciler) ClusterToElementalMachines(ctx context.Cont
 		if m.Spec.InfrastructureRef.Namespace != "" {
 			name = client.ObjectKey{Namespace: m.Spec.InfrastructureRef.Namespace, Name: m.Spec.InfrastructureRef.Name}
 		}
-		logger.Info("Adding ElementalMachine to reconciliation request", "elementalMachine", fmt.Sprintf("%s/%s", capiMachineList.Items[i].Namespace, capiMachineList.Items[i].Name))
+		logger.Info("Adding ElementalMachine to reconciliation request", ilog.KeyElementalMachine, capiMachineList.Items[i].Name)
 		requests = append(requests, ctrl.Request{NamespacedName: name})
 	}
 
@@ -178,7 +185,9 @@ func (r *ElementalMachineReconciler) ClusterToElementalMachines(ctx context.Cont
 // For more details about the reconciliation loop, check the official CAPI documentation:
 // - https://cluster-api.sigs.k8s.io/developer/providers/machine-infrastructure
 func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx).
+		WithValues(ilog.KeyNamespace, req.Namespace).
+		WithValues(ilog.KeyElementalMachine, req.Name)
 	logger.Info("Reconciling ElementalMachine")
 
 	// Fetch the ElementalMachine
@@ -220,12 +229,6 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
 	}
-	// Always issue a patch when exiting this function so changes to the
-	// resource are patched back to the API server.
-	defer func() {
-		// Reconciliation step #12: Patch the resource to persist changes
-		patchHelper.Patch(ctx, elementalMachine)
-	}()
 
 	if elementalMachine.GetDeletionTimestamp() == nil || elementalMachine.GetDeletionTimestamp().IsZero() {
 		// The object is not being deleted, so register the finalizer
@@ -244,27 +247,35 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			return ctrl.Result{}, nil
 		}
 		// Reconciliation step #7: Reconcile provider-specific machine infrastructure
-		if result, err := r.reconcileNormal(ctx, elementalMachine, *machine); err != nil {
+		result, err := r.reconcileNormal(ctx, elementalMachine, *machine)
+		if err != nil {
 			// Reconciliation step #7-1: If they are terminal failures, set status.failureReason and status.failureMessage
 			// TODO: Consider implementing status.failureReason and status.failureMessage
 			return ctrl.Result{}, fmt.Errorf("reconciling ElementalMachine: %w", err)
-		} else {
-			return result, nil
 		}
-	} else {
-		// The object is up for deletion
-		if controllerutil.ContainsFinalizer(elementalMachine, infrastructurev1beta1.FinalizerElementalMachine) {
-			if err := r.reconcileDelete(ctx, elementalMachine); err != nil {
-				return ctrl.Result{}, fmt.Errorf("reconciling ElementalMachine deletion: %w", err)
-			}
+		return result, nil
+
+	}
+
+	// The object is up for deletion
+	if controllerutil.ContainsFinalizer(elementalMachine, infrastructurev1beta1.FinalizerElementalMachine) {
+		if err := r.reconcileDelete(ctx, elementalMachine); err != nil {
+			return ctrl.Result{}, fmt.Errorf("reconciling ElementalMachine deletion: %w", err)
 		}
+	}
+
+	// Reconciliation step #12: Patch the resource to persist changes
+	if err := patchHelper.Patch(ctx, elementalMachine); err != nil {
+		return ctrl.Result{}, fmt.Errorf("patching ElementalMachine: %w", err)
 	}
 
 	return ctrl.Result{}, nil
 }
 
 func (r *ElementalMachineReconciler) reconcileNormal(ctx context.Context, elementalMachine *infrastructurev1beta1.ElementalMachine, machine clusterv1.Machine) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx).
+		WithValues(ilog.KeyNamespace, elementalMachine.Namespace).
+		WithValues(ilog.KeyElementalMachine, elementalMachine.Name)
 	logger.Info("Normal ElementalMachine reconcile")
 	// Reconciliation step #7-2: If this is a control plane machine, register the instance with the provider’s control plane load balancer (optional)
 	// TODO: Not implemented yet.
@@ -290,7 +301,9 @@ func (r *ElementalMachineReconciler) reconcileNormal(ctx context.Context, elemen
 }
 
 func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context, elementalMachine *infrastructurev1beta1.ElementalMachine, machine clusterv1.Machine) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx).
+		WithValues(ilog.KeyNamespace, elementalMachine.Namespace).
+		WithValues(ilog.KeyElementalMachine, elementalMachine.Name)
 	logger.Info("Finding a suitable ElementalHost to associate")
 	elementalHosts := &infrastructurev1beta1.ElementalHostList{}
 	var selector labels.Selector
@@ -313,6 +326,7 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 	for _, host := range elementalHosts.Items {
 		// Only if this ElementalHost is installed and not already associated
 		if host.Status.Installed && host.Status.MachineRef == nil {
+			host := host
 			elementalHostCandidate = &host
 			break
 		}
@@ -322,7 +336,7 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
 	}
 
-	logger = logger.WithValues("elementalHost", fmt.Sprintf("%s/%s", elementalHostCandidate.Namespace, elementalHostCandidate.Name))
+	logger = logger.WithValues(ilog.KeyElementalHost, elementalHostCandidate.Name)
 	logger.Info("Associating ElementalMachine to ElementalHost")
 
 	// Reconciliation step #8: Set spec.providerID to the provider-specific identifier for the provider’s machine instance
@@ -374,7 +388,9 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 }
 
 func (r *ElementalMachineReconciler) reconcileDelete(ctx context.Context, elementalMachine *infrastructurev1beta1.ElementalMachine) error {
-	logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx).
+		WithValues(ilog.KeyNamespace, elementalMachine.Namespace).
+		WithValues(ilog.KeyElementalMachine, elementalMachine.Name)
 	logger.Info("Deletion ElementalMachine reconcile")
 	controllerutil.RemoveFinalizer(elementalMachine, infrastructurev1beta1.FinalizerElementalMachine)
 	return nil

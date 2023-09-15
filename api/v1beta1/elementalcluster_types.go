@@ -21,20 +21,17 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
-// ElementalClusterSpec defines the desired state of ElementalCluster
+// ElementalClusterSpec defines the desired state of ElementalCluster.
 type ElementalClusterSpec struct {
 	// ControlPlaneEndpoint represents the endpoint used to communicate with the control plane.
 	// +optional
 	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
 }
 
-// ElementalClusterStatus defines the observed state of ElementalCluster
+// ElementalClusterStatus defines the observed state of ElementalCluster.
 type ElementalClusterStatus struct {
 	// +kubebuilder:default=false
-	// Ready indicates the provider-specific infrastructure has been provisioned and is ready
+	// Ready indicates the provider-specific infrastructure has been provisioned and is ready.
 	Ready bool `json:"ready,omitempty"`
 
 	// Conditions defines current service state of the ElementalCluster.
@@ -49,7 +46,7 @@ type ElementalClusterStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// ElementalCluster is the Schema for the elementalclusters API
+// ElementalCluster is the Schema for the elementalclusters API.
 type ElementalCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -60,7 +57,7 @@ type ElementalCluster struct {
 
 //+kubebuilder:object:root=true
 
-// ElementalClusterList contains a list of ElementalCluster
+// ElementalClusterList contains a list of ElementalCluster.
 type ElementalClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

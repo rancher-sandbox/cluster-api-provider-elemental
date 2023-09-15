@@ -1,17 +1,15 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"time"
 
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	log "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/hostname"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version"
 	"github.com/spf13/cobra"
@@ -25,12 +23,11 @@ const (
 	configPathDefault = "/oem/elemental/agent/config.yaml"
 )
 
-// Flags
+// Flags.
 var (
 	versionFlag bool
 	resetFlag   bool
 	installFlag bool
-	demoFlag    bool // Temporary for prototyping
 	configPath  string
 )
 
@@ -171,13 +168,13 @@ func newCommand(fs vfs.FS) *cobra.Command {
 					}
 
 					for _, file := range bootstrap.Files {
-						if err := writeFile(fs, file); err != nil {
+						if err := utils.WriteFile(fs, file); err != nil {
 							log.Error(err, "writing bootstrap file")
 						}
 					}
 
 					for _, command := range bootstrap.Commands {
-						if err := runCommand(command); err != nil {
+						if err := utils.RunCommand(command); err != nil {
 							log.Error(err, "running bootstrap command")
 						}
 					}
@@ -197,7 +194,6 @@ func newCommand(fs vfs.FS) *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&versionFlag, "version", false, "print version and exit")
 	cmd.PersistentFlags().BoolVar(&resetFlag, "reset", false, "reset the Elemental installation")
 	cmd.PersistentFlags().BoolVar(&installFlag, "install", false, "install Elemental")
-	cmd.PersistentFlags().BoolVar(&demoFlag, "demo", false, "demo Elemental")
 	cmd.PersistentFlags().StringVar(&configPath, "config", configPathDefault, "agent config path")
 	return cmd
 }
@@ -219,41 +215,4 @@ func getConfig(fs vfs.FS) (agent.Config, error) {
 	}
 
 	return config, nil
-}
-
-func writeFile(fs vfs.FS, file api.BootstrapFile) error {
-	log.Debugf("Writing file: %s", file.Path)
-	dir := filepath.Dir(file.Path)
-	if _, err := fs.Stat(dir); os.IsNotExist(err) {
-		log.Debugf("File dir '%s' does not exist. Creating now.", dir)
-		if err := vfs.MkdirAll(fs, dir, 0700); err != nil {
-			return fmt.Errorf("creating file directory: %w", err)
-		}
-	}
-
-	f, err := fs.Create(file.Path)
-	if err != nil {
-		return fmt.Errorf("creating file: %w", err)
-	}
-
-	if n, err := f.WriteString(file.Content); err != nil {
-		return fmt.Errorf("writing file, wrote %d bytes: %w", n, err)
-	}
-
-	if err := f.Close(); err != nil {
-		return fmt.Errorf("closing file: %w", err)
-	}
-
-	return nil
-}
-
-func runCommand(command string) error {
-	log.Debugf("Running command: %s", command)
-	cmd := exec.CommandContext(context.Background(), "/bin/bash", "-c", command)
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("running command: %w", err)
-	}
-	return nil
 }

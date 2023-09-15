@@ -22,22 +22,22 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
-// ElementalMachineSpec defines the desired state of ElementalMachine
+// ElementalMachineSpec defines the desired state of ElementalMachine.
 type ElementalMachineSpec struct {
-	// ProviderID references the associated ElementalHost
+	// ProviderID references the associated ElementalHost.
 	// (elemental://{ElementalHost.Namespace}/{ElementalHost.Name})
 	// +optional
-	ProviderID *string `json:"providerID,omitempty"`
+	ProviderID *string `json:"providerID,omitempty"` //nolint:tagliatelle
 
-	// Selector can be used to associate ElementalHost that match certain labels
+	// Selector can be used to associate ElementalHost that match certain labels.
 	// +optional
 	Selector *metav1.LabelSelector `json:"selector,omitempty"`
 }
 
-// ElementalMachineStatus defines the observed state of ElementalMachine
+// ElementalMachineStatus defines the observed state of ElementalMachine.
 type ElementalMachineStatus struct {
 	// +kubebuilder:default=false
-	// Ready indicates the provider-specific infrastructure has been provisioned and is ready
+	// Ready indicates the provider-specific infrastructure has been provisioned and is ready.
 	Ready bool `json:"ready,omitempty"`
 
 	// HostRef is an optional reference to a ElementalHost
@@ -57,7 +57,7 @@ type ElementalMachineStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// ElementalMachine is the Schema for the elementalmachines API
+// ElementalMachine is the Schema for the elementalmachines API.
 type ElementalMachine struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -68,7 +68,7 @@ type ElementalMachine struct {
 
 //+kubebuilder:object:root=true
 
-// ElementalMachineList contains a list of ElementalMachine
+// ElementalMachineList contains a list of ElementalMachine.
 type ElementalMachineList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

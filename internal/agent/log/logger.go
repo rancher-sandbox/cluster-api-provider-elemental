@@ -13,7 +13,6 @@ var log logr.Logger
 var config zap.Config
 
 const (
-	TraceLevel = 2 //TODO: is this correct?
 	DebugLevel = 1
 	InfoLevel  = 0
 )

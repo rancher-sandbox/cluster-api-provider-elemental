@@ -14,8 +14,7 @@ RUN go mod download
 # Copy the go source
 COPY cmd/manager/main.go cmd/manager/main.go
 COPY api/ api/
-COPY internal/controller/ internal/controller/
-COPY internal/api/ internal/api/
+COPY internal/ internal/
 
 ARG TAG=v0.0.0
 ARG COMMIT=""

@@ -30,9 +30,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	ilog "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/log"
 )
 
-// ElementalClusterReconciler reconciles a ElementalCluster object
+// ElementalClusterReconciler reconciles a ElementalCluster object.
 type ElementalClusterReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -40,11 +41,14 @@ type ElementalClusterReconciler struct {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ElementalClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	if err := ctrl.NewControllerManagedBy(mgr).
 		For(&infrastructurev1beta1.ElementalCluster{}).
 		// Reconciliation step #1: If the resource is externally managed, exit the reconciliation
 		WithEventFilter(predicates.ResourceIsNotExternallyManaged(log.FromContext(ctx))).
-		Complete(r)
+		Complete(r); err != nil {
+		return fmt.Errorf("initializing ElementalClusterReconciler builder: %w", err)
+	}
+	return nil
 }
 
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=elementalclusters,verbs=get;list;watch;create;update;patch;delete
@@ -61,7 +65,9 @@ func (r *ElementalClusterReconciler) SetupWithManager(ctx context.Context, mgr c
 // For more details about the reconciliation loop, check the official CAPI documentation:
 // - https://cluster-api.sigs.k8s.io/developer/providers/cluster-infrastructure
 func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).WithValues("elementalCluster", req.NamespacedName)
+	logger := log.FromContext(ctx).
+		WithValues(ilog.KeyNamespace, req.Namespace).
+		WithValues(ilog.KeyElementalCluster, req.Name)
 	logger.Info("Reconciling ElementalCluster")
 
 	// Fetch the ElementalCluster
@@ -91,17 +97,11 @@ func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
 	}
-	// Always issue a patch when exiting this function so changes to the
-	// resource are patched back to the API server.
-	defer func() {
-		// Reconciliation step #8: Patch the resource to persist changes
-		patchHelper.Patch(ctx, elementalCluster)
-	}()
 
 	// Reconciliation step #4: Reconcile provider-specific cluster infrastructure
 	if elementalCluster.GetDeletionTimestamp() == nil || elementalCluster.GetDeletionTimestamp().IsZero() {
 		// The object is not being deleted, handle reconcile
-		if err := r.reconcile(ctx, elementalCluster); err != nil {
+		if err := r.reconcileNormal(ctx, elementalCluster); err != nil {
 			return ctrl.Result{}, fmt.Errorf("reconciling ElementalCluster: %w", err)
 		}
 	} else {
@@ -111,26 +111,36 @@ func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		}
 	}
 
+	// Reconciliation step #8: Patch the resource to persist changes
+	if err := patchHelper.Patch(ctx, elementalCluster); err != nil {
+		return ctrl.Result{}, fmt.Errorf("patching ElementalCluster: %w", err)
+	}
+
+	return ctrl.Result{}, nil
+}
+
+func (r *ElementalClusterReconciler) reconcileNormal(ctx context.Context, elementalCluster *infrastructurev1beta1.ElementalCluster) error {
+	logger := log.FromContext(ctx).
+		WithValues(ilog.KeyNamespace, elementalCluster.Namespace).
+		WithValues(ilog.KeyElementalCluster, elementalCluster.Name)
+	logger.Info("Normal ElementalCluster reconcile")
 	// Reconciliation step #5: If the provider created a load balancer for the control plane, record its hostname or IP
-	// TODO: No idea yet how to tackle this.
-	//       Do we need to fetch the LoadBalancer external IP and port, if any?
+	// TODO: If using kube-vip, most likely nothing to do.
+	//       However if no controlPlaneEndpoint was provided by the user, this could be an error.
 
 	// Reconciliation step #6: Set status.ready to true
 	elementalCluster.Status.Ready = true
 
 	// Reconciliation step #7: Set status.failureDomains based on available provider failure domains (optional)
-	// TODO: No idea yet.
-
-	return ctrl.Result{}, nil
-}
-
-func (r *ElementalClusterReconciler) reconcile(ctx context.Context, elementalCluster *infrastructurev1beta1.ElementalCluster) error {
-	// TODO: Most likely nothing.
-	//       Steps #5, #6, and #7 may be moved here though.
+	// TODO: Considering implementing failure domains.
 	return nil
 }
 
 func (r *ElementalClusterReconciler) reconcileDelete(ctx context.Context, elementalCluster *infrastructurev1beta1.ElementalCluster) error {
+	logger := log.FromContext(ctx).
+		WithValues(ilog.KeyNamespace, elementalCluster.Namespace).
+		WithValues(ilog.KeyElementalCluster, elementalCluster.Name)
+	logger.Info("Delete ElementalCluster reconcile")
 	// TODO: Most likely nothing.
 	//       Expect CAPI controller to delete the Machine objects as well and on cascade the owned ElementalMachines.
 	//       ElementalMachine controller can handle infra deletion reconciliation (for ex. reset)

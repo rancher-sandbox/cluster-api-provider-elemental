@@ -11,7 +11,11 @@ import (
 
 func GetCACert(fs vfs.FS, caCert string) ([]byte, error) {
 	if _, err := fs.Stat(caCert); err == nil {
-		return fs.ReadFile(caCert)
+		bytes, err := fs.ReadFile(caCert)
+		if err != nil {
+			return nil, fmt.Errorf("reading CACert file: %w", err)
+		}
+		return bytes, nil
 	}
 	return []byte(caCert), nil
 }
@@ -26,11 +30,11 @@ func GetTLSClientConfig(caCertPem []byte, useSystemCertPool bool, insecureSkipVe
 	} else {
 		caCertPool = x509.NewCertPool()
 	}
-	if caCertPem != nil && len(caCertPem) > 0 {
+	if len(caCertPem) > 0 {
 		caCertPool.AppendCertsFromPEM(caCertPem)
 	}
 	return &tls.Config{
 		RootCAs:            caCertPool,
-		InsecureSkipVerify: insecureSkipVerify,
+		InsecureSkipVerify: insecureSkipVerify, //nolint:gosec
 	}, nil
 }

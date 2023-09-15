@@ -21,7 +21,7 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
-// ElementalMachineRegistrationSpec defines the desired state of ElementalMachineRegistration
+// ElementalMachineRegistrationSpec defines the desired state of ElementalMachineRegistration.
 type ElementalMachineRegistrationSpec struct {
 	// MachineLabels are labels propagated to each ElementalHost object linked to this registration.
 	// +optional
@@ -34,14 +34,14 @@ type ElementalMachineRegistrationSpec struct {
 	Config *Config `json:"config,omitempty"`
 }
 
-// ElementalMachineRegistrationStatus defines the observed state of ElementalMachineRegistration
+// ElementalMachineRegistrationStatus defines the observed state of ElementalMachineRegistration.
 type ElementalMachineRegistrationStatus struct {
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// ElementalMachineRegistration is the Schema for the elementalmachineregistrations API
+// ElementalMachineRegistration is the Schema for the elementalmachineregistrations API.
 type ElementalMachineRegistration struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -52,7 +52,7 @@ type ElementalMachineRegistration struct {
 
 //+kubebuilder:object:root=true
 
-// ElementalMachineRegistrationList contains a list of ElementalMachineRegistration
+// ElementalMachineRegistrationList contains a list of ElementalMachineRegistration.
 type ElementalMachineRegistrationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -69,7 +69,7 @@ type Config struct {
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:validation:XPreserveUnknownFields
 	// +optional
-	CloudConfig map[string]runtime.RawExtension `json:"cloud-config,omitempty" yaml:"cloud-config,omitempty"`
+	CloudConfig map[string]runtime.RawExtension `json:"cloudConfig,omitempty" yaml:"cloudConfig,omitempty"`
 }
 
 type Install struct {
@@ -78,13 +78,13 @@ type Install struct {
 	// +optional
 	Device string `json:"device,omitempty" yaml:"device,omitempty"`
 	// +optional
-	NoFormat bool `json:"no-format,omitempty" yaml:"no-format,omitempty"`
+	NoFormat bool `json:"noFormat,omitempty" yaml:"noFormat,omitempty"`
 	// +optional
-	ConfigURLs []string `json:"config-urls,omitempty" yaml:"config-urls,omitempty"`
+	ConfigURLs []string `json:"configUrls,omitempty" yaml:"configUrls,omitempty"`
 	// +optional
 	ISO string `json:"iso,omitempty" yaml:"iso,omitempty"`
 	// +optional
-	SystemURI string `json:"system-uri,omitempty" yaml:"system-uri,omitempty"`
+	SystemURI string `json:"systemUri,omitempty" yaml:"systemUri,omitempty"`
 	// +optional
 	Debug bool `json:"debug,omitempty" yaml:"debug,omitempty"`
 	// +optional
@@ -94,11 +94,11 @@ type Install struct {
 	// +optional
 	Reboot bool `json:"reboot,omitempty" yaml:"reboot,omitempty"`
 	// +optional
-	EjectCD bool `json:"eject-cd,omitempty" yaml:"eject-cd,omitempty"`
+	EjectCD bool `json:"ejectCd,omitempty" yaml:"ejectCd,omitempty"`
 	// +optional
-	DisableBootEntry bool `json:"disable-boot-entry,omitempty" yaml:"disable-boot-entry,omitempty"`
+	DisableBootEntry bool `json:"disableBootEntry,omitempty" yaml:"disableBootEntry,omitempty"`
 	// +optional
-	ConfigDir string `json:"config-dir,omitempty" yaml:"config-dir,omitempty"`
+	ConfigDir string `json:"configDir,omitempty" yaml:"configDir,omitempty"`
 }
 
 type Reset struct {
@@ -106,14 +106,14 @@ type Reset struct {
 	Enabled bool `json:"enabled,omitempty" yaml:"enabled,omitempty" mapstructure:"enabled"`
 	// +optional
 	// +kubebuilder:default:=true
-	ResetPersistent bool `json:"reset-persistent,omitempty" yaml:"reset-persistent,omitempty" mapstructure:"reset-persistent"`
+	ResetPersistent bool `json:"resetPersistent,omitempty" yaml:"resetPersistent,omitempty" mapstructure:"resetPersistent"`
 	// +optional
 	// +kubebuilder:default:=true
-	ResetOEM bool `json:"reset-oem,omitempty" yaml:"reset-oem,omitempty" mapstructure:"reset-oem"`
+	ResetOEM bool `json:"resetOem,omitempty" yaml:"resetOem,omitempty" mapstructure:"resetOem"`
 	// +optional
-	ConfigURLs []string `json:"config-urls,omitempty" yaml:"config-urls,omitempty" mapstructure:"config-urls"`
+	ConfigURLs []string `json:"configUrls,omitempty" yaml:"configUrls,omitempty" mapstructure:"configUrls"`
 	// +optional
-	SystemURI string `json:"system-uri,omitempty" yaml:"system-uri,omitempty" mapstructure:"system-uri"`
+	SystemURI string `json:"systemUri,omitempty" yaml:"systemUri,omitempty" mapstructure:"systemUri"`
 	// +optional
 	Debug bool `json:"debug,omitempty" yaml:"debug,omitempty" mapstructure:"debug"`
 	// +optional
@@ -127,16 +127,16 @@ type Registration struct {
 	// +optional
 	URL string `json:"url,omitempty" yaml:"url,omitempty" mapstructure:"url"`
 	// +optional
-	CACert string `json:"ca-cert,omitempty" yaml:"ca-cert,omitempty" mapstructure:"ca-cert"`
+	CACert string `json:"caCert,omitempty" yaml:"caCert,omitempty" mapstructure:"caCert"`
 	// +optional
-	NoSMBIOS bool `json:"no-smbios,omitempty" yaml:"no-smbios,omitempty" mapstructure:"no-smbios"`
+	NoSMBIOS bool `json:"noSmbios,omitempty" yaml:"noSmbios,omitempty" mapstructure:"noSmbios"`
 	// +optional
 	Hostname Hostname `json:"hostname,omitempty" yaml:"hostname,omitempty" mapstructure:"hostname"`
 }
 
 type Hostname struct {
 	// +optional
-	UseExisting bool `json:"use-existing,omitempty" yaml:"use-existing,omitempty" mapstructure:"use-existing"`
+	UseExisting bool `json:"useExisting,omitempty" yaml:"useExisting,omitempty" mapstructure:"useExisting"`
 	// +optional
 	Prefix string `json:"prefix,omitempty" yaml:"prefix,omitempty" mapstructure:"prefix"`
 }

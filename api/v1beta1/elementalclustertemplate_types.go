@@ -20,7 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ElementalClusterTemplateSpec defines the desired state of ElementalClusterTemplate
+// ElementalClusterTemplateSpec defines the desired state of ElementalClusterTemplate.
 type ElementalClusterTemplateSpec struct {
 	Template ElementalClusterTemplateResource `json:"template"`
 }
@@ -36,7 +36,7 @@ type ElementalClusterTemplateResource struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// ElementalClusterTemplate is the Schema for the elementalclustertemplates API
+// ElementalClusterTemplate is the Schema for the elementalclustertemplates API.
 type ElementalClusterTemplate struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -46,7 +46,7 @@ type ElementalClusterTemplate struct {
 
 //+kubebuilder:object:root=true
 
-// ElementalClusterTemplateList contains a list of ElementalClusterTemplate
+// ElementalClusterTemplateList contains a list of ElementalClusterTemplate.
 type ElementalClusterTemplateList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

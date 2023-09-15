@@ -190,3 +190,22 @@ kind-load: docker-build
 .PHONY: generate-infra-yaml
 generate-infra-yaml:kustomize # Generate infrastructure-components.yaml for the provider
 	$(KUSTOMIZE) build config/default > infrastructure-elemental/v0.0.1/infrastructure-components.yaml
+
+.PHONY: lint
+lint: ## See: https://golangci-lint.run/usage/linters/
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.2
+	golangci-lint run -v \
+		-E bodyclose \
+		-E contextcheck \
+		-E errname \
+		-E errorlint \
+		-E exhaustive \
+		-E exportloopref \
+		-E godot \
+		-E gofmt \
+		-E goimports \
+		-E gosec \
+		-E makezero \
+		-E tagliatelle \
+		-E revive \
+		-E wrapcheck 

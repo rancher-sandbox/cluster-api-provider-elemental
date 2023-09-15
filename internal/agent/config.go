@@ -6,9 +6,12 @@ const (
 	DefaultReconciliation = 1 * time.Minute
 )
 
+// Config represents the CAPI Elemental agent configuration.
 type Config struct {
+	// Registration config
 	Registration Registration `yaml:"registration" mapstructure:"registration"`
-	Agent        Agent        `yaml:"agent" mapstructure:"agent"`
+	// Agent config
+	Agent Agent `yaml:"agent" mapstructure:"agent"`
 }
 
 type Registration struct {

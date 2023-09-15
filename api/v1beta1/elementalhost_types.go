@@ -21,27 +21,24 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
-// ElementalHostSpec defines the desired state of ElementalHost
+// ElementalHostSpec defines the desired state of ElementalHost.
 type ElementalHostSpec struct {
 	// BootstrapSecret is an optional reference to a Cluster API Secret
-	// for bootstrap purpose
+	// for bootstrap purpose.
 	// +optional
 	BootstrapSecret *corev1.ObjectReference `json:"bootstrapSecret,omitempty"`
 }
 
-// ElementalHostStatus defines the observed state of ElementalHost
+// ElementalHostStatus defines the observed state of ElementalHost.
 type ElementalHostStatus struct {
 	// MachineRef is an optional reference to a Cluster API ElementalMachine
 	// using this host.
 	// +optional
 	MachineRef *corev1.ObjectReference `json:"machineRef,omitempty"`
-	// Installed references this host to have been successfully installed by Elemental
+	// Installed references this host to have been successfully installed by Elemental.
 	// +optional
 	Installed bool `json:"installed,omitempty"`
-	// Bootstrapped references this host to have applied the Boostrap instructions successfully
+	// Bootstrapped references this host to have applied the Boostrap instructions successfully.
 	// +optional
 	Bootstrapped bool `json:"bootstrapped,omitempty"`
 }
@@ -49,7 +46,7 @@ type ElementalHostStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// ElementalHost is the Schema for the elementalhosts API
+// ElementalHost is the Schema for the elementalhosts API.
 type ElementalHost struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -60,7 +57,7 @@ type ElementalHost struct {
 
 //+kubebuilder:object:root=true
 
-// ElementalHostList contains a list of ElementalHost
+// ElementalHostList contains a list of ElementalHost.
 type ElementalHostList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

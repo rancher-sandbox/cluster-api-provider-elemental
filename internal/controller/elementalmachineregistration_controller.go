@@ -28,9 +28,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	ilog "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/log"
 )
 
-// ElementalMachineRegistrationReconciler reconciles a ElementalMachineRegistration object
+// ElementalMachineRegistrationReconciler reconciles a ElementalMachineRegistration object.
 type ElementalMachineRegistrationReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -43,15 +44,13 @@ type ElementalMachineRegistrationReconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the ElementalMachineRegistration object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.15.0/pkg/reconcile
 func (r *ElementalMachineRegistrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).WithValues("elementalMachineRegistration", req.NamespacedName)
+	logger := log.FromContext(ctx).
+		WithValues(ilog.KeyNamespace, req.Namespace).
+		WithValues(ilog.KeyElementalMachineRegistration, req.Name)
 	logger.Info("Reconciling ElementalMachineRegistration")
 
 	// Fetch the ElementalMachineRegistration
@@ -68,18 +67,20 @@ func (r *ElementalMachineRegistrationReconciler) Reconcile(ctx context.Context, 
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
 	}
-	// Always issue a patch when exiting this function so changes to the
-	// resource are patched back to the API server.
-	defer func() {
-		patchHelper.Patch(ctx, elementalMachineRegistration)
-	}()
+
+	if err := patchHelper.Patch(ctx, elementalMachineRegistration); err != nil {
+		return ctrl.Result{}, fmt.Errorf("patching ElementalMachineRegistration: %w", err)
+	}
 
 	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ElementalMachineRegistrationReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	if err := ctrl.NewControllerManagedBy(mgr).
 		For(&infrastructurev1beta1.ElementalMachineRegistration{}).
-		Complete(r)
+		Complete(r); err != nil {
+		return fmt.Errorf("initializing ElementalMachineRegistrationReconciler builder: %w", err)
+	}
+	return nil
 }

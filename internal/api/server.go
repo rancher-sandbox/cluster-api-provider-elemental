@@ -12,6 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+// Prefixes.
 const (
 	PrefixAPI = "/elemental"
 	PrefixV1  = "/v1"
@@ -28,12 +29,12 @@ func NewServer(ctx context.Context, k8sClient client.Client) *Server {
 	return &Server{
 		context:   ctx,
 		k8sClient: k8sClient,
+		logger:    log.FromContext(ctx),
 	}
 }
 
 func (s *Server) Start() error {
-	logger := log.FromContext(s.context)
-	logger.Info("Starting Elemental API V1 Server")
+	s.logger.Info("Starting Elemental API V1 Server")
 
 	router := mux.NewRouter()
 	elementalV1 := router.PathPrefix(fmt.Sprintf("%s%s", PrefixAPI, PrefixV1)).Subrouter()
@@ -55,16 +56,21 @@ func (s *Server) Start() error {
 		HandlerFunc(s.GetMachineHostBootstrap) // TODO: Wrap me with RegistrationToken + Host auth handler
 
 	s.httpServer = &http.Server{
-		Handler: router,
-		Addr:    ":9090",
-		// Good practice: enforce timeouts for servers you create!
-		WriteTimeout: 15 * time.Second,
-		ReadTimeout:  15 * time.Second,
+		Handler:      router,
+		Addr:         ":9090",
+		WriteTimeout: 30 * time.Second,
+		ReadTimeout:  30 * time.Second,
 	}
 
-	return s.httpServer.ListenAndServe()
+	if err := s.httpServer.ListenAndServe(); err != nil {
+		return fmt.Errorf("listening for TCP incoming connections: %w", err)
+	}
+	return nil
 }
 
 func (s *Server) Stop() error {
-	return s.httpServer.Shutdown(s.context)
+	if err := s.httpServer.Shutdown(s.context); err != nil {
+		return fmt.Errorf("shutting down server: %w", err)
+	}
+	return nil
 }

@@ -20,7 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ElementalMachineTemplateSpec defines the desired state of ElementalMachineTemplate
+// ElementalMachineTemplateSpec defines the desired state of ElementalMachineTemplate.
 type ElementalMachineTemplateSpec struct {
 	Template InfraMachineTemplateResource `json:"template"`
 }
@@ -38,7 +38,7 @@ type InfraMachineTemplateResource struct {
 // +kubebuilder:resource:path=elementalmachinetemplates,scope=Namespaced,categories=cluster-api,shortName=emt
 // +kubebuilder:storageversion
 
-// ElementalMachineTemplate is the Schema for the elementalmachinetemplates API
+// ElementalMachineTemplate is the Schema for the elementalmachinetemplates API.
 type ElementalMachineTemplate struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -48,7 +48,7 @@ type ElementalMachineTemplate struct {
 
 //+kubebuilder:object:root=true
 
-// ElementalMachineTemplateList contains a list of ElementalMachineTemplate
+// ElementalMachineTemplateList contains a list of ElementalMachineTemplate.
 type ElementalMachineTemplateList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
