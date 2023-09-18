@@ -23,5 +23,5 @@ spec:
     elemental:
       registration:
         hostname:
-          use-existing: true
+          useExisting: true
           prefix: "demo-"

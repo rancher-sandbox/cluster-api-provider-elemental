@@ -17,7 +17,7 @@ spec:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: ElementalMachine is the Schema for the elementalmachines API
+        description: ElementalMachine is the Schema for the elementalmachines API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -32,14 +32,14 @@ spec:
           metadata:
             type: object
           spec:
-            description: ElementalMachineSpec defines the desired state of ElementalMachine
+            description: ElementalMachineSpec defines the desired state of ElementalMachine.
             properties:
               providerID:
-                description: ProviderID references the associated ElementalHost (elemental://{ElementalHost.Namespace}/{ElementalHost.Name})
+                description: ProviderID references the associated ElementalHost. (elemental://{ElementalHost.Namespace}/{ElementalHost.Name})
                 type: string
               selector:
                 description: Selector can be used to associate ElementalHost that
-                  match certain labels
+                  match certain labels.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -85,7 +85,7 @@ spec:
                 x-kubernetes-map-type: atomic
             type: object
           status:
-            description: ElementalMachineStatus defines the observed state of ElementalMachine
+            description: ElementalMachineStatus defines the observed state of ElementalMachine.
             properties:
               conditions:
                 description: Conditions defines current service state of the ElementalCluster.
@@ -193,7 +193,7 @@ spec:
               ready:
                 default: false
                 description: Ready indicates the provider-specific infrastructure
-                  has been provisioned and is ready
+                  has been provisioned and is ready.
                 type: boolean
             type: object
         type: object

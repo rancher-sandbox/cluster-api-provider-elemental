@@ -17,7 +17,7 @@ spec:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: ElementalCluster is the Schema for the elementalclusters API
+        description: ElementalCluster is the Schema for the elementalclusters API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -32,7 +32,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: ElementalClusterSpec defines the desired state of ElementalCluster
+            description: ElementalClusterSpec defines the desired state of ElementalCluster.
             properties:
               controlPlaneEndpoint:
                 description: ControlPlaneEndpoint represents the endpoint used to
@@ -51,7 +51,7 @@ spec:
                 type: object
             type: object
           status:
-            description: ElementalClusterStatus defines the observed state of ElementalCluster
+            description: ElementalClusterStatus defines the observed state of ElementalCluster.
             properties:
               conditions:
                 description: Conditions defines current service state of the ElementalCluster.
@@ -121,7 +121,7 @@ spec:
               ready:
                 default: false
                 description: Ready indicates the provider-specific infrastructure
-                  has been provisioned and is ready
+                  has been provisioned and is ready.
                 type: boolean
             type: object
         type: object

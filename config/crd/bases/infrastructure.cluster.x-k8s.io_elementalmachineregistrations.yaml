@@ -18,7 +18,7 @@ spec:
     schema:
       openAPIV3Schema:
         description: ElementalMachineRegistration is the Schema for the elementalmachineregistrations
-          API
+          API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -34,20 +34,20 @@ spec:
             type: object
           spec:
             description: ElementalMachineRegistrationSpec defines the desired state
-              of ElementalMachineRegistration
+              of ElementalMachineRegistration.
             properties:
               config:
                 description: Config points to Elemental machine configuration.
                 properties:
-                  cloud-config:
+                  cloudConfig:
                     x-kubernetes-preserve-unknown-fields: true
                   elemental:
                     properties:
                       install:
                         properties:
-                          config-dir:
+                          configDir:
                             type: string
-                          config-urls:
+                          configUrls:
                             items:
                               type: string
                             type: array
@@ -55,37 +55,37 @@ spec:
                             type: boolean
                           device:
                             type: string
-                          disable-boot-entry:
+                          disableBootEntry:
                             type: boolean
-                          eject-cd:
+                          ejectCd:
                             type: boolean
                           firmware:
                             type: string
                           iso:
                             type: string
-                          no-format:
+                          noFormat:
                             type: boolean
                           poweroff:
                             type: boolean
                           reboot:
                             type: boolean
-                          system-uri:
+                          systemUri:
                             type: string
                           tty:
                             type: string
                         type: object
                       registration:
                         properties:
-                          ca-cert:
+                          caCert:
                             type: string
                           hostname:
                             properties:
                               prefix:
                                 type: string
-                              use-existing:
+                              useExisting:
                                 type: boolean
                             type: object
-                          no-smbios:
+                          noSmbios:
                             type: boolean
                           url:
                             type: string
@@ -93,10 +93,10 @@ spec:
                       reset:
                         default:
                           reboot: true
-                          reset-oem: true
-                          reset-persistent: true
+                          resetOem: true
+                          resetPersistent: true
                         properties:
-                          config-urls:
+                          configUrls:
                             items:
                               type: string
                             type: array
@@ -109,13 +109,13 @@ spec:
                           reboot:
                             default: true
                             type: boolean
-                          reset-oem:
+                          resetOem:
                             default: true
                             type: boolean
-                          reset-persistent:
+                          resetPersistent:
                             default: true
                             type: boolean
-                          system-uri:
+                          systemUri:
                             type: string
                         type: object
                     type: object
@@ -135,7 +135,7 @@ spec:
             type: object
           status:
             description: ElementalMachineRegistrationStatus defines the observed state
-              of ElementalMachineRegistration
+              of ElementalMachineRegistration.
             type: object
         type: object
     served: true

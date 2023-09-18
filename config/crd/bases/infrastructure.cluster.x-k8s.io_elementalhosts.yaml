@@ -17,7 +17,7 @@ spec:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: ElementalHost is the Schema for the elementalhosts API
+        description: ElementalHost is the Schema for the elementalhosts API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -32,11 +32,11 @@ spec:
           metadata:
             type: object
           spec:
-            description: ElementalHostSpec defines the desired state of ElementalHost
+            description: ElementalHostSpec defines the desired state of ElementalHost.
             properties:
               bootstrapSecret:
                 description: BootstrapSecret is an optional reference to a Cluster
-                  API Secret for bootstrap purpose
+                  API Secret for bootstrap purpose.
                 properties:
                   apiVersion:
                     description: API version of the referent.
@@ -74,15 +74,15 @@ spec:
                 x-kubernetes-map-type: atomic
             type: object
           status:
-            description: ElementalHostStatus defines the observed state of ElementalHost
+            description: ElementalHostStatus defines the observed state of ElementalHost.
             properties:
               bootstrapped:
                 description: Bootstrapped references this host to have applied the
-                  Boostrap instructions successfully
+                  Boostrap instructions successfully.
                 type: boolean
               installed:
                 description: Installed references this host to have been successfully
-                  installed by Elemental
+                  installed by Elemental.
                 type: boolean
               machineRef:
                 description: MachineRef is an optional reference to a Cluster API

@@ -81,8 +81,8 @@ func (r *RegistrationResponse) fromElementalMachineRegistration(elementalRegistr
 }
 
 type BootstrapResponse struct {
-	Files    []BootstrapFile `json:"writeFiles" yaml:"writeFiles"`
-	Commands []string        `json:"runCmd" yaml:"runCmd"`
+	Files    []BootstrapFile `json:"write_files" yaml:"write_files"` //nolint:tagliatelle //Matching cloud-init schema
+	Commands []string        `json:"runcmd" yaml:"runcmd"`
 }
 
 type BootstrapFile struct {
