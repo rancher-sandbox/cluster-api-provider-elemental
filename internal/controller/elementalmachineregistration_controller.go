@@ -47,7 +47,7 @@ type ElementalMachineRegistrationReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.15.0/pkg/reconcile
-func (r *ElementalMachineRegistrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *ElementalMachineRegistrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, rerr error) {
 	logger := log.FromContext(ctx).
 		WithValues(ilog.KeyNamespace, req.Namespace).
 		WithValues(ilog.KeyElementalMachineRegistration, req.Name)
@@ -67,10 +67,11 @@ func (r *ElementalMachineRegistrationReconciler) Reconcile(ctx context.Context, 
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
 	}
-
-	if err := patchHelper.Patch(ctx, elementalMachineRegistration); err != nil {
-		return ctrl.Result{}, fmt.Errorf("patching ElementalMachineRegistration: %w", err)
-	}
+	defer func() {
+		if err := patchHelper.Patch(ctx, elementalMachineRegistration); err != nil {
+			rerr = fmt.Errorf("patching ElementalMachineRegistration: %w", err)
+		}
+	}()
 
 	return ctrl.Result{}, nil
 }

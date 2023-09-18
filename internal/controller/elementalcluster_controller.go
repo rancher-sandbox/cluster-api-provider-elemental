@@ -64,7 +64,7 @@ func (r *ElementalClusterReconciler) SetupWithManager(ctx context.Context, mgr c
 //
 // For more details about the reconciliation loop, check the official CAPI documentation:
 // - https://cluster-api.sigs.k8s.io/developer/providers/cluster-infrastructure
-func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, rerr error) {
 	logger := log.FromContext(ctx).
 		WithValues(ilog.KeyNamespace, req.Namespace).
 		WithValues(ilog.KeyElementalCluster, req.Name)
@@ -97,6 +97,12 @@ func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
 	}
+	defer func() {
+		// Reconciliation step #8: Patch the resource to persist changes
+		if err := patchHelper.Patch(ctx, elementalCluster); err != nil {
+			rerr = fmt.Errorf("patching ElementalCluster: %w", err)
+		}
+	}()
 
 	// Reconciliation step #4: Reconcile provider-specific cluster infrastructure
 	if elementalCluster.GetDeletionTimestamp() == nil || elementalCluster.GetDeletionTimestamp().IsZero() {
@@ -109,11 +115,6 @@ func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		if err := r.reconcileDelete(ctx, elementalCluster); err != nil {
 			return ctrl.Result{}, fmt.Errorf("reconciling ElementalCluster deletion: %w", err)
 		}
-	}
-
-	// Reconciliation step #8: Patch the resource to persist changes
-	if err := patchHelper.Patch(ctx, elementalCluster); err != nil {
-		return ctrl.Result{}, fmt.Errorf("patching ElementalCluster: %w", err)
 	}
 
 	return ctrl.Result{}, nil

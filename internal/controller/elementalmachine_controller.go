@@ -184,7 +184,7 @@ func (r *ElementalMachineReconciler) ClusterToElementalMachines(ctx context.Cont
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.15.0/pkg/reconcile
 // For more details about the reconciliation loop, check the official CAPI documentation:
 // - https://cluster-api.sigs.k8s.io/developer/providers/machine-infrastructure
-func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, rerr error) {
 	logger := log.FromContext(ctx).
 		WithValues(ilog.KeyNamespace, req.Namespace).
 		WithValues(ilog.KeyElementalMachine, req.Name)
@@ -229,6 +229,12 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
 	}
+	defer func() {
+		// Reconciliation step #12: Patch the resource to persist changes
+		if err := patchHelper.Patch(ctx, elementalMachine); err != nil {
+			rerr = fmt.Errorf("patching ElementalMachine: %w", err)
+		}
+	}()
 
 	if elementalMachine.GetDeletionTimestamp() == nil || elementalMachine.GetDeletionTimestamp().IsZero() {
 		// The object is not being deleted, so register the finalizer
@@ -254,7 +260,6 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			return ctrl.Result{}, fmt.Errorf("reconciling ElementalMachine: %w", err)
 		}
 		return result, nil
-
 	}
 
 	// The object is up for deletion
@@ -262,11 +267,6 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		if err := r.reconcileDelete(ctx, elementalMachine); err != nil {
 			return ctrl.Result{}, fmt.Errorf("reconciling ElementalMachine deletion: %w", err)
 		}
-	}
-
-	// Reconciliation step #12: Patch the resource to persist changes
-	if err := patchHelper.Patch(ctx, elementalMachine); err != nil {
-		return ctrl.Result{}, fmt.Errorf("patching ElementalMachine: %w", err)
 	}
 
 	return ctrl.Result{}, nil

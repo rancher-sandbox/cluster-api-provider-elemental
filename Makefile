@@ -100,7 +100,7 @@ docker-build: test ## Build docker image with the manager.
 docker-build-agent: test build-agent ## Build docker image with the manager.
 	mkdir -p demo/bin
 	cp bin/agent demo/bin/agent
-	$(CONTAINER_TOOL) build -t agent:latest ./demo
+	$(CONTAINER_TOOL) build -t agent:latest --no-cache --progress=plain ./demo
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
