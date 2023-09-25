@@ -86,7 +86,7 @@ paths:
               schema:
                 type: string
           description: Internal Server Error
-      summary: Creates a new ElementalHost
+      summary: Create a new ElementalHost
   /elemental/v1/namespaces/{namespace}/registrations/{registrationName}/hosts/{hostName}:
     patch:
       description: This endpoint patches an existing ElementalHost.
