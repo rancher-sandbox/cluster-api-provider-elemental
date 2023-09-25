@@ -169,7 +169,7 @@ func NewPostElementalHostHandler(logger logr.Logger, k8sClient client.Client) *P
 
 func (h *PostElementalHostHandler) SetupOpenAPIOperation(oc openapi.OperationContext) error {
 	oc.SetSummary("Create a new ElementalHost")
-	oc.SetDescription("This endpoint create a new ElementalHost.")
+	oc.SetDescription("This endpoint creates a new ElementalHost.")
 
 	oc.AddReqStructure(HostCreateRequest{})
 

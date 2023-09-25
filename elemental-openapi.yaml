@@ -42,7 +42,7 @@ paths:
       summary: Get ElementalRegistration
   /elemental/v1/namespaces/{namespace}/registrations/{registrationName}/hosts:
     post:
-      description: This endpoint create a new ElementalHost.
+      description: This endpoint creates a new ElementalHost.
       parameters:
       - in: path
         name: namespace
