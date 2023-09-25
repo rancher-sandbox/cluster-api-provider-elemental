@@ -19,6 +19,9 @@ func TestGenerateOpenAPI(t *testing.T) {
 	refl.SpecSchema().SetTitle("Elemental API")
 	refl.SpecSchema().SetVersion("v0.0.1")
 	refl.SpecSchema().SetDescription(`This API can be used to interact with the Cluster API Elemental operator.<br />
+	This is API is for <b>Internal</b> use by the <a href="https://github.com/rancher-sandbox/cluster-api-provider-elemental/tree/main/cmd/agent">Elemental CAPI agent</a> and it's not supported for public use.<br />
+	Use it at your own risk.<br />
+	<br />
 	The schemas are mapping the related <a href="https://github.com/rancher-sandbox/cluster-api-provider-elemental/tree/main/api/v1beta1">Elemental CAPI resources</a>.<br />`)
 
 	// Walk the router with OpenAPI collector.
