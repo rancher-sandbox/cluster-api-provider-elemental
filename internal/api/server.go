@@ -33,30 +33,34 @@ func NewServer(ctx context.Context, k8sClient client.Client) *Server {
 	}
 }
 
-func (s *Server) Start() error {
-	s.logger.Info("Starting Elemental API V1 Server")
-
+func (s *Server) NewRouter() *mux.Router {
 	router := mux.NewRouter()
 	elementalV1 := router.PathPrefix(fmt.Sprintf("%s%s", PrefixAPI, PrefixV1)).Subrouter()
 
-	elementalV1.Path("/namespaces/{namespace}/registrations/{registrationName}").
-		Methods("GET").
-		HandlerFunc(s.GetMachineRegistration) // TODO: Wrap me with RegistrationToken auth handler
+	elementalV1.Handle("/namespaces/{namespace}/registrations/{registrationName}",
+		NewGetElementalRegistrationHandler(s.logger, s.k8sClient)).
+		Methods(http.MethodGet)
 
-	elementalV1.Path("/namespaces/{namespace}/registrations/{registrationName}/hosts").
-		Methods("POST").
-		HandlerFunc(s.PostMachineHost) // TODO: Wrap me with RegistrationToken + Host auth handler
+	elementalV1.Handle("/namespaces/{namespace}/registrations/{registrationName}/hosts",
+		NewPostElementalHostHandler(s.logger, s.k8sClient)).
+		Methods(http.MethodPost)
 
-	elementalV1.Path("/namespaces/{namespace}/registrations/{registrationName}/hosts/{hostName}").
-		Methods("PATCH").
-		HandlerFunc(s.PatchMachineHost) // TODO: Wrap me with RegistrationToken + Host auth handler
+	elementalV1.Handle("/namespaces/{namespace}/registrations/{registrationName}/hosts/{hostName}",
+		NewPatchElementalHostHandler(s.logger, s.k8sClient)).
+		Methods(http.MethodPatch)
 
-	elementalV1.Path("/namespaces/{namespace}/registrations/{registrationName}/hosts/{hostName}/bootstrap").
-		Methods("GET").
-		HandlerFunc(s.GetMachineHostBootstrap) // TODO: Wrap me with RegistrationToken + Host auth handler
+	elementalV1.Handle("/namespaces/{namespace}/registrations/{registrationName}/hosts/{hostName}/bootstrap",
+		NewGetElementalHostBootstrapHandler(s.logger, s.k8sClient)).
+		Methods(http.MethodGet)
+
+	return router
+}
+
+func (s *Server) Start() error {
+	s.logger.Info("Starting Elemental API V1 Server")
 
 	s.httpServer = &http.Server{
-		Handler:      router,
+		Handler:      s.NewRouter(),
 		Addr:         ":9090",
 		WriteTimeout: 30 * time.Second,
 		ReadTimeout:  30 * time.Second,

@@ -80,7 +80,7 @@ require (
 	github.com/rancher-sandbox/linuxkit v1.0.1 // indirect
 	github.com/samber/lo v1.37.0 // indirect
 	github.com/satori/go.uuid v1.2.1-0.20181028125025-b2ce2384e17b // indirect
-	github.com/sergi/go-diff v1.2.0 // indirect
+	github.com/sergi/go-diff v1.3.1 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spectrocloud-labs/herd v0.4.2 // indirect
@@ -88,6 +88,10 @@ require (
 	github.com/spf13/cast v1.5.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
+	github.com/swaggest/form/v5 v5.1.1 // indirect
+	github.com/swaggest/jsonschema-go v0.3.58 // indirect
+	github.com/swaggest/refl v1.2.1 // indirect
+	github.com/swaggest/usecase v1.2.1 // indirect
 	github.com/tredoe/osutil/v2 v2.0.0-rc.16 // indirect
 	github.com/ulikunitz/xz v0.5.11 // indirect
 	github.com/vbatts/tar-split v0.11.3 // indirect
@@ -149,6 +153,8 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.16.0
+	github.com/swaggest/openapi-go v0.2.39
+	github.com/swaggest/rest v0.2.58
 	github.com/twpayne/go-vfs v1.7.2
 	github.com/twpayne/go-vfsafero v1.0.0
 	go.uber.org/multierr v1.11.0 // indirect
