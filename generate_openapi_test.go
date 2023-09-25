@@ -18,7 +18,8 @@ func TestGenerateOpenAPI(t *testing.T) {
 	refl := openapi3.NewReflector()
 	refl.SpecSchema().SetTitle("Elemental API")
 	refl.SpecSchema().SetVersion("v0.0.1")
-	refl.SpecSchema().SetDescription("This API can be used to interact with the Cluster API Elemental operator")
+	refl.SpecSchema().SetDescription(`This API can be used to interact with the Cluster API Elemental operator.<br />
+	The schemas are mapping the related <a href="https://github.com/rancher-sandbox/cluster-api-provider-elemental/tree/main/api/v1beta1">Elemental CAPI resources</a>.<br />`)
 
 	// Walk the router with OpenAPI collector.
 	c := gorillamux.NewOpenAPICollector(refl)

@@ -1,6 +1,8 @@
 openapi: 3.0.3
 info:
-  description: This API can be used to interact with the Cluster API Elemental operator
+  description: "This API can be used to interact with the Cluster API Elemental operator.<br
+    />\n\tThe schemas are mapping the related <a href=\"https://github.com/rancher-sandbox/cluster-api-provider-elemental/tree/main/api/v1beta1\">Elemental
+    CAPI resources</a>.<br />"
   title: Elemental API
   version: v0.0.1
 paths:
