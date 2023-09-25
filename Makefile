@@ -59,6 +59,10 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
+.PHONY: openapi
+openapi: ## Generate Elemental OpenAPI specs
+	go test -v -run ^TestGenerateOpenAPI$ 
+
 .PHONY: fmt
 fmt: ## Run go fmt against code.
 	go fmt ./...
@@ -209,3 +213,29 @@ lint: ## See: https://golangci-lint.run/usage/linters/
 		-E tagliatelle \
 		-E revive \
 		-E wrapcheck 
+
+ALL_VERIFY_CHECKS = manifests generate openapi
+
+.PHONY: verify
+verify: $(addprefix verify-,$(ALL_VERIFY_CHECKS))
+
+.PHONY: verify-manifests
+verify-manifests: manifests
+	@if !(git diff --quiet HEAD); then \
+		git diff; \
+		echo "generated files are out of date, run make generate"; exit 1; \
+	fi
+
+.PHONY: verify-openapi
+verify-openapi: openapi
+	@if !(git diff --quiet HEAD); then \
+		git diff; \
+		echo "generated files are out of date, run make generate"; exit 1; \
+	fi
+
+.PHONY: verify-generate
+verify-generate: generate
+	@if !(git diff --quiet HEAD); then \
+		git diff; \
+		echo "generated files are out of date, run make generate"; exit 1; \
+	fi

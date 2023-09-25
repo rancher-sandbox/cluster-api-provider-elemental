@@ -10,6 +10,9 @@ import (
 )
 
 type HostCreateRequest struct {
+	Namespace        string `path:"namespace"`
+	RegistrationName string `path:"registrationName"`
+
 	Name        string            `json:"name,omitempty"`
 	Annotations map[string]string `json:"annotations,omitempty"`
 	Labels      map[string]string `json:"labels,omitempty"`
@@ -27,6 +30,10 @@ func (h *HostCreateRequest) toElementalHost(namespace string) infrastructurev1be
 }
 
 type HostPatchRequest struct {
+	Namespace        string `path:"namespace"`
+	RegistrationName string `path:"registrationName"`
+	HostName         string `path:"hostName"`
+
 	Annotations  map[string]string `json:"annotations,omitempty"`
 	Labels       map[string]string `json:"labels,omitempty"`
 	Bootstrapped *bool             `json:"bootstrapped,omitempty"`
@@ -62,6 +69,11 @@ func (h *HostResponse) fromElementalHost(elementalHost infrastructurev1beta1.Ele
 	h.Installed = elementalHost.Status.Installed
 }
 
+type RegistrationGetRequest struct {
+	Namespace        string `path:"namespace"`
+	RegistrationName string `path:"registrationName"`
+}
+
 type RegistrationResponse struct {
 	// MachineLabels are labels propagated to each ElementalHost object linked to this registration.
 	// +optional
@@ -78,6 +90,12 @@ func (r *RegistrationResponse) fromElementalMachineRegistration(elementalRegistr
 	r.MachineLabels = elementalRegistration.Spec.MachineLabels
 	r.MachineAnnotations = elementalRegistration.Spec.MachineAnnotations
 	r.Config = elementalRegistration.Spec.Config
+}
+
+type BootstrapGetRequest struct {
+	Namespace        string `path:"namespace"`
+	RegistrationName string `path:"registrationName"`
+	HostName         string `path:"hostName"`
 }
 
 type BootstrapResponse struct {
