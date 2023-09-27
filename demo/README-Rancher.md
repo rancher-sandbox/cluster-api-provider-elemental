@@ -2,6 +2,8 @@
 
 ## Preparation
 
+The following was tested on a fresh server **openSUSE Tumbleweed** installation.  
+
 1. Deploy 1 machine for Rancher deployment.  
    This depends on `git`, `make`, `go`, `docker`, `kind`, `helm`, `kubectl`, and `clusterctl`.
 
