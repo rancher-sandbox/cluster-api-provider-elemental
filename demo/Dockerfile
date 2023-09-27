@@ -3,12 +3,10 @@ FROM opensuse/tumbleweed:latest
 RUN zypper install -y systemd
 RUN zypper install -y fuse-overlayfs
 RUN zypper install -y patterns-kubernetes-kubeadm
+# Add missing kubeadm dependencies
+RUN zypper install -y iproute2 iptables conntrack-tools
 
-## FIXME: Using cri-o until the kubeadm pattern is fixed
-RUN systemctl disable containerd
-RUN zypper install -y cri-o
-COPY crio-docker-storage.conf /etc/crio/crio.conf.d/99-storage.conf
-RUN systemctl enable crio
+RUN systemctl enable containerd
 
 COPY bin/agent /agent
 COPY agent-config.yaml /oem/elemental/agent/config.yaml

@@ -74,10 +74,10 @@
 1. Start a couple of containers and wait for `kubeadm` to initialize successfully:
 
     ```bash
-    docker run -d --privileged -h host-1 --name host-1 -ti --tmpfs /run -v /sys/fs/cgroup:/sys/fs/cgroup:rw --cgroupns=host --network=kind docker.io/library/agent:latest
+    docker run -d --privileged -h host-1 --name host-1 -ti --tmpfs /run --tmpfs /var/lib/containerd -v /sys/fs/cgroup:/sys/fs/cgroup:rw --cgroupns=host --network=kind docker.io/library/agent:latest
     docker exec -it host-1 /agent
 
-    docker run -d --privileged -h host-2 --name host-2 -ti --tmpfs /run -v /sys/fs/cgroup:/sys/fs/cgroup:rw --cgroupns=host --network=kind docker.io/library/agent:latest
+    docker run -d --privileged -h host-2 --name host-2 -ti --tmpfs /run --tmpfs /var/lib/containerd -v /sys/fs/cgroup:/sys/fs/cgroup:rw --cgroupns=host --network=kind docker.io/library/agent:latest
     docker exec -it host-2 /agent
     ```
 
