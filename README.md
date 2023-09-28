@@ -24,6 +24,14 @@ Elemental consists of two main components that can be installed on any host mach
 
 ![elemental host anatomy](doc/images/elemental-host-anatomy.png)
 
+## Elemental API
+
+The Elemental API is a RESTful HTTP API than enables inventory management and CAPI bootstrapping capabilities.  
+The specifications are published in [OpenAPI format](elemental-openapi.yaml).  
+You can use it with any OpenAPI compliant tool, for example the online [Swagger Editor](https://editor.swagger.io/).  
+
+This API is consumed by the `elemental-agent` and is meant for **Internal** use only.  
+
 ## Rancher Integration
 
 [Rancher Turtles](https://docs.rancher-turtles.com/) is an extension to Rancher that brings increased integration with Cluster API.  
