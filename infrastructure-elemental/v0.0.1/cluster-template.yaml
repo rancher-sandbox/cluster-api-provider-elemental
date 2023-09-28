@@ -20,7 +20,7 @@ spec:
     services:
       cidrBlocks: ["10.96.0.0/12"]
     pods:
-      cidrBlocks: ["192.168.0.0/16"]
+      cidrBlocks: ["10.244.0.0/16"]
     serviceDomain: cluster.local
   controlPlaneRef:
     apiVersion: controlplane.cluster.x-k8s.io/v1beta1
@@ -102,7 +102,7 @@ spec:
             - name: port
               value: "6443"
             - name: vip_interface
-              value: eth0
+              value: ${CONTROL_PLANE_INTERFACE}
             - name: vip_cidr
               value: "32"
             - name: cp_enable
@@ -123,7 +123,7 @@ spec:
               value: "1"
             - name: address
               value: ${CONTROL_PLANE_ENDPOINT_IP}
-            image: ghcr.io/kube-vip/kube-vip:v0.4.0
+            image: ghcr.io/kube-vip/kube-vip:v0.6.2
             imagePullPolicy: Always
             name: kube-vip
             resources: {}

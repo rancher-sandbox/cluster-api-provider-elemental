@@ -7,10 +7,10 @@ import (
 
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/hostname"
 	log "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/hostname"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

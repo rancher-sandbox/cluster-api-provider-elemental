@@ -206,7 +206,6 @@ func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, reque
 	}
 
 	// Unmarshal POST request body.
-	logger.V(log.DebugLevel).Info("Unmarshalling request body")
 	hostCreateRequest := &HostCreateRequest{}
 	if err := json.NewDecoder(request.Body).Decode(hostCreateRequest); err != nil {
 		response.WriteHeader(http.StatusBadRequest)

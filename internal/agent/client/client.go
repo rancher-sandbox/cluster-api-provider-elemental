@@ -55,7 +55,7 @@ func NewClient(fs vfs.FS, config agent.Config) (Client, error) {
 		return nil, fmt.Errorf("reading CA Cert from configuration: %w", err)
 	}
 
-	tlsConfig, err := tls.GetTLSClientConfig(caCert, config.Agent.UseSystemCertPool, config.Agent.InsecureSkipVerify)
+	tlsConfig, err := tls.GetTLSClientConfig(caCert, config.Agent.UseSystemCertPool, config.Agent.InsecureSkipTLSVerify)
 	if err != nil {
 		return nil, fmt.Errorf("configuring TLS client: %w", err)
 	}
