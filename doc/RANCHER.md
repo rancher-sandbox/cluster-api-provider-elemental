@@ -1,4 +1,10 @@
-# Rancher Turtles Integration Demo
+# Rancher Integration
+
+## Overview
+
+CAPI and Rancher integration is brought by the [Rancher Turtles](https://docs.rancher-turtles.com/) extension.  
+
+![integration overview](images/rancher-turtles-integration.png)
 
 ## Preparation
 
@@ -371,4 +377,4 @@ Apply the following steps to each machine.
 
 If everything worked correctly, you should be able to see the imported cluster in the Rancher dashboard:  
 
-![imported cluster](images/imported-capi-cluster-png)
+![imported cluster](images/imported-capi-cluster.png)

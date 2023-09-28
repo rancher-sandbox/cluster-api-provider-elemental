@@ -20,10 +20,10 @@ type Registration struct {
 }
 
 type Agent struct {
-	Debug              bool          `yaml:"debug,omitempty" mapstructure:"debug"`
-	Reconciliation     time.Duration `yaml:"reconciliation,omitempty" mapstructure:"reconciliation"`
-	InsecureSkipVerify bool          `yaml:"insecureSkipVerify,omitempty" mapstructure:"insecureSkipVerify"`
-	UseSystemCertPool  bool          `yaml:"useSystemCertPool,omitempty" mapstructure:"useSystemCertPool"`
+	Debug                 bool          `yaml:"debug,omitempty" mapstructure:"debug"`
+	Reconciliation        time.Duration `yaml:"reconciliation,omitempty" mapstructure:"reconciliation"`
+	InsecureSkipTLSVerify bool          `yaml:"insecureSkipTlsVerify,omitempty" mapstructure:"insecureSkipTlsVerify"`
+	UseSystemCertPool     bool          `yaml:"useSystemCertPool,omitempty" mapstructure:"useSystemCertPool"`
 }
 
 func DefaultConfig() Config {
