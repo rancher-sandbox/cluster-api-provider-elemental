@@ -1,0 +1,146 @@
+apiVersion: bootstrap.cluster.x-k8s.io/v1alpha1
+kind: RKE2ConfigTemplate
+metadata:
+  namespace: ${NAMESPACE}
+  name: ${CLUSTER_NAME}-md-0
+spec: 
+  template:
+    spec:
+      agentConfig:
+        version: ${KUBERNETES_VERSION}+rke2r1
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  labels:
+    cni: ${CLUSTER_NAME}-crs-0
+    crs: "true"
+  name: ${CLUSTER_NAME}
+  namespace: ${NAMESPACE}
+spec:
+  clusterNetwork:
+    services:
+      cidrBlocks: ["10.96.0.0/12"]
+    pods:
+      cidrBlocks: ["10.244.0.0/16"]
+    serviceDomain: cluster.local
+  controlPlaneRef:
+    apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+    kind: RKE2ControlPlane
+    name: ${CLUSTER_NAME}-control-plane
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: ElementalCluster
+    name: ${CLUSTER_NAME}
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: ${CLUSTER_NAME}-md-0
+  namespace: ${NAMESPACE}
+spec:
+  clusterName: ${CLUSTER_NAME}
+  replicas: ${WORKER_MACHINE_COUNT}
+  selector:
+    matchLabels: null
+  template:
+    metadata:
+      labels:
+        nodepool: pool1
+    spec:
+      bootstrap:
+        configRef:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1alpha1
+          kind: RKE2ConfigTemplate
+          name: ${CLUSTER_NAME}-md-0
+      clusterName: ${CLUSTER_NAME}
+      infrastructureRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: ElementalMachineTemplate
+        name: ${CLUSTER_NAME}-md-0
+      version: ${KUBERNETES_VERSION}
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+kind: RKE2ControlPlane
+metadata:
+  name: ${CLUSTER_NAME}-control-plane
+  namespace: ${NAMESPACE}
+spec: 
+  replicas: 1
+  agentConfig:
+    version: ${KUBERNETES_VERSION}+rke2r1
+  serverConfig:
+    cni: calico
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: ElementalMachineTemplate
+    name: ${CLUSTER_NAME}-control-plane
+  nodeDrainTimeout: 2m
+  registrationMethod: "address"
+  registrationAddress: "${CONTROL_PLANE_ENDPOINT_IP}"
+  preRKE2Commands:
+  - mkdir -p /var/lib/rancher/rke2/server/manifests/ && ctr images pull ghcr.io/kube-vip/kube-vip:v0.6.0 && ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:v0.6.0 vip /kube-vip manifest daemonset --arp --interface $(ip -4 -j route list default | jq -r .[0].dev) --address ${CONTROL_PLANE_ENDPOINT_IP} --controlplane --leaderElection --taint --services --inCluster | tee /var/lib/rancher/rke2/server/manifests/kube-vip.yaml
+  files:
+  - path: /var/lib/rancher/rke2/server/manifests/kube-vip-rbac.yaml
+    content: |
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: kube-vip
+        namespace: kube-system
+      ---
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        annotations:
+          rbac.authorization.kubernetes.io/autoupdate: "true"
+        name: system:kube-vip-role
+      rules:
+        - apiGroups: [""]
+          resources: ["services", "services/status", "nodes", "endpoints"]
+          verbs: ["list","get","watch", "update"]
+        - apiGroups: ["coordination.k8s.io"]
+          resources: ["leases"]
+          verbs: ["list", "get", "watch", "update", "create"]
+      ---
+      kind: ClusterRoleBinding
+      apiVersion: rbac.authorization.k8s.io/v1
+      metadata:
+        name: system:kube-vip-binding
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: system:kube-vip-role
+      subjects:
+      - kind: ServiceAccount
+        name: kube-vip
+        namespace: kube-system
+    owner: root:root
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: ElementalCluster
+metadata:
+  name: ${CLUSTER_NAME}
+  namespace: ${NAMESPACE}
+spec:
+  controlPlaneEndpoint:
+    host: ${CONTROL_PLANE_ENDPOINT_IP}
+    port: 6443
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: ElementalMachineTemplate
+metadata:
+  name: ${CLUSTER_NAME}-control-plane
+  namespace: ${NAMESPACE}
+spec:
+  template:
+    spec: {}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: ElementalMachineTemplate
+metadata:
+  name: ${CLUSTER_NAME}-md-0
+  namespace: ${NAMESPACE}
+spec:
+  template:
+    spec: {}
