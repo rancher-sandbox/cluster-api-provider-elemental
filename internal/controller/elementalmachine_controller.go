@@ -43,7 +43,7 @@ import (
 )
 
 const (
-	defaultRequeuePeriod = 10 * time.Second
+	defaultMachineRequeuePeriod = 10 * time.Second
 )
 
 // ElementalMachineReconciler reconciles a ElementalMachine object.
@@ -334,7 +334,7 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 	}
 	if elementalHostCandidate == nil {
 		logger.Info("No ElementalHosts available for association. Waiting for new hosts to be provisioned.")
-		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
+		return ctrl.Result{RequeueAfter: defaultMachineRequeuePeriod}, nil
 	}
 
 	logger = logger.WithValues(ilog.KeyElementalHost, elementalHostCandidate.Name)

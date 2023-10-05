@@ -132,6 +132,11 @@ func newCommand(fs vfs.FS) *cobra.Command {
 				// Reset
 				if resetFlag {
 					log.Info("Resetting Elemental")
+					// Mark ElementalHost for deletion
+					if err := client.DeleteHost(currentHostname); err != nil {
+						return fmt.Errorf("marking host for deletion")
+					}
+					// Reset
 					if err := installer.Reset(registration); err != nil {
 						return fmt.Errorf("resetting Elemental: %w", err)
 					}
@@ -140,10 +145,6 @@ func newCommand(fs vfs.FS) *cobra.Command {
 						Reset: ptr.To(true),
 					}, currentHostname); err != nil {
 						return fmt.Errorf("patching host with reset successfull: %w", err)
-					}
-					// Mark ElementalHost for deletion
-					if err := client.DeleteHost(currentHostname); err != nil {
-						return fmt.Errorf("marking host for deletion")
 					}
 					return nil
 				}
