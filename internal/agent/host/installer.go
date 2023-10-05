@@ -81,7 +81,7 @@ func (i *UnmanagedInstaller) Install(conf api.RegistrationResponse, hostnameToSe
 }
 
 func (i *UnmanagedInstaller) Reset(conf api.RegistrationResponse) error {
-	log.Debugf("Will not reset unmanaged OS. Creating reset sentinel file: %s/%s", conf.Config.Elemental.Agent.WorkDir, sentinelFileResetNeeded)
+	log.Infof("Will not reset unmanaged OS. Creating reset sentinel file: %s/%s", conf.Config.Elemental.Agent.WorkDir, sentinelFileResetNeeded)
 	if err := utils.WriteFile(i.fs, api.WriteFile{
 		Path: fmt.Sprintf("%s/%s", conf.Config.Elemental.Agent.WorkDir, sentinelFileResetNeeded),
 	}); err != nil {
