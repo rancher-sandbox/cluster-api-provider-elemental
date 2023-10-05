@@ -120,6 +120,7 @@ func newCommand(fs vfs.FS) *cobra.Command {
 				}
 				// Install
 				if err := installer.Install(registration, newHostname); err != nil {
+					// TODO: Patch the Elemental Host with installation failure status and reason
 					return fmt.Errorf("installing Elemental: %w", err)
 				}
 				// Report installation success
@@ -140,6 +141,7 @@ func newCommand(fs vfs.FS) *cobra.Command {
 				}
 				// Reset
 				if err := installer.Reset(registration); err != nil {
+					// TODO: Patch the Elemental Host with reset failure status and reason
 					return fmt.Errorf("resetting Elemental: %w", err)
 				}
 				// Report reset success
@@ -151,9 +153,8 @@ func newCommand(fs vfs.FS) *cobra.Command {
 				return nil
 			}
 
+			log.Info("Entering reconciliation loop")
 			for {
-				log.Info("Entering reconciliation loop")
-
 				// Patch the host and receive the patched remote host back
 				host, err := client.PatchHost(api.HostPatchRequest{}, currentHostname)
 				if err != nil {
@@ -188,6 +189,7 @@ func newCommand(fs vfs.FS) *cobra.Command {
 
 				// Handle Reset Needed
 				if host.NeedsReset {
+					log.Info("Triggering reset")
 					if err := installer.TriggerReset(registration); err != nil {
 						log.Error(fmt.Errorf("handling reset needed: %w", err), "")
 					}
