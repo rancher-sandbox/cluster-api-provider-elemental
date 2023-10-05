@@ -4,20 +4,20 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.12.0
-  name: elementalmachineregistrations.infrastructure.cluster.x-k8s.io
+  name: elementalregistrations.infrastructure.cluster.x-k8s.io
 spec:
   group: infrastructure.cluster.x-k8s.io
   names:
-    kind: ElementalMachineRegistration
-    listKind: ElementalMachineRegistrationList
-    plural: elementalmachineregistrations
-    singular: elementalmachineregistration
+    kind: ElementalRegistration
+    listKind: ElementalRegistrationList
+    plural: elementalregistrations
+    singular: elementalregistration
   scope: Namespaced
   versions:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: ElementalMachineRegistration is the Schema for the elementalmachineregistrations
+        description: ElementalRegistration is the Schema for the elementalregistrations
           API.
         properties:
           apiVersion:
@@ -33,8 +33,8 @@ spec:
           metadata:
             type: object
           spec:
-            description: ElementalMachineRegistrationSpec defines the desired state
-              of ElementalMachineRegistration.
+            description: ElementalRegistrationSpec defines the desired state
+              of ElementalRegistration.
             properties:
               config:
                 description: Config points to Elemental machine configuration.
@@ -134,8 +134,8 @@ spec:
                 type: object
             type: object
           status:
-            description: ElementalMachineRegistrationStatus defines the observed state
-              of ElementalMachineRegistration.
+            description: ElementalRegistrationStatus defines the observed state
+              of ElementalRegistration.
             type: object
         type: object
     served: true

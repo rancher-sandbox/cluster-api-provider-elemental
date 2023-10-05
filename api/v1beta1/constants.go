@@ -19,7 +19,7 @@ const (
 
 // Annotations.
 const (
-	AnnotationElementalMachineRegistrationName      = "elementalmachineregistration.infrastructure.cluster.x-k8s.io/name"
-	AnnotationElementalMachineRegistrationNamespace = "elementalmachineregistration.infrastructure.cluster.x-k8s.io/namespace"
-	AnnotationElementalHostPublicKey                = "elementalhost.infrastructure.cluster.x-k8s.io/pubkey"
+	AnnotationElementalRegistrationName      = "elementalregistration.infrastructure.cluster.x-k8s.io/name"
+	AnnotationElementalRegistrationNamespace = "elementalregistration.infrastructure.cluster.x-k8s.io/namespace"
+	AnnotationElementalHostPublicKey         = "elementalhost.infrastructure.cluster.x-k8s.io/pubkey"
 )

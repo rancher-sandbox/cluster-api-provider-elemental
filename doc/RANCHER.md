@@ -256,7 +256,7 @@ The following steps must be executed on the machine reserved to run the Rancher 
         targetPort: 9090
     ---
     apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-    kind: ElementalMachineRegistration
+    kind: ElementalRegistration
     metadata:
       name: my-registration
       namespace: default

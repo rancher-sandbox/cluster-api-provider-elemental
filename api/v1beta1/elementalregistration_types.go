@@ -148,7 +148,7 @@ type Agent struct {
 	// +optional
 	OSNotManaged bool `json:"osNotManaged,omitempty" yaml:"osNotManaged,omitempty" mapstructure:"osNotManaged"`
 	// +optional
-	// +kubebuilder:default:="1m"
+	// +kubebuilder:default:=10000000000
 	Reconciliation time.Duration `json:"reconciliation,omitempty" yaml:"reconciliation,omitempty" mapstructure:"reconciliation"`
 	// +optional
 	InsecureAllowHTTP bool `json:"insecureAllowHttp,omitempty" yaml:"insecureAllowHttp,omitempty" mapstructure:"insecureAllowHttp"`
@@ -176,6 +176,6 @@ type Elemental struct {
 	// +optional
 	Registration Registration `json:"registration,omitempty" yaml:"registration,omitempty"`
 	// +optional
-	// +kubebuilder:default:={"debug":false,"reconciliation":"1m","hostname":{"useExisting":true}}
+	// +kubebuilder:default:={"debug":false,"reconciliation":10000000000,"hostname":{"useExisting":true}}
 	Agent Agent `json:"agent,omitempty" yaml:"agent,omitempty"`
 }

@@ -300,12 +300,12 @@ spec:
             description: ElementalHostStatus defines the observed state of ElementalHost.
             properties:
               bootstrapped:
-                description: Bootstrapped references this host to have applied the
-                  Boostrap instructions successfully.
+                description: Bootstrapped is true when this host applied the Boostrap
+                  instructions successfully.
                 type: boolean
               installed:
-                description: Installed references this host to have been successfully
-                  installed by Elemental.
+                description: Installed is true when this host successfully installed
+                  by Elemental.
                 type: boolean
               machineRef:
                 description: MachineRef is an optional reference to a Cluster API
@@ -345,152 +345,10 @@ spec:
                     type: string
                 type: object
                 x-kubernetes-map-type: atomic
-            type: object
-        type: object
-    served: true
-    storage: true
-    subresources:
-      status: {}
----
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.12.0
-  labels:
-    cluster.x-k8s.io/v1beta1: v1beta1
-  name: elementalmachineregistrations.infrastructure.cluster.x-k8s.io
-spec:
-  group: infrastructure.cluster.x-k8s.io
-  names:
-    kind: ElementalMachineRegistration
-    listKind: ElementalMachineRegistrationList
-    plural: elementalmachineregistrations
-    singular: elementalmachineregistration
-  scope: Namespaced
-  versions:
-  - name: v1beta1
-    schema:
-      openAPIV3Schema:
-        description: ElementalMachineRegistration is the Schema for the elementalmachineregistrations
-          API.
-        properties:
-          apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-            type: string
-          kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-            type: string
-          metadata:
-            type: object
-          spec:
-            description: ElementalMachineRegistrationSpec defines the desired state
-              of ElementalMachineRegistration.
-            properties:
-              config:
-                description: Config points to Elemental machine configuration.
-                properties:
-                  cloudConfig:
-                    x-kubernetes-preserve-unknown-fields: true
-                  elemental:
-                    properties:
-                      install:
-                        properties:
-                          configDir:
-                            type: string
-                          configUrls:
-                            items:
-                              type: string
-                            type: array
-                          debug:
-                            type: boolean
-                          device:
-                            type: string
-                          disableBootEntry:
-                            type: boolean
-                          ejectCd:
-                            type: boolean
-                          firmware:
-                            type: string
-                          iso:
-                            type: string
-                          noFormat:
-                            type: boolean
-                          poweroff:
-                            type: boolean
-                          reboot:
-                            type: boolean
-                          systemUri:
-                            type: string
-                          tty:
-                            type: string
-                        type: object
-                      registration:
-                        properties:
-                          caCert:
-                            type: string
-                          hostname:
-                            properties:
-                              prefix:
-                                type: string
-                              useExisting:
-                                type: boolean
-                            type: object
-                          noSmbios:
-                            type: boolean
-                          url:
-                            type: string
-                        type: object
-                      reset:
-                        default:
-                          reboot: true
-                          resetOem: true
-                          resetPersistent: true
-                        properties:
-                          configUrls:
-                            items:
-                              type: string
-                            type: array
-                          debug:
-                            type: boolean
-                          enabled:
-                            type: boolean
-                          poweroff:
-                            type: boolean
-                          reboot:
-                            default: true
-                            type: boolean
-                          resetOem:
-                            default: true
-                            type: boolean
-                          resetPersistent:
-                            default: true
-                            type: boolean
-                          systemUri:
-                            type: string
-                        type: object
-                    type: object
-                type: object
-              machineAnnotations:
-                additionalProperties:
-                  type: string
-                description: MachineAnnotations are labels propagated to each ElementalHost
-                  object linked to this registration.
-                type: object
-              machineLabels:
-                additionalProperties:
-                  type: string
-                description: MachineLabels are labels propagated to each ElementalHost
-                  object linked to this registration.
-                type: object
-            type: object
-          status:
-            description: ElementalMachineRegistrationStatus defines the observed state
-              of ElementalMachineRegistration.
+              reset:
+                description: Reset is true when this host reset successfully. This
+                  can lead to the finalizer and deletion of the ElementalHost.
+                type: boolean
             type: object
         type: object
     served: true
@@ -815,6 +673,191 @@ spec:
     served: true
     storage: true
 ---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.12.0
+  labels:
+    cluster.x-k8s.io/v1beta1: v1beta1
+  name: elementalregistrations.infrastructure.cluster.x-k8s.io
+spec:
+  group: infrastructure.cluster.x-k8s.io
+  names:
+    kind: ElementalRegistration
+    listKind: ElementalRegistrationList
+    plural: elementalregistrations
+    singular: elementalregistration
+  scope: Namespaced
+  versions:
+  - name: v1beta1
+    schema:
+      openAPIV3Schema:
+        description: ElementalRegistration is the Schema for the ElementalRegistrations
+          API.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ElementalRegistrationSpec defines the desired state of ElementalRegistration.
+            properties:
+              config:
+                description: Config points to Elemental machine configuration.
+                properties:
+                  cloudConfig:
+                    x-kubernetes-preserve-unknown-fields: true
+                  elemental:
+                    properties:
+                      agent:
+                        default:
+                          debug: false
+                          hostname:
+                            useExisting: true
+                          reconciliation: 10000000000
+                        properties:
+                          debug:
+                            type: boolean
+                          hostname:
+                            default:
+                              useExisting: true
+                            properties:
+                              prefix:
+                                type: string
+                              useExisting:
+                                default: true
+                                type: boolean
+                            type: object
+                          insecureAllowHttp:
+                            type: boolean
+                          insecureSkipTlsVerify:
+                            type: boolean
+                          noSmbios:
+                            type: boolean
+                          osNotManaged:
+                            type: boolean
+                          reconciliation:
+                            default: 10000000000
+                            description: A Duration represents the elapsed time between
+                              two instants as an int64 nanosecond count. The representation
+                              limits the largest representable duration to approximately
+                              290 years.
+                            format: int64
+                            type: integer
+                          useSystemCertPool:
+                            type: boolean
+                          workDir:
+                            default: /var/lib/elemental/agent
+                            type: string
+                        type: object
+                      install:
+                        default:
+                          debug: false
+                          device: /dev/sda
+                          reboot: true
+                        properties:
+                          configDir:
+                            type: string
+                          configUrls:
+                            items:
+                              type: string
+                            type: array
+                          debug:
+                            type: boolean
+                          device:
+                            type: string
+                          disableBootEntry:
+                            type: boolean
+                          ejectCd:
+                            type: boolean
+                          firmware:
+                            type: string
+                          iso:
+                            type: string
+                          noFormat:
+                            type: boolean
+                          poweroff:
+                            type: boolean
+                          reboot:
+                            type: boolean
+                          systemUri:
+                            type: string
+                          tty:
+                            type: string
+                        type: object
+                      registration:
+                        properties:
+                          apiEndpoint:
+                            type: string
+                          caCert:
+                            type: string
+                          uri:
+                            type: string
+                        type: object
+                      reset:
+                        default:
+                          debug: false
+                          enabled: false
+                          reboot: true
+                          resetOem: true
+                          resetPersistent: true
+                        properties:
+                          configUrls:
+                            items:
+                              type: string
+                            type: array
+                          debug:
+                            type: boolean
+                          enabled:
+                            type: boolean
+                          poweroff:
+                            type: boolean
+                          reboot:
+                            default: true
+                            type: boolean
+                          resetOem:
+                            default: true
+                            type: boolean
+                          resetPersistent:
+                            default: true
+                            type: boolean
+                          systemUri:
+                            type: string
+                        type: object
+                    type: object
+                type: object
+              hostAnnotations:
+                additionalProperties:
+                  type: string
+                description: HostAnnotations are labels propagated to each ElementalHost
+                  object linked to this registration.
+                type: object
+              hostLabels:
+                additionalProperties:
+                  type: string
+                description: HostLabels are labels propagated to each ElementalHost
+                  object linked to this registration.
+                type: object
+            type: object
+          status:
+            description: ElementalRegistrationStatus defines the observed state of
+              ElementalRegistration.
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -1006,32 +1049,6 @@ rules:
 - apiGroups:
   - infrastructure.cluster.x-k8s.io
   resources:
-  - elementalmachineregistrations
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - infrastructure.cluster.x-k8s.io
-  resources:
-  - elementalmachineregistrations/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - infrastructure.cluster.x-k8s.io
-  resources:
-  - elementalmachineregistrations/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - infrastructure.cluster.x-k8s.io
-  resources:
   - elementalmachines
   verbs:
   - create
@@ -1077,6 +1094,32 @@ rules:
   - infrastructure.cluster.x-k8s.io
   resources:
   - elementalmachinetemplates/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - elementalregistrations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - elementalregistrations/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - elementalregistrations/status
   verbs:
   - get
   - patch
@@ -1262,8 +1305,7 @@ spec:
         - --leader-elect
         command:
         - /manager
-        image: docker.io/library/controller:latest
-        imagePullPolicy: IfNotPresent
+        image: ghcr.io/rancher-sandbox/cluster-api-provider-elemental:latest
         livenessProbe:
           httpGet:
             path: /healthz

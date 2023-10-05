@@ -1,0 +1,12 @@
+agent:
+  debug: true
+  hostname:
+    prefix: m-
+    useExisting: true
+  insecureAllowHttp: true
+  osNotManaged: true
+  reconciliation: 10000000000
+  workDir: /var/lib/elemental/agent
+registration:
+  apiEndpoint: http://172.18.0.2:30009
+  uri: http://172.18.0.2:30009/elemental/v1/namespaces/default/registrations/my-registration

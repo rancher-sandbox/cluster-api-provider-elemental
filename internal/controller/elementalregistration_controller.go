@@ -91,7 +91,7 @@ func (r *ElementalRegistrationReconciler) Reconcile(ctx context.Context, req ctr
 }
 
 func (r *ElementalRegistrationReconciler) setURI(registration *infrastructurev1beta1.ElementalRegistration) {
-	registration.Spec.Config.Elemental.Registration.URI = fmt.Sprintf("%s/%s%s/namespaces/%s/registrations/%s",
+	registration.Spec.Config.Elemental.Registration.URI = fmt.Sprintf("%s%s%s/namespaces/%s/registrations/%s",
 		registration.Spec.Config.Elemental.Registration.APIEndpoint,
 		api.Prefix,
 		api.PrefixV1,

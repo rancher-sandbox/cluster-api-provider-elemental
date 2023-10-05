@@ -46,7 +46,7 @@ func NewClient(fs vfs.FS, conf config.Config) (Client, error) {
 		return nil, fmt.Errorf("parsing registration URI: %w", err)
 	}
 
-	if conf.Agent.InsecureAllowHTTP && strings.ToLower(url.Scheme) != "https" {
+	if !conf.Agent.InsecureAllowHTTP && strings.ToLower(url.Scheme) != "https" {
 		return nil, fmt.Errorf("using '%s' scheme: %w", url.Scheme, ErrInvalidScheme)
 	}
 

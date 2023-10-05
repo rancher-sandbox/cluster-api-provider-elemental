@@ -15,6 +15,22 @@ However, backward compatibility is not guaranteed at the moment.
 
 ![capi overview](doc/images/capi-overview.png)
 
+## Quickstart
+
+- [Quickstart documentation](doc/QUICKSTART.md)
+
+## Local development
+
+```bash
+cat << EOF > $HOME/.cluster-api/clusterctl.yaml
+providers:
+  # add a custom provider
+  - name: "elemental"
+    url: "file:///${HOME}/repos/cluster-api-provider-elemental/infrastructure-elemental/v0.0.1/infrastructure-components.yaml"
+    type: "InfrastructureProvider"
+EOF
+```
+
 ## Managed Bare Metal hosts
 
 Elemental consists of two main components that can be installed on any host machine:  

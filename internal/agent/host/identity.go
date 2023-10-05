@@ -13,8 +13,7 @@ import (
 )
 
 const (
-	IdentityDirPathDefault = "/var/lib/elemental"
-	IdentityFile           = "private.key"
+	IdentityFile = "private.key"
 )
 
 var ErrIdentityDoesNotExist = errors.New("no identity found")
@@ -70,7 +69,7 @@ func (m *DummyManager) newIdentity() (*DummyIdentity, error) {
 }
 
 func (m *DummyManager) formatFilePath() string {
-	return fmt.Sprintf("%s/%s", IdentityDirPathDefault, IdentityFile)
+	return fmt.Sprintf("%s/%s", m.dirPath, IdentityFile)
 }
 
 type Identity interface {
@@ -99,10 +98,11 @@ func (i *DummyIdentity) GetSigningKey() ([]byte, error) {
 
 func (i *DummyIdentity) LoadFromFile(fs vfs.FS, filePath string) error {
 	log.Debugf("Loading dummy identity from file: %s", filePath)
-	key, err := utils.ReadFile(fs, filePath)
+	_, err := fs.Stat(filePath)
 	if os.IsNotExist(err) {
-		return fmt.Errorf("loading '%s': %w", filePath, ErrIdentityDoesNotExist)
+		return ErrIdentityDoesNotExist
 	}
+	key, err := utils.ReadFile(fs, filePath)
 	if err != nil {
 		return fmt.Errorf("loading '%s': %w", filePath, err)
 	}

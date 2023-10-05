@@ -72,6 +72,10 @@ func newCommand(fs vfs.FS) *cobra.Command {
 				log.Info("--install and --reset are mutually exclusive")
 				return nil
 			}
+			// Initialize WorkDir
+			if err := utils.CreateDirectory(fs, conf.Agent.WorkDir); err != nil {
+				return fmt.Errorf("creating work directory '%s': %w", conf.Agent.WorkDir, err)
+			}
 			// Initialize Elemental API Client
 			client, err := client.NewClient(fs, conf)
 			if err != nil {

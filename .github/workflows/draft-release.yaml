@@ -30,21 +30,19 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ GITHUB_REF_NAME }}
+      # Update infrastructure manifest with new image tag
+      - name: Update infrastructure manifest
+        run: IMG_TAG=${{ GITHUB_REF_NAME }} make generate-infra-yaml
       # Create release
       - name: Create release
         uses: ncipollo/release-action@v1
         with:
+          draft: true
           generateReleaseNotes: true
-          artifacts: "bin/agent_linux_amd64, bin/agent_linux_arm64, infrastructure-elemental/*.yaml"
+          artifacts: "bin/agent_linux_amd64, bin/agent_linux_arm64, infrastructure-elemental/v0.0.0/*.yaml"
