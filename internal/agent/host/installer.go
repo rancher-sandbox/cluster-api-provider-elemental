@@ -88,18 +88,5 @@ func (i *UnmanagedInstaller) Reset(conf api.RegistrationResponse) error {
 		return fmt.Errorf("writing reset sentinel file: %w", err)
 	}
 
-	log.Debug("Resetting hostname")
-	if err := i.resetHostname(); err != nil {
-		return fmt.Errorf("resetting hostname: %w", err)
-	}
-
-	return nil
-}
-
-func (i *UnmanagedInstaller) resetHostname() error {
-	log.Debug("Deleting '/etc/hostname'")
-	if err := i.fs.Remove(hostnameFile); err != nil {
-		return fmt.Errorf("deleting '%s': %w", hostnameFile, err)
-	}
 	return nil
 }
