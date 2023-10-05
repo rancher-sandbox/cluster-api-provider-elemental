@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	configPathDefault = "/etc/elemental/agent/config.yaml"
+	configPathDefault     = "/etc/elemental/agent/config.yaml"
+	bootstrapSentinelFile = "/run/cluster-api/bootstrap-success.complete"
 )
 
 // Flags.
@@ -156,34 +157,17 @@ func newCommand(fs vfs.FS) *cobra.Command {
 			log.Info("Entering reconciliation loop")
 			for {
 				// Patch the host and receive the patched remote host back
+				log.Debug("Patching host")
 				host, err := client.PatchHost(api.HostPatchRequest{}, currentHostname)
 				if err != nil {
-					log.Error(fmt.Errorf("patching ElementalHost during normal reconcile: %w", err), "")
+					log.Error(err, "patching ElementalHost during normal reconcile")
 				}
 
 				// Handle bootstrap if needed
 				if host.BootstrapReady && !host.Bootstrapped {
-					log.Info("Fetching bootstrap instructions")
-					bootstrap, err := client.GetBootstrap(currentHostname)
-					if err != nil {
-						log.Error(fmt.Errorf("fetching bootstrap instructions: %w", err), "")
-					}
-
-					for _, file := range bootstrap.Files {
-						if err := utils.WriteFile(fs, file); err != nil {
-							log.Error(err, "writing bootstrap file")
-						}
-					}
-
-					for _, command := range bootstrap.Commands {
-						if err := utils.RunCommand(command); err != nil {
-							log.Error(err, "running bootstrap command")
-						}
-					}
-
-					log.Info("Applied bootstrap instructions")
-					if _, err := client.PatchHost(api.HostPatchRequest{Bootstrapped: ptr.To(true)}, currentHostname); err != nil {
-						log.Error(fmt.Errorf("patching ElementalHost after bootstrap: %w", err), "")
+					log.Info("Applying bootstrap config")
+					if err := handleBootstrap(fs, client, currentHostname); err != nil {
+						log.Error(err, "handling bootstrap")
 					}
 				}
 
@@ -191,12 +175,13 @@ func newCommand(fs vfs.FS) *cobra.Command {
 				if host.NeedsReset {
 					log.Info("Triggering reset")
 					if err := installer.TriggerReset(registration); err != nil {
-						log.Error(fmt.Errorf("handling reset needed: %w", err), "")
+						log.Error(err, "handling reset needed")
 					}
 					// If Reset was triggered successfully, exit the program.
 					return nil
 				}
 
+				log.Debug("Waiting '%s' ...", conf.Agent.Reconciliation.String())
 				time.Sleep(conf.Agent.Reconciliation)
 			}
 		},
@@ -228,4 +213,41 @@ func getConfig(fs vfs.FS) (config.Config, error) {
 	}
 
 	return conf, nil
+}
+
+func handleBootstrap(fs vfs.FS, client client.Client, hostname string) error {
+	log.Debug("Fetching bootstrap config")
+
+	// Avoid applying bootstrap multiple times
+	// See contract: https://cluster-api.sigs.k8s.io/developer/providers/bootstrap.html#sentinel-file
+	_, err := fs.Stat(bootstrapSentinelFile)
+	if os.IsNotExist(err) {
+		bootstrap, err := client.GetBootstrap(hostname)
+		if err != nil {
+			return fmt.Errorf("fetching bootstrap config: %w", err)
+		}
+
+		for _, file := range bootstrap.Files {
+			if err := utils.WriteFile(fs, file); err != nil {
+				return fmt.Errorf("writing bootstrap file: %w", err)
+			}
+		}
+
+		for _, command := range bootstrap.Commands {
+			if err := utils.RunCommand(command); err != nil {
+				return fmt.Errorf("running bootstrap command: %w", err)
+			}
+		}
+		log.Info("Bootstrap config applied successfully")
+	} else if err != nil {
+		return fmt.Errorf("verifying bootstrap sentinel file '%s': %w", bootstrapSentinelFile, err)
+	}
+
+	// Patch the ElementalHost as successfully bootstrapped
+	if _, err := client.PatchHost(api.HostPatchRequest{Bootstrapped: ptr.To(true)}, hostname); err != nil {
+		return fmt.Errorf("patching ElementalHost after bootstrap: %w", err)
+	}
+	log.Info("Host successfully patched as bootstrapped")
+
+	return nil
 }
