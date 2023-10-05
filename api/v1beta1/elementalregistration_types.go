@@ -17,50 +17,52 @@ limitations under the License.
 package v1beta1
 
 import (
+	"time"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
-// ElementalMachineRegistrationSpec defines the desired state of ElementalMachineRegistration.
-type ElementalMachineRegistrationSpec struct {
-	// MachineLabels are labels propagated to each ElementalHost object linked to this registration.
+// ElementalRegistrationSpec defines the desired state of ElementalRegistration.
+type ElementalRegistrationSpec struct {
+	// HostLabels are labels propagated to each ElementalHost object linked to this registration.
 	// +optional
-	MachineLabels map[string]string `json:"machineLabels,omitempty"`
-	// MachineAnnotations are labels propagated to each ElementalHost object linked to this registration.
+	HostLabels map[string]string `json:"hostLabels,omitempty"`
+	// HostAnnotations are labels propagated to each ElementalHost object linked to this registration.
 	// +optional
-	MachineAnnotations map[string]string `json:"machineAnnotations,omitempty"`
+	HostAnnotations map[string]string `json:"hostAnnotations,omitempty"`
 	// Config points to Elemental machine configuration.
 	// +optional
 	Config *Config `json:"config,omitempty"`
 }
 
-// ElementalMachineRegistrationStatus defines the observed state of ElementalMachineRegistration.
-type ElementalMachineRegistrationStatus struct {
+// ElementalRegistrationStatus defines the observed state of ElementalRegistration.
+type ElementalRegistrationStatus struct {
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// ElementalMachineRegistration is the Schema for the elementalmachineregistrations API.
-type ElementalMachineRegistration struct {
+// ElementalRegistration is the Schema for the ElementalRegistrations API.
+type ElementalRegistration struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ElementalMachineRegistrationSpec   `json:"spec,omitempty"`
-	Status ElementalMachineRegistrationStatus `json:"status,omitempty"`
+	Spec   ElementalRegistrationSpec   `json:"spec,omitempty"`
+	Status ElementalRegistrationStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// ElementalMachineRegistrationList contains a list of ElementalMachineRegistration.
-type ElementalMachineRegistrationList struct {
+// ElementalRegistrationList contains a list of ElementalRegistration.
+type ElementalRegistrationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ElementalMachineRegistration `json:"items"`
+	Items           []ElementalRegistration `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&ElementalMachineRegistration{}, &ElementalMachineRegistrationList{})
+	SchemeBuilder.Register(&ElementalRegistration{}, &ElementalRegistrationList{})
 }
 
 type Config struct {
@@ -125,17 +127,40 @@ type Reset struct {
 
 type Registration struct {
 	// +optional
-	URL string `json:"url,omitempty" yaml:"url,omitempty" mapstructure:"url"`
+	APIEndpoint string `json:"apiEndpoint,omitempty" yaml:"apiEndpoint,omitempty" mapstructure:"apiEndpoint"`
+	// +optional
+	URI string `json:"uri,omitempty" yaml:"uri,omitempty" mapstructure:"uri"`
 	// +optional
 	CACert string `json:"caCert,omitempty" yaml:"caCert,omitempty" mapstructure:"caCert"`
+}
+
+type Agent struct {
+	// +optional
+	// +kubebuilder:default:="/var/lib/elemental/agent"
+	WorkDir string `json:"workDir,omitempty" yaml:"workDir,omitempty" mapstructure:"workDir"`
+	// +optional
+	// +kubebuilder:default:={"useExisting":true}
+	Hostname Hostname `json:"hostname,omitempty" yaml:"hostname,omitempty" mapstructure:"hostname"`
 	// +optional
 	NoSMBIOS bool `json:"noSmbios,omitempty" yaml:"noSmbios,omitempty" mapstructure:"noSmbios"`
 	// +optional
-	Hostname Hostname `json:"hostname,omitempty" yaml:"hostname,omitempty" mapstructure:"hostname"`
+	Debug bool `json:"debug,omitempty" yaml:"debug,omitempty" mapstructure:"debug"`
+	// +optional
+	OSNotManaged bool `json:"osNotManaged,omitempty" yaml:"osNotManaged,omitempty" mapstructure:"osNotManaged"`
+	// +optional
+	// +kubebuilder:default:="1m"
+	Reconciliation time.Duration `json:"reconciliation,omitempty" yaml:"reconciliation,omitempty" mapstructure:"reconciliation"`
+	// +optional
+	InsecureAllowHTTP bool `json:"insecureAllowHttp,omitempty" yaml:"insecureAllowHttp,omitempty" mapstructure:"insecureAllowHttp"`
+	// +optional
+	InsecureSkipTLSVerify bool `json:"insecureSkipTlsVerify,omitempty" yaml:"insecureSkipTlsVerify,omitempty" mapstructure:"insecureSkipTlsVerify"`
+	// +optional
+	UseSystemCertPool bool `json:"useSystemCertPool,omitempty" yaml:"useSystemCertPool,omitempty" mapstructure:"useSystemCertPool"`
 }
 
 type Hostname struct {
 	// +optional
+	// +kubebuilder:default:=true
 	UseExisting bool `json:"useExisting,omitempty" yaml:"useExisting,omitempty" mapstructure:"useExisting"`
 	// +optional
 	Prefix string `json:"prefix,omitempty" yaml:"prefix,omitempty" mapstructure:"prefix"`
@@ -143,10 +168,14 @@ type Hostname struct {
 
 type Elemental struct {
 	// +optional
+	// +kubebuilder:default:={"debug":false,"device":"/dev/sda","reboot":true}
 	Install Install `json:"install,omitempty" yaml:"install,omitempty"`
 	// +optional
-	// +kubebuilder:default:={"resetPersistent":true,"resetOem":true,"reboot":true}
+	// +kubebuilder:default:={"debug":false,"enabled":false,"resetPersistent":true,"resetOem":true,"reboot":true}
 	Reset Reset `json:"reset,omitempty" yaml:"reset,omitempty"`
 	// +optional
 	Registration Registration `json:"registration,omitempty" yaml:"registration,omitempty"`
+	// +optional
+	// +kubebuilder:default:={"debug":false,"reconciliation":"1m","hostname":{"useExisting":true}}
+	Agent Agent `json:"agent,omitempty" yaml:"agent,omitempty"`
 }

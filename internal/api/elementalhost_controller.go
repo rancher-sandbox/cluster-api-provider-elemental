@@ -55,20 +55,20 @@ func (h *PatchElementalHostHandler) ServeHTTP(response http.ResponseWriter, requ
 	hostName := pathVars["hostName"]
 
 	logger := h.logger.WithValues(log.KeyNamespace, namespace).
-		WithValues(log.KeyElementalMachineRegistration, registrationName).
+		WithValues(log.KeyElementalRegistration, registrationName).
 		WithValues(log.KeyElementalHost, hostName)
 	logger.Info("Patching ElementalHost")
 
 	// Fetch registration
-	registration := &infrastructurev1beta1.ElementalMachineRegistration{}
+	registration := &infrastructurev1beta1.ElementalRegistration{}
 	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: registrationName}, registration); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			response.WriteHeader(http.StatusNotFound)
-			WriteResponse(logger, response, fmt.Sprintf("ElementalMachineRegistration '%s' not found", registrationName))
+			WriteResponse(logger, response, fmt.Sprintf("ElementalRegistration '%s' not found", registrationName))
 		} else {
-			logger.Error(err, "Could not fetch ElementalMachineRegistration")
+			logger.Error(err, "Could not fetch ElementalRegistration")
 			response.WriteHeader(http.StatusInternalServerError)
-			WriteResponse(logger, response, fmt.Sprintf("Could not fetch ElementalMachineRegistration '%s'", registrationName))
+			WriteResponse(logger, response, fmt.Sprintf("Could not fetch ElementalRegistration '%s'", registrationName))
 		}
 		return
 	}
@@ -188,19 +188,19 @@ func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, reque
 	registrationName := pathVars["registrationName"]
 
 	logger := h.logger.WithValues(log.KeyNamespace, namespace).
-		WithValues(log.KeyElementalMachineRegistration, registrationName)
+		WithValues(log.KeyElementalRegistration, registrationName)
 	logger.Info("Creating new ElementalHost")
 
 	// Fetch registration
-	registration := &infrastructurev1beta1.ElementalMachineRegistration{}
+	registration := &infrastructurev1beta1.ElementalRegistration{}
 	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: registrationName}, registration); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			response.WriteHeader(http.StatusNotFound)
-			WriteResponse(logger, response, fmt.Sprintf("ElementalMachineRegistration '%s' not found", registrationName))
+			WriteResponse(logger, response, fmt.Sprintf("ElementalRegistration '%s' not found", registrationName))
 		} else {
-			logger.Error(err, "Could not fetch ElementalMachineRegistration")
+			logger.Error(err, "Could not fetch ElementalRegistration")
 			response.WriteHeader(http.StatusInternalServerError)
-			WriteResponse(logger, response, fmt.Sprintf("Could not fetch ElementalMachineRegistration '%s'", registrationName))
+			WriteResponse(logger, response, fmt.Sprintf("Could not fetch ElementalRegistration '%s'", registrationName))
 		}
 		return
 	}
@@ -240,7 +240,7 @@ func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, reque
 
 	logger.Info("ElementalHost created successfully", log.KeyElementalHost, newHost.Name)
 
-	response.Header().Set("Location", fmt.Sprintf("%s%s/namespaces/%s/registrations/%s/hosts/%s", PrefixAPI, PrefixV1, namespace, registrationName, newHost.Name))
+	response.Header().Set("Location", fmt.Sprintf("%s%s/namespaces/%s/registrations/%s/hosts/%s", Prefix, PrefixV1, namespace, registrationName, newHost.Name))
 	response.WriteHeader(http.StatusCreated)
 }
 
@@ -279,20 +279,20 @@ func (h *GetElementalHostBootstrapHandler) ServeHTTP(response http.ResponseWrite
 	hostName := pathVars["hostName"]
 
 	logger := h.logger.WithValues(log.KeyNamespace, namespace).
-		WithValues(log.KeyElementalMachineRegistration, registrationName).
+		WithValues(log.KeyElementalRegistration, registrationName).
 		WithValues(log.KeyElementalHost, hostName)
 	logger.Info("Getting ElementalHost Bootstrap")
 
 	// Fetch registration
-	registration := &infrastructurev1beta1.ElementalMachineRegistration{}
+	registration := &infrastructurev1beta1.ElementalRegistration{}
 	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: registrationName}, registration); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			response.WriteHeader(http.StatusNotFound)
-			WriteResponse(logger, response, fmt.Sprintf("ElementalMachineRegistration '%s' not found", registrationName))
+			WriteResponse(logger, response, fmt.Sprintf("ElementalRegistration '%s' not found", registrationName))
 		} else {
-			logger.Error(err, "Could not fetch ElementalMachineRegistration")
+			logger.Error(err, "Could not fetch ElementalRegistration")
 			response.WriteHeader(http.StatusInternalServerError)
-			WriteResponse(logger, response, fmt.Sprintf("Could not fetch ElementalMachineRegistration '%s'", registrationName))
+			WriteResponse(logger, response, fmt.Sprintf("Could not fetch ElementalRegistration '%s'", registrationName))
 		}
 		return
 	}

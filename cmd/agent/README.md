@@ -3,12 +3,12 @@
 ## Usage
 
 ```bash
-elemental-agent
+elemental-agent --help
 ```
 
 ## Config
 
-By default the agent will look for a configuration in: `/oem/elemental/agent/config.yaml`
+By default the agent will look for a configuration in: `/etc/elemental/agent/config.yaml`
 
 ```yaml
 registration:
@@ -29,10 +29,22 @@ registration:
     JZPkAoVeIOoFDgXvl9MkHBuk
     -----END CERTIFICATE-----
 agent:
+  # Work directory
+  workDir: /var/lib/elemental/agent
+  # Hostname settings
+  hostname:
+    useExisting: true
+    prefix: ""
+  # Add SMBIOS labels
+  noSmbios: false
   # Enable agent debug logs
   debug: false
+  # Not using elemental-toolkit
+  osNotManaged: false
   # The period used by the agent to sync with the Elemental API
   reconciliation: 1m
+  # Allow 'http' scheme
+  insecureAllowHttp: false
   # Skip TLS verification when communicating with the Elemental API
   insecureSkipTLSVerify: false
   # Use the system's cert pool for TLS verification

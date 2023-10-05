@@ -78,8 +78,13 @@ test: manifests generate fmt vet envtest ## Run tests.
 ##@ Build
 
 .PHONY: build-agent
-build-agent: manifests generate fmt vet ## Build manager binary.
+build-agent: manifests generate fmt vet ## Build manager binary for local architecture.
 	CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o bin/agent cmd/agent/main.go
+
+.PHONY: build-agent-all
+build-agent-all: manifests generate fmt vet ## Build manager binary for all architectures.
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags '$(LDFLAGS)' -o bin/agent_linux_amd64 cmd/agent/main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags '$(LDFLAGS)' -o bin/agent_linux_arm64 cmd/agent/main.go
 
 .PHONY: build-manager
 build-manager: manifests generate fmt vet ## Build manager binary.
@@ -193,7 +198,7 @@ kind-load: docker-build
 
 .PHONY: generate-infra-yaml
 generate-infra-yaml:kustomize # Generate infrastructure-components.yaml for the provider
-	$(KUSTOMIZE) build config/default > infrastructure-elemental/v0.0.1/infrastructure-components.yaml
+	$(KUSTOMIZE) build config/default > infrastructure-elemental/infrastructure-components.yaml
 
 .PHONY: lint
 lint: ## See: https://golangci-lint.run/usage/linters/

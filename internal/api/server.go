@@ -14,8 +14,8 @@ import (
 
 // Prefixes.
 const (
-	PrefixAPI = "/elemental"
-	PrefixV1  = "/v1"
+	Prefix   = "/elemental"
+	PrefixV1 = "/v1"
 )
 
 type Server struct {
@@ -35,7 +35,7 @@ func NewServer(ctx context.Context, k8sClient client.Client) *Server {
 
 func (s *Server) NewRouter() *mux.Router {
 	router := mux.NewRouter()
-	elementalV1 := router.PathPrefix(fmt.Sprintf("%s%s", PrefixAPI, PrefixV1)).Subrouter()
+	elementalV1 := router.PathPrefix(fmt.Sprintf("%s%s", Prefix, PrefixV1)).Subrouter()
 
 	elementalV1.Handle("/namespaces/{namespace}/registrations/{registrationName}",
 		NewGetElementalRegistrationHandler(s.logger, s.k8sClient)).

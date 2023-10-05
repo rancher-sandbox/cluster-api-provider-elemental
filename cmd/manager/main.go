@@ -133,11 +133,11 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ElementalClusterTemplate")
 		os.Exit(1)
 	}
-	if err = (&controller.ElementalMachineRegistrationReconciler{
+	if err = (&controller.ElementalRegistrationReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ElementalMachineRegistration")
+		setupLog.Error(err, "unable to create controller", "controller", "ElementalRegistration")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

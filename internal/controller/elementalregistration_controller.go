@@ -31,15 +31,15 @@ import (
 	ilog "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/log"
 )
 
-// ElementalMachineRegistrationReconciler reconciles a ElementalMachineRegistration object.
-type ElementalMachineRegistrationReconciler struct {
+// ElementalRegistrationReconciler reconciles a ElementalRegistration object.
+type ElementalRegistrationReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=elementalmachineregistrations,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=elementalmachineregistrations/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=elementalmachineregistrations/finalizers,verbs=update
+//+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=elementalregistrations,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=elementalregistrations/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=elementalregistrations/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -47,29 +47,29 @@ type ElementalMachineRegistrationReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.15.0/pkg/reconcile
-func (r *ElementalMachineRegistrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, rerr error) {
+func (r *ElementalRegistrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, rerr error) {
 	logger := log.FromContext(ctx).
 		WithValues(ilog.KeyNamespace, req.Namespace).
-		WithValues(ilog.KeyElementalMachineRegistration, req.Name)
-	logger.Info("Reconciling ElementalMachineRegistration")
+		WithValues(ilog.KeyElementalRegistration, req.Name)
+	logger.Info("Reconciling ElementalRegistration")
 
-	// Fetch the ElementalMachineRegistration
-	elementalMachineRegistration := &infrastructurev1beta1.ElementalMachineRegistration{}
-	if err := r.Client.Get(ctx, req.NamespacedName, elementalMachineRegistration); err != nil {
+	// Fetch the ElementalRegistration
+	ElementalRegistration := &infrastructurev1beta1.ElementalRegistration{}
+	if err := r.Client.Get(ctx, req.NamespacedName, ElementalRegistration); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
-		return ctrl.Result{}, fmt.Errorf("fetching ElementalMachineRegistration: %w", err)
+		return ctrl.Result{}, fmt.Errorf("fetching ElementalRegistration: %w", err)
 	}
 
 	// Create the patch helper.
-	patchHelper, err := patch.NewHelper(elementalMachineRegistration, r.Client)
+	patchHelper, err := patch.NewHelper(ElementalRegistration, r.Client)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
 	}
 	defer func() {
-		if err := patchHelper.Patch(ctx, elementalMachineRegistration); err != nil {
-			rerr = fmt.Errorf("patching ElementalMachineRegistration: %w", err)
+		if err := patchHelper.Patch(ctx, ElementalRegistration); err != nil {
+			rerr = fmt.Errorf("patching ElementalRegistration: %w", err)
 		}
 	}()
 
@@ -77,11 +77,11 @@ func (r *ElementalMachineRegistrationReconciler) Reconcile(ctx context.Context, 
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ElementalMachineRegistrationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ElementalRegistrationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err := ctrl.NewControllerManagedBy(mgr).
-		For(&infrastructurev1beta1.ElementalMachineRegistration{}).
+		For(&infrastructurev1beta1.ElementalRegistration{}).
 		Complete(r); err != nil {
-		return fmt.Errorf("initializing ElementalMachineRegistrationReconciler builder: %w", err)
+		return fmt.Errorf("initializing ElementalRegistrationReconciler builder: %w", err)
 	}
 	return nil
 }

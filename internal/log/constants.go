@@ -10,8 +10,8 @@ const (
 const (
 	// The namespace name that the resource belongs to.
 	KeyNamespace = "Namespace"
-	// The ElementalMachineRegistration name.
-	KeyElementalMachineRegistration = "ElementalMachineRegistration"
+	// The ElementalRegistration name.
+	KeyElementalRegistration = "ElementalRegistration"
 	// The ElementalCluster name.
 	KeyElementalCluster = "ElementalCluster"
 	// The CAPI Cluster name.

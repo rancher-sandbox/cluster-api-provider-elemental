@@ -17,7 +17,7 @@ import (
 //	See: https://cloudinit.readthedocs.io/en/latest/reference/modules.html#write-files
 //
 //	All the keys should be supported (for ex. owner, permissions, encoding, etc.)
-func WriteFile(fs vfs.FS, file api.BootstrapFile) error {
+func WriteFile(fs vfs.FS, file api.WriteFile) error {
 	log.Infof("Writing file: %s", file.Path)
 	dir := filepath.Dir(file.Path)
 	if _, err := fs.Stat(dir); os.IsNotExist(err) {

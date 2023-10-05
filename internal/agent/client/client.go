@@ -8,8 +8,10 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/host"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/tls"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/twpayne/go-vfs"
@@ -30,48 +32,51 @@ type Client interface {
 var _ Client = (*client)(nil)
 
 type client struct {
-	RegistrationURI string
-	HTTPClient      http.Client
+	registrationURI string
+	httpClient      http.Client
+	identity        host.Identity
 }
 
-func NewClient(fs vfs.FS, config agent.Config) (Client, error) {
-	_, err := url.Parse(config.Registration.URI)
+func NewClient(fs vfs.FS, conf config.Config) (Client, error) {
+	url, err := url.Parse(conf.Registration.URI)
 	if err != nil {
 		return nil, fmt.Errorf("parsing registration URI: %w", err)
 	}
-	// TODO: It would be best to enforce https.
-	//       However this should be toggable to ease testing.
-	// 		 This also implies the operator should also support TLS through self-signed or user provided certificates.
-	//		 Should also be toggable on the operator side, so that it would be possible to setup TLS termination before it.
-	//
-	//       Also double check and make a test to verify the agent HTTP client is **not** going to follow HTTPS to HTTP redirects.
-	//
-	// if url.Scheme != "https" {
-	// 	return nil, fmt.Errorf("using '%s' scheme: %w", url.Scheme, ErrInvalidScheme)
-	// }
 
-	caCert, err := tls.GetCACert(fs, config.Registration.CACert)
+	if conf.Agent.InsecureAllowHTTP && strings.ToLower(url.Scheme) != "https" {
+		return nil, fmt.Errorf("using '%s' scheme: %w", url.Scheme, ErrInvalidScheme)
+	}
+
+	caCert, err := tls.GetCACert(fs, conf.Registration.CACert)
 	if err != nil {
 		return nil, fmt.Errorf("reading CA Cert from configuration: %w", err)
 	}
 
-	tlsConfig, err := tls.GetTLSClientConfig(caCert, config.Agent.UseSystemCertPool, config.Agent.InsecureSkipTLSVerify)
+	tlsConfig, err := tls.GetTLSClientConfig(caCert, conf.Agent.UseSystemCertPool, conf.Agent.InsecureSkipTLSVerify)
 	if err != nil {
 		return nil, fmt.Errorf("configuring TLS client: %w", err)
 	}
 
+	// Initialize Identity
+	identityManager := host.NewDummyManager(fs, conf.Agent.WorkDir)
+	identity, err := identityManager.GetOrCreateIdentity()
+	if err != nil {
+		return nil, fmt.Errorf("initializing host identity: %w", err)
+	}
+
 	return &client{
-		RegistrationURI: config.Registration.URI,
-		HTTPClient: http.Client{
+		registrationURI: conf.Registration.URI,
+		httpClient: http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConfig,
 			},
 		},
+		identity: identity,
 	}, nil
 }
 
 func (c *client) GetRegistration() (api.RegistrationResponse, error) {
-	response, err := c.HTTPClient.Get(c.RegistrationURI)
+	response, err := c.httpClient.Get(c.registrationURI)
 	if err != nil {
 		return api.RegistrationResponse{}, fmt.Errorf("getting registration: %w", err)
 	}
@@ -99,7 +104,7 @@ func (c *client) CreateMachineHost(newHost api.HostCreateRequest) error {
 		return fmt.Errorf("marshalling new host request body: %w", err)
 	}
 
-	response, err := c.HTTPClient.Post(fmt.Sprintf("%s/hosts", c.RegistrationURI), "application/json", bytes.NewBuffer(requestBody))
+	response, err := c.httpClient.Post(fmt.Sprintf("%s/hosts", c.registrationURI), "application/json", bytes.NewBuffer(requestBody))
 	if err != nil {
 		return fmt.Errorf("creating new host: %w", err)
 	}
@@ -117,13 +122,13 @@ func (c *client) PatchMachineHost(patch api.HostPatchRequest, hostname string) (
 		return api.HostResponse{}, fmt.Errorf("marshalling patch host request body: %w", err)
 	}
 
-	request, err := http.NewRequest("PATCH", fmt.Sprintf("%s/hosts/%s", c.RegistrationURI, hostname), bytes.NewBuffer(requestBody))
+	request, err := http.NewRequest("PATCH", fmt.Sprintf("%s/hosts/%s", c.registrationURI, hostname), bytes.NewBuffer(requestBody))
 	if err != nil {
 		return api.HostResponse{}, fmt.Errorf("preparing host patch request: %w", err)
 	}
 	request.Header.Set("Content-Type", "application/json")
 
-	response, err := c.HTTPClient.Do(request)
+	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return api.HostResponse{}, fmt.Errorf("patching host: %w", err)
 	}
@@ -146,7 +151,7 @@ func (c *client) PatchMachineHost(patch api.HostPatchRequest, hostname string) (
 }
 
 func (c *client) GetBootstrap(hostname string) (api.BootstrapResponse, error) {
-	response, err := c.HTTPClient.Get(fmt.Sprintf("%s/hosts/%s/bootstrap", c.RegistrationURI, hostname))
+	response, err := c.httpClient.Get(fmt.Sprintf("%s/hosts/%s/bootstrap", c.registrationURI, hostname))
 	if err != nil {
 		return api.BootstrapResponse{}, fmt.Errorf("getting bootstrap: %w", err)
 	}
