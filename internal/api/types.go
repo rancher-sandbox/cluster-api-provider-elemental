@@ -57,7 +57,7 @@ func (h *HostPatchRequest) applyToElementalHost(elementalHost *infrastructurev1b
 		elementalHost.Status.Bootstrapped = *h.Bootstrapped
 	}
 	if h.Reset != nil {
-		elementalHost.Status.Bootstrapped = *h.Reset
+		elementalHost.Status.Reset = *h.Reset
 	}
 }
 
@@ -68,6 +68,7 @@ type HostResponse struct {
 	BootstrapReady bool              `json:"bootstrapReady,omitempty"`
 	Bootstrapped   bool              `json:"bootstrapped,omitempty"`
 	Installed      bool              `json:"installed,omitempty"`
+	NeedsReset     bool              `json:"needsReset,omitempty"`
 }
 
 func (h *HostResponse) fromElementalHost(elementalHost infrastructurev1beta1.ElementalHost) {
@@ -77,6 +78,7 @@ func (h *HostResponse) fromElementalHost(elementalHost infrastructurev1beta1.Ele
 	h.BootstrapReady = elementalHost.Spec.BootstrapSecret != nil
 	h.Bootstrapped = elementalHost.Status.Bootstrapped
 	h.Installed = elementalHost.Status.Installed
+	h.NeedsReset = elementalHost.Status.NeedsReset
 }
 
 type RegistrationGetRequest struct {

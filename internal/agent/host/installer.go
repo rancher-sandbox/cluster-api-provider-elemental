@@ -3,6 +3,7 @@ package host
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/elementalcli"
@@ -18,10 +19,14 @@ const (
 	sentinelFileResetNeeded = "reset.needed"
 )
 
-var ErrManagedOSNotSupportedYet = errors.New("managed Elemental OS not supported yet")
+var (
+	ErrManagedOSNotSupportedYet = errors.New("managed Elemental OS not supported yet")
+	ErrUnmanagedOSNotReset      = errors.New("unmanaged OS reset sentinel file still exists")
+)
 
 type Installer interface {
 	Install(conf api.RegistrationResponse, hostnameToSet string) error
+	TriggerReset(conf api.RegistrationResponse) error
 	Reset(conf api.RegistrationResponse) error
 }
 
@@ -41,6 +46,11 @@ func NewElementalInstaller(fs vfs.FS) Installer {
 
 func (i *ElementalInstaller) Install(_ api.RegistrationResponse, _ string) error {
 	log.Debug("Installing Elemental")
+	return ErrManagedOSNotSupportedYet
+}
+
+func (i *ElementalInstaller) TriggerReset(_ api.RegistrationResponse) error {
+	log.Debug("Triggering Elemental reset")
 	return ErrManagedOSNotSupportedYet
 }
 
@@ -80,13 +90,30 @@ func (i *UnmanagedInstaller) Install(conf api.RegistrationResponse, hostnameToSe
 	return nil
 }
 
-func (i *UnmanagedInstaller) Reset(conf api.RegistrationResponse) error {
-	log.Infof("Will not reset unmanaged OS. Creating reset sentinel file: %s/%s", conf.Config.Elemental.Agent.WorkDir, sentinelFileResetNeeded)
+func (i *UnmanagedInstaller) TriggerReset(conf api.RegistrationResponse) error {
+	sentinelFile := i.formatResetSentinelFile(conf.Config.Elemental.Agent.WorkDir)
+	log.Infof("Creating reset sentinel file: %s", sentinelFile)
 	if err := utils.WriteFile(i.fs, api.WriteFile{
-		Path: fmt.Sprintf("%s/%s", conf.Config.Elemental.Agent.WorkDir, sentinelFileResetNeeded),
+		Path: sentinelFile,
 	}); err != nil {
 		return fmt.Errorf("writing reset sentinel file: %w", err)
 	}
-
 	return nil
+}
+
+func (i *UnmanagedInstaller) Reset(conf api.RegistrationResponse) error {
+	sentinelFile := i.formatResetSentinelFile(conf.Config.Elemental.Agent.WorkDir)
+	log.Infof("Verifying reset sentinel file '%s' has been deleted", sentinelFile)
+	_, err := i.fs.Stat(i.formatResetSentinelFile(conf.Config.Elemental.Agent.WorkDir))
+	if err == nil {
+		return ErrUnmanagedOSNotReset
+	}
+	if !os.IsNotExist(err) {
+		return fmt.Errorf("getting info for file '%s': %w", sentinelFile, err)
+	}
+	return nil
+}
+
+func (i *UnmanagedInstaller) formatResetSentinelFile(workDir string) string {
+	return fmt.Sprintf("%s/%s", workDir, sentinelFileResetNeeded)
 }

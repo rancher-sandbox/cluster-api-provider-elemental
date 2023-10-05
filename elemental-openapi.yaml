@@ -281,6 +281,8 @@ components:
           type: object
         name:
           type: string
+        needsReset:
+          type: boolean
       type: object
     ApiRegistrationResponse:
       properties:

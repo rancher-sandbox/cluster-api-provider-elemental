@@ -45,6 +45,10 @@ type ElementalHostStatus struct {
 	// This can lead to the finalizer and deletion of the ElementalHost.
 	// +optional
 	Reset bool `json:"reset,omitempty"`
+	// NeedsReset is true when reset of this host has been triggered.
+	// This can lead to the finalizer and deletion of the ElementalHost.
+	// +optional
+	NeedsReset bool `json:"needsReset,omitempty"`
 }
 
 //+kubebuilder:object:root=true

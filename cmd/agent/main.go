@@ -91,77 +91,76 @@ func newCommand(fs vfs.FS) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("getting current hostname: %w", err)
 			}
+			// Initialize installed (also needed to trigger host reset)
+			log.Info("Initializing Installer")
+			var installer host.Installer
+			if conf.Agent.OSNotManaged {
+				log.Info("Using Unmanaged OS Installer")
+				installer = host.NewUnmanagedInstaller(fs, conf.Agent.WorkDir)
+			} else {
+				log.Info("Using Elemental Installer")
+				installer = host.NewElementalInstaller(fs)
+			}
 
-			// Handle Install/Reset
-			if installFlag || resetFlag {
-				log.Info("Initializing Installer")
-				var installer host.Installer
-				if conf.Agent.OSNotManaged {
-					log.Info("Using Unmanaged OS Installer")
-					installer = host.NewUnmanagedInstaller(fs, conf.Agent.WorkDir)
-				} else {
-					log.Info("Using Elemental Installer")
-					installer = host.NewElementalInstaller(fs)
+			// Install
+			if installFlag {
+				log.Info("Installing Elemental")
+				// Pick the new hostname
+				newHostname, err := hostname.PickHostname(registration.Config.Elemental.Agent.Hostname)
+				if err != nil {
+					return fmt.Errorf("picking new hostname: %w", err)
 				}
-
+				// Register new Elemental Host
+				if err := client.CreateHost(api.HostCreateRequest{
+					Name:        newHostname,
+					Annotations: registration.HostAnnotations,
+					Labels:      registration.HostLabels,
+				}); err != nil {
+					return fmt.Errorf("registering new ElementalHost: %w", err)
+				}
 				// Install
-				if installFlag {
-					log.Info("Installing Elemental")
-					// Pick the new hostname
-					newHostname, err := hostname.PickHostname(registration.Config.Elemental.Agent.Hostname)
-					if err != nil {
-						return fmt.Errorf("picking new hostname: %w", err)
-					}
-					// Register new Elemental Host
-					if err := client.CreateHost(api.HostCreateRequest{
-						Name:        newHostname,
-						Annotations: registration.HostAnnotations,
-						Labels:      registration.HostLabels,
-					}); err != nil {
-						return fmt.Errorf("registering new ElementalHost: %w", err)
-					}
-					// Install
-					if err := installer.Install(registration, newHostname); err != nil {
-						return fmt.Errorf("installing Elemental: %w", err)
-					}
-					// Report installation success
-					if _, err := client.PatchHost(api.HostPatchRequest{
-						Installed: ptr.To(true),
-					}, newHostname); err != nil {
-						return fmt.Errorf("patching host with installation successful: %w", err)
-					}
-					return nil
+				if err := installer.Install(registration, newHostname); err != nil {
+					return fmt.Errorf("installing Elemental: %w", err)
 				}
+				// Report installation success
+				if _, err := client.PatchHost(api.HostPatchRequest{
+					Installed: ptr.To(true),
+				}, newHostname); err != nil {
+					return fmt.Errorf("patching host with installation successful: %w", err)
+				}
+				return nil
+			}
 
-				// Reset
-				if resetFlag {
-					log.Info("Resetting Elemental")
-					// Mark ElementalHost for deletion
-					if err := client.DeleteHost(currentHostname); err != nil {
-						return fmt.Errorf("marking host for deletion")
-					}
-					// Reset
-					if err := installer.Reset(registration); err != nil {
-						return fmt.Errorf("resetting Elemental: %w", err)
-					}
-					// Report reset success
-					if _, err := client.PatchHost(api.HostPatchRequest{
-						Reset: ptr.To(true),
-					}, currentHostname); err != nil {
-						return fmt.Errorf("patching host with reset successfull: %w", err)
-					}
-					return nil
+			// Reset
+			if resetFlag {
+				log.Info("Resetting Elemental")
+				// Mark ElementalHost for deletion
+				if err := client.DeleteHost(currentHostname); err != nil {
+					return fmt.Errorf("marking host for deletion")
 				}
+				// Reset
+				if err := installer.Reset(registration); err != nil {
+					return fmt.Errorf("resetting Elemental: %w", err)
+				}
+				// Report reset success
+				if _, err := client.PatchHost(api.HostPatchRequest{
+					Reset: ptr.To(true),
+				}, currentHostname); err != nil {
+					return fmt.Errorf("patching host with reset successfull: %w", err)
+				}
+				return nil
 			}
 
 			for {
 				log.Info("Entering reconciliation loop")
 
+				// Patch the host and receive the patched remote host back
 				host, err := client.PatchHost(api.HostPatchRequest{}, currentHostname)
 				if err != nil {
 					log.Error(fmt.Errorf("patching ElementalHost during normal reconcile: %w", err), "")
 				}
 
+				// Handle bootstrap if needed
 				if host.BootstrapReady && !host.Bootstrapped {
 					log.Info("Fetching bootstrap instructions")
 					bootstrap, err := client.GetBootstrap(currentHostname)
@@ -185,6 +184,15 @@ func newCommand(fs vfs.FS) *cobra.Command {
 					if _, err := client.PatchHost(api.HostPatchRequest{Bootstrapped: ptr.To(true)}, currentHostname); err != nil {
 						log.Error(fmt.Errorf("patching ElementalHost after bootstrap: %w", err), "")
 					}
+				}
+
+				// Handle Reset Needed
+				if host.NeedsReset {
+					if err := installer.TriggerReset(registration); err != nil {
+						log.Error(fmt.Errorf("handling reset needed: %w", err), "")
+					}
+					// If Reset was triggered successfully, exit the program.
+					return nil
 				}
 
 				time.Sleep(conf.Agent.Reconciliation)
