@@ -39,12 +39,12 @@ func NewElementalInstaller(fs vfs.FS) Installer {
 }
 
 func (i *ElementalInstaller) Install(_ api.RegistrationResponse, _ string) error {
-	log.Info("Installing Elemental")
+	log.Debug("Installing Elemental")
 	return ErrManagedOSNotSupportedYet
 }
 
 func (i *ElementalInstaller) Reset(_ api.RegistrationResponse) error {
-	log.Info("Resetting Elemental")
+	log.Debug("Resetting Elemental")
 	return ErrManagedOSNotSupportedYet
 }
 
@@ -63,7 +63,7 @@ func NewUnmanagedInstaller(fs vfs.FS, configPath string) Installer {
 }
 
 func (i *UnmanagedInstaller) Install(conf api.RegistrationResponse, hostnameToSet string) error {
-	log.Info("Installing unmanaged OS.")
+	log.Debug("Installing unmanaged OS.")
 
 	// Set the Hostname
 	if err := hostname.SetHostname(hostnameToSet); err != nil {
@@ -80,7 +80,7 @@ func (i *UnmanagedInstaller) Install(conf api.RegistrationResponse, hostnameToSe
 }
 
 func (i *UnmanagedInstaller) Reset(conf api.RegistrationResponse) error {
-	log.Infof("Will not reset unmanaged OS. Creating reset sentinel file: %s/%s", conf.Config.Elemental.Agent.WorkDir, sentinelFileResetNeeded)
+	log.Debugf("Will not reset unmanaged OS. Creating reset sentinel file: %s/%s", conf.Config.Elemental.Agent.WorkDir, sentinelFileResetNeeded)
 	if err := utils.WriteFile(i.fs, api.WriteFile{
 		Path: fmt.Sprintf("%s/%s", conf.Config.Elemental.Agent.WorkDir, sentinelFileResetNeeded),
 	}); err != nil {

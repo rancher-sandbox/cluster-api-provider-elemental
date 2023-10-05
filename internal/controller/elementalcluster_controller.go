@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -100,7 +101,7 @@ func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	defer func() {
 		// Reconciliation step #8: Patch the resource to persist changes
 		if err := patchHelper.Patch(ctx, elementalCluster); err != nil {
-			rerr = fmt.Errorf("patching ElementalCluster: %w", err)
+			rerr = errors.Join(rerr, fmt.Errorf("patching ElementalCluster: %w", err))
 		}
 	}()
 

@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -232,7 +233,7 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	defer func() {
 		// Reconciliation step #12: Patch the resource to persist changes
 		if err := patchHelper.Patch(ctx, elementalMachine); err != nil {
-			rerr = fmt.Errorf("patching ElementalMachine: %w", err)
+			rerr = errors.Join(rerr, fmt.Errorf("patching ElementalMachine: %w", err))
 		}
 	}()
 

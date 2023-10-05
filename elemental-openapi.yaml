@@ -92,6 +92,40 @@ paths:
           description: Internal Server Error
       summary: Create a new ElementalHost
   /elemental/v1/namespaces/{namespace}/registrations/{registrationName}/hosts/{hostName}:
+    delete:
+      description: This endpoint deletes an existing ElementalHost.
+      parameters:
+      - in: path
+        name: namespace
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: registrationName
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: hostName
+        required: true
+        schema:
+          type: string
+      responses:
+        "202":
+          description: ElementalHost correctly deleted.
+        "404":
+          content:
+            text/html:
+              schema:
+                type: string
+          description: ElementalHost not found
+        "500":
+          content:
+            text/html:
+              schema:
+                type: string
+          description: Internal Server Error
+      summary: Delete an existing ElementalHost
     patch:
       description: This endpoint patches an existing ElementalHost.
       parameters:

@@ -46,6 +46,10 @@ func (s *Server) NewRouter() *mux.Router {
 		Methods(http.MethodPost)
 
 	elementalV1.Handle("/namespaces/{namespace}/registrations/{registrationName}/hosts/{hostName}",
+		NewDeleteElementalHostHandler(s.logger, s.k8sClient)).
+		Methods(http.MethodDelete)
+
+	elementalV1.Handle("/namespaces/{namespace}/registrations/{registrationName}/hosts/{hostName}",
 		NewPatchElementalHostHandler(s.logger, s.k8sClient)).
 		Methods(http.MethodPatch)
 

@@ -29,6 +29,12 @@ func (h *HostCreateRequest) toElementalHost(namespace string) infrastructurev1be
 	}
 }
 
+type HostDeleteRequest struct {
+	Namespace        string `path:"namespace"`
+	RegistrationName string `path:"registrationName"`
+	HostName         string `path:"hostName"`
+}
+
 type HostPatchRequest struct {
 	Namespace        string `path:"namespace"`
 	RegistrationName string `path:"registrationName"`
@@ -41,7 +47,7 @@ type HostPatchRequest struct {
 	Reset        *bool             `json:"reset,omitempty"`
 }
 
-func (h *HostPatchRequest) fromElementalHost(elementalHost *infrastructurev1beta1.ElementalHost) {
+func (h *HostPatchRequest) applyToElementalHost(elementalHost *infrastructurev1beta1.ElementalHost) {
 	elementalHost.Annotations = h.Annotations
 	elementalHost.Labels = h.Labels
 	if h.Installed != nil {

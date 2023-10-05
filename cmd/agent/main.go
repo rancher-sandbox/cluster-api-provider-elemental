@@ -102,13 +102,14 @@ func newCommand(fs vfs.FS) *cobra.Command {
 
 				// Install
 				if installFlag {
+					log.Info("Installing Elemental")
 					// Pick the new hostname
 					newHostname, err := hostname.PickHostname(registration.Config.Elemental.Agent.Hostname)
 					if err != nil {
 						return fmt.Errorf("picking new hostname: %w", err)
 					}
 					// Register new Elemental Host
-					if err := client.CreateMachineHost(api.HostCreateRequest{
+					if err := client.CreateHost(api.HostCreateRequest{
 						Name:        newHostname,
 						Annotations: registration.HostAnnotations,
 						Labels:      registration.HostLabels,
@@ -120,24 +121,29 @@ func newCommand(fs vfs.FS) *cobra.Command {
 						return fmt.Errorf("installing Elemental: %w", err)
 					}
 					// Report installation success
-					if _, err := client.PatchMachineHost(api.HostPatchRequest{
+					if _, err := client.PatchHost(api.HostPatchRequest{
 						Installed: ptr.To(true),
 					}, newHostname); err != nil {
-						return fmt.Errorf("patching machine with installation successful: %w", err)
+						return fmt.Errorf("patching host with installation successful: %w", err)
 					}
 					return nil
 				}
 
 				// Reset
 				if resetFlag {
+					log.Info("Resetting Elemental")
 					if err := installer.Reset(registration); err != nil {
 						return fmt.Errorf("resetting Elemental: %w", err)
 					}
 					// Report reset success
-					if _, err := client.PatchMachineHost(api.HostPatchRequest{
+					if _, err := client.PatchHost(api.HostPatchRequest{
 						Reset: ptr.To(true),
 					}, currentHostname); err != nil {
-						return fmt.Errorf("patching machine with reset successfull: %w", err)
+						return fmt.Errorf("patching host with reset successfull: %w", err)
+					}
+					// Mark ElementalHost for deletion
+					if err := client.DeleteHost(currentHostname); err != nil {
+						return fmt.Errorf("marking host for deletion")
 					}
 					return nil
 				}
@@ -146,7 +152,7 @@ func newCommand(fs vfs.FS) *cobra.Command {
 			for {
 				log.Info("Entering reconciliation loop")
 
-				host, err := client.PatchMachineHost(api.HostPatchRequest{}, currentHostname)
+				host, err := client.PatchHost(api.HostPatchRequest{}, currentHostname)
 				if err != nil {
 					log.Error(fmt.Errorf("patching ElementalHost during normal reconcile: %w", err), "")
 				}
@@ -171,7 +177,7 @@ func newCommand(fs vfs.FS) *cobra.Command {
 					}
 
 					log.Info("Applied bootstrap instructions")
-					if _, err := client.PatchMachineHost(api.HostPatchRequest{Bootstrapped: ptr.To(true)}, currentHostname); err != nil {
+					if _, err := client.PatchHost(api.HostPatchRequest{Bootstrapped: ptr.To(true)}, currentHostname); err != nil {
 						log.Error(fmt.Errorf("patching ElementalHost after bootstrap: %w", err), "")
 					}
 				}

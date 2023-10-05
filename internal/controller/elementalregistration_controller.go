@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -28,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	ilog "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/log"
 )
 
@@ -35,6 +37,16 @@ import (
 type ElementalRegistrationReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *ElementalRegistrationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if err := ctrl.NewControllerManagedBy(mgr).
+		For(&infrastructurev1beta1.ElementalRegistration{}).
+		Complete(r); err != nil {
+		return fmt.Errorf("initializing ElementalRegistrationReconciler builder: %w", err)
+	}
+	return nil
 }
 
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=elementalregistrations,verbs=get;list;watch;create;update;patch;delete
@@ -54,8 +66,8 @@ func (r *ElementalRegistrationReconciler) Reconcile(ctx context.Context, req ctr
 	logger.Info("Reconciling ElementalRegistration")
 
 	// Fetch the ElementalRegistration
-	ElementalRegistration := &infrastructurev1beta1.ElementalRegistration{}
-	if err := r.Client.Get(ctx, req.NamespacedName, ElementalRegistration); err != nil {
+	registration := &infrastructurev1beta1.ElementalRegistration{}
+	if err := r.Client.Get(ctx, req.NamespacedName, registration); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -63,25 +75,26 @@ func (r *ElementalRegistrationReconciler) Reconcile(ctx context.Context, req ctr
 	}
 
 	// Create the patch helper.
-	patchHelper, err := patch.NewHelper(ElementalRegistration, r.Client)
+	patchHelper, err := patch.NewHelper(registration, r.Client)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
 	}
 	defer func() {
-		if err := patchHelper.Patch(ctx, ElementalRegistration); err != nil {
-			rerr = fmt.Errorf("patching ElementalRegistration: %w", err)
+		if err := patchHelper.Patch(ctx, registration); err != nil {
+			rerr = errors.Join(rerr, fmt.Errorf("patching ElementalRegistration: %w", err))
 		}
 	}()
+
+	r.setURI(registration)
 
 	return ctrl.Result{}, nil
 }
 
-// SetupWithManager sets up the controller with the Manager.
-func (r *ElementalRegistrationReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if err := ctrl.NewControllerManagedBy(mgr).
-		For(&infrastructurev1beta1.ElementalRegistration{}).
-		Complete(r); err != nil {
-		return fmt.Errorf("initializing ElementalRegistrationReconciler builder: %w", err)
-	}
-	return nil
+func (r *ElementalRegistrationReconciler) setURI(registration *infrastructurev1beta1.ElementalRegistration) {
+	registration.Spec.Config.Elemental.Registration.URI = fmt.Sprintf("%s/%s%s/namespaces/%s/registrations/%s",
+		registration.Spec.Config.Elemental.Registration.APIEndpoint,
+		api.Prefix,
+		api.PrefixV1,
+		registration.Namespace,
+		registration.Name)
 }

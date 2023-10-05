@@ -6,10 +6,12 @@ import (
 
 	"github.com/google/uuid"
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils"
 )
 
 func SetHostname(hostname string) error {
+	log.Debugf("Setting hostname: %s", hostname)
 	if err := utils.RunCommand(fmt.Sprintf("hostnamectl set-hostname %s", hostname)); err != nil {
 		return fmt.Errorf("running hostnamectl: %w", err)
 	}
@@ -20,6 +22,7 @@ func PickHostname(conf infrastructurev1beta1.Hostname) (string, error) {
 	var newHostname string
 	var err error
 	if conf.UseExisting {
+		log.Debug("Using existing hostname")
 		if newHostname, err = formatCurrent(conf.Prefix); err != nil {
 			return "", fmt.Errorf("setting current hostname: %w", err)
 		}
@@ -27,6 +30,7 @@ func PickHostname(conf infrastructurev1beta1.Hostname) (string, error) {
 
 	}
 
+	log.Debug("Using random hostname")
 	if newHostname, err = formatRandom(conf.Prefix); err != nil {
 		return "", fmt.Errorf("setting random hostname: %w", err)
 	}

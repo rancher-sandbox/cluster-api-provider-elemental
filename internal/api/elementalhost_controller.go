@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
@@ -113,7 +114,7 @@ func (h *PatchElementalHostHandler) ServeHTTP(response http.ResponseWriter, requ
 		return
 	}
 
-	hostPatchRequest.fromElementalHost(host)
+	hostPatchRequest.applyToElementalHost(host)
 	if err := patchHelper.Patch(request.Context(), host); err != nil {
 		logger.Error(err, "Could not patch ElementalHost")
 		response.WriteHeader(http.StatusInternalServerError)
@@ -242,6 +243,97 @@ func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, reque
 
 	response.Header().Set("Location", fmt.Sprintf("%s%s/namespaces/%s/registrations/%s/hosts/%s", Prefix, PrefixV1, namespace, registrationName, newHost.Name))
 	response.WriteHeader(http.StatusCreated)
+}
+
+var _ OpenAPIDecoratedHandler = (*DeleteElementalHostHandler)(nil)
+var _ http.Handler = (*DeleteElementalHostHandler)(nil)
+
+type DeleteElementalHostHandler struct {
+	logger    logr.Logger
+	k8sClient client.Client
+}
+
+func NewDeleteElementalHostHandler(logger logr.Logger, k8sClient client.Client) *DeleteElementalHostHandler {
+	return &DeleteElementalHostHandler{
+		logger:    logger,
+		k8sClient: k8sClient,
+	}
+}
+
+func (h *DeleteElementalHostHandler) SetupOpenAPIOperation(oc openapi.OperationContext) error {
+	oc.SetSummary("Delete an existing ElementalHost")
+	oc.SetDescription("This endpoint deletes an existing ElementalHost.")
+
+	oc.AddReqStructure(HostDeleteRequest{})
+
+	oc.AddRespStructure(nil, WithDecoration("ElementalHost correctly deleted.", "", http.StatusAccepted))
+	oc.AddRespStructure(nil, WithDecoration("ElementalHost not found", "text/html", http.StatusNotFound))
+	oc.AddRespStructure(nil, WithDecoration("", "text/html", http.StatusInternalServerError))
+
+	return nil
+}
+
+func (h *DeleteElementalHostHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
+	pathVars := mux.Vars(request)
+	namespace := pathVars["namespace"]
+	registrationName := pathVars["registrationName"]
+	hostName := pathVars["hostName"]
+
+	logger := h.logger.WithValues(log.KeyNamespace, namespace).
+		WithValues(log.KeyElementalRegistration, registrationName).
+		WithValues(log.KeyElementalHost, hostName)
+	logger.Info("Deleting ElementalHost")
+
+	// Fetch ElementalRegistration (sanity check)
+	registration := &infrastructurev1beta1.ElementalRegistration{}
+	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: registrationName}, registration); err != nil {
+		if k8sapierrors.IsNotFound(err) {
+			response.WriteHeader(http.StatusNotFound)
+			WriteResponse(logger, response, fmt.Sprintf("ElementalRegistration '%s' not found", registrationName))
+		} else {
+			logger.Error(err, "Could not fetch ElementalRegistration")
+			response.WriteHeader(http.StatusInternalServerError)
+			WriteResponse(logger, response, fmt.Sprintf("Could not fetch ElementalRegistration '%s'", registrationName))
+		}
+		return
+	}
+
+	// Fetch ElementalHost
+	host := &infrastructurev1beta1.ElementalHost{}
+	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: hostName}, host); err != nil {
+		if k8sapierrors.IsNotFound(err) {
+			response.WriteHeader(http.StatusNotFound)
+			WriteResponse(logger, response, fmt.Sprintf("ElementalHost '%s' not found", hostName))
+		} else {
+			logger.Error(err, "Could not fetch ElementalHost")
+			response.WriteHeader(http.StatusInternalServerError)
+			WriteResponse(logger, response, fmt.Sprintf("Could not fetch ElementalHost '%s'", hostName))
+		}
+		return
+	}
+
+	// Initializing Patch helper
+	patchHelper, err := patch.NewHelper(host, h.k8sClient)
+	if err != nil {
+		logger.Error(err, "Initializing ElementalHost patch helper")
+		response.WriteHeader(http.StatusInternalServerError)
+		WriteResponse(logger, response, "Could not initialize ElementalHost patch helper")
+		return
+	}
+
+	now := metav1.NewTime(time.Now())
+	host.DeletionTimestamp = &now
+
+	if err := patchHelper.Patch(request.Context(), host); err != nil {
+		logger.Error(err, "Could not patch ElementalHost")
+		response.WriteHeader(http.StatusInternalServerError)
+		WriteResponse(logger, response, fmt.Sprintf("Could not patch ElementalHost '%s'", hostName))
+		return
+	}
+
+	logger.Info("ElementalHost marked for deletion")
+
+	response.WriteHeader(http.StatusAccepted)
 }
 
 var _ OpenAPIDecoratedHandler = (*GetElementalHostBootstrapHandler)(nil)

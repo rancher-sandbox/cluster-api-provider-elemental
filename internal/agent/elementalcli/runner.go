@@ -19,11 +19,11 @@ var _ Runner = (*runner)(nil)
 type runner struct{}
 
 func (r *runner) Install(infrastructurev1beta1.Install) error {
-	log.Info("Running elemental install")
+	log.Debug("Running elemental install")
 	return nil
 }
 
 func (r *runner) Reset(infrastructurev1beta1.Reset) error {
-	log.Info("Running elemental reset")
+	log.Debug("Running elemental reset")
 	return nil
 }

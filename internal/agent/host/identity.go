@@ -38,11 +38,12 @@ func NewDummyManager(fs vfs.FS, dirPath string) IdentityManager {
 }
 
 func (m *DummyManager) GetOrCreateIdentity() (Identity, error) {
-	log.Debug("Getting dummy identity")
+	log.Debugf("Getting dummy identity in dir: %s", m.dirPath)
 	identity := &DummyIdentity{}
 	err := identity.LoadFromFile(m.fs, m.formatFilePath())
 
 	if errors.Is(err, ErrIdentityDoesNotExist) {
+		log.Debug("Identity does not exist yet")
 		identity, err := m.newIdentity()
 		if err != nil {
 			return nil, fmt.Errorf("creating new identity: %w", err)
@@ -57,7 +58,7 @@ func (m *DummyManager) GetOrCreateIdentity() (Identity, error) {
 }
 
 func (m *DummyManager) newIdentity() (*DummyIdentity, error) {
-	log.Info("Creating new dummy key")
+	log.Debug("Creating new dummy key")
 	identity, err := NewDummyIdentity()
 	if err != nil {
 		return nil, fmt.Errorf("initializing new dummy identity: %w", err)
@@ -93,11 +94,11 @@ func NewDummyIdentity() (*DummyIdentity, error) {
 }
 
 func (i *DummyIdentity) GetSigningKey() ([]byte, error) {
-	log.Debug("Getting dummy key")
 	return nil, nil
 }
 
 func (i *DummyIdentity) LoadFromFile(fs vfs.FS, filePath string) error {
+	log.Debugf("Loading dummy identity from file: %s", filePath)
 	key, err := utils.ReadFile(fs, filePath)
 	if os.IsNotExist(err) {
 		return fmt.Errorf("loading '%s': %w", filePath, ErrIdentityDoesNotExist)
@@ -110,6 +111,7 @@ func (i *DummyIdentity) LoadFromFile(fs vfs.FS, filePath string) error {
 }
 
 func (i *DummyIdentity) WriteToFile(fs vfs.FS, filePath string) error {
+	log.Debugf("Writing dummy identity to file: %s", filePath)
 	if err := utils.WriteFile(fs, api.WriteFile{
 		Path:    filePath,
 		Content: string(i.key),
