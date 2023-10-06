@@ -226,13 +226,16 @@ func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, reque
 		},
 	}
 
+	logger = logger.WithValues(log.KeyElementalHost, newHost.Name)
+
 	// Create new Host
 	if err := h.k8sClient.Create(request.Context(), &newHost); err != nil {
 		if k8sapierrors.IsAlreadyExists(err) {
+			logger.Error(err, "ElementalHost already exists")
 			response.WriteHeader(http.StatusConflict)
 			WriteResponse(logger, response, fmt.Sprintf("Host '%s' in namespace '%s' already exists", namespace, newHost.Name))
 		} else {
-			logger.Error(err, "Could not create ElementalHost", "namespace", namespace, "hostName", newHost.Name)
+			logger.Error(err, "Could not create ElementalHost")
 			response.WriteHeader(http.StatusInternalServerError)
 			WriteResponse(logger, response, fmt.Sprintf("Could not create Elemental Host '%s'", newHost.Name))
 		}

@@ -39,8 +39,8 @@ agent:
   noSmbios: false
   # Enable agent debug logs
   debug: false
-  # Not using elemental-toolkit
-  osNotManaged: false
+  # Which OS installer to use. "unmanaged" or "elemental"
+  installer: "unmanaged"
   # The period used by the agent to sync with the Elemental API
   reconciliation: 1m
   # Allow 'http' scheme

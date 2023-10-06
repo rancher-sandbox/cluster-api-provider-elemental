@@ -122,6 +122,10 @@ spec:
                     type: string
                 type: object
                 x-kubernetes-map-type: atomic
+              needsReset:
+                description: NeedsReset is true when reset of this host has been triggered.
+                  This can lead to the finalizer and deletion of the ElementalHost.
+                type: boolean
               reset:
                 description: Reset is true when this host reset successfully. This
                   can lead to the finalizer and deletion of the ElementalHost.

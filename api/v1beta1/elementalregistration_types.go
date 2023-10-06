@@ -127,6 +127,7 @@ type Reset struct {
 
 type Registration struct {
 	// +optional
+	// FIXME: Move this to operator argument
 	APIEndpoint string `json:"apiEndpoint,omitempty" yaml:"apiEndpoint,omitempty" mapstructure:"apiEndpoint"`
 	// +optional
 	URI string `json:"uri,omitempty" yaml:"uri,omitempty" mapstructure:"uri"`
@@ -146,7 +147,8 @@ type Agent struct {
 	// +optional
 	Debug bool `json:"debug,omitempty" yaml:"debug,omitempty" mapstructure:"debug"`
 	// +optional
-	OSNotManaged bool `json:"osNotManaged,omitempty" yaml:"osNotManaged,omitempty" mapstructure:"osNotManaged"`
+	// +kubebuilder:default:="unmanaged"
+	Installer string `json:"installer,omitempty" yaml:"installer,omitempty" mapstructure:"installer"`
 	// +optional
 	// +kubebuilder:default:=10000000000
 	Reconciliation time.Duration `json:"reconciliation,omitempty" yaml:"reconciliation,omitempty" mapstructure:"reconciliation"`
@@ -176,6 +178,6 @@ type Elemental struct {
 	// +optional
 	Registration Registration `json:"registration,omitempty" yaml:"registration,omitempty"`
 	// +optional
-	// +kubebuilder:default:={"debug":false,"reconciliation":10000000000,"hostname":{"useExisting":true}}
+	// +kubebuilder:default:={"debug":false,"reconciliation":10000000000,"hostname":{"useExisting":true},"installer":"unmanaged"}
 	Agent Agent `json:"agent,omitempty" yaml:"agent,omitempty"`
 }

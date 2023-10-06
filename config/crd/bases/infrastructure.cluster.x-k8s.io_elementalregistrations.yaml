@@ -47,6 +47,7 @@ spec:
                           debug: false
                           hostname:
                             useExisting: true
+                          installer: unmanaged
                           reconciliation: 10000000000
                         properties:
                           debug:
@@ -65,9 +66,10 @@ spec:
                             type: boolean
                           insecureSkipTlsVerify:
                             type: boolean
+                          installer:
+                            default: unmanaged
+                            type: string
                           noSmbios:
-                            type: boolean
-                          osNotManaged:
                             type: boolean
                           reconciliation:
                             default: 10000000000
@@ -121,6 +123,7 @@ spec:
                       registration:
                         properties:
                           apiEndpoint:
+                            description: 'FIXME: Move this to operator argument'
                             type: string
                           caCert:
                             type: string

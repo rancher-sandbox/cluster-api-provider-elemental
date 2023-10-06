@@ -320,9 +320,9 @@ components:
           type: boolean
         insecureSkipTlsVerify:
           type: boolean
+        installer:
+          type: string
         noSmbios:
-          type: boolean
-        osNotManaged:
           type: boolean
         reconciliation:
           type: integer

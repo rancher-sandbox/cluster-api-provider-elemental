@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -23,6 +24,8 @@ import (
 const (
 	configPathDefault     = "/etc/elemental/agent/config.yaml"
 	bootstrapSentinelFile = "/run/cluster-api/bootstrap-success.complete"
+	installerUnmanaged    = "unmanaged"
+	installerElemental    = "elemental"
 )
 
 // Flags.
@@ -36,6 +39,11 @@ var (
 // Arguments.
 var (
 	configPath string
+)
+
+// Errors.
+var (
+	ErrUnknownInstaller = errors.New("unknown installer")
 )
 
 func main() {
@@ -82,82 +90,47 @@ func newCommand(fs vfs.FS) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("initializing Elemental API client: %w", err)
 			}
-			// Fetch remote Registration
-			registration, err := client.GetRegistration()
-			if err != nil {
-				return fmt.Errorf("getting remote Registration: %w", err)
-			}
 			// Get current hostname
 			currentHostname, err := hostname.GetCurrentHostname()
 			if err != nil {
 				return fmt.Errorf("getting current hostname: %w", err)
 			}
-			// Initialize installed (also needed to trigger host reset)
+			// Initialize installer
 			log.Info("Initializing Installer")
 			var installer host.Installer
-			if conf.Agent.OSNotManaged {
+			switch conf.Agent.Installer {
+			case installerUnmanaged:
 				log.Info("Using Unmanaged OS Installer")
 				installer = host.NewUnmanagedInstaller(fs, conf.Agent.WorkDir)
-			} else {
+			case installerElemental:
 				log.Info("Using Elemental Installer")
 				installer = host.NewElementalInstaller(fs)
+			default:
+				return fmt.Errorf("parsing installer '%s': %w", conf.Agent.Installer, ErrUnknownInstaller)
 			}
 
 			// Install
 			if installFlag {
 				log.Info("Installing Elemental")
-				// Pick the new hostname
-				newHostname, err := hostname.PickHostname(registration.Config.Elemental.Agent.Hostname)
-				if err != nil {
-					return fmt.Errorf("picking new hostname: %w", err)
-				}
-				// Register new Elemental Host
-				// FIXME: Prevent creation of several hosts in case of failures.
-				//        Instead of exiting on error, continue in a loop by refreshing the remote registration.
-				if err := client.CreateHost(api.HostCreateRequest{
-					Name:        newHostname,
-					Annotations: registration.HostAnnotations,
-					Labels:      registration.HostLabels,
-				}); err != nil {
-					return fmt.Errorf("registering new ElementalHost: %w", err)
-				}
-				// Install
-				if err := installer.Install(registration, newHostname); err != nil {
-					// TODO: Patch the Elemental Host with installation failure status and reason
-					return fmt.Errorf("installing Elemental: %w", err)
-				}
-				// Report installation success
-				if _, err := client.PatchHost(api.HostPatchRequest{
-					Installed: ptr.To(true),
-				}, newHostname); err != nil {
-					return fmt.Errorf("patching host with installation successful: %w", err)
-				}
+				handleInstall(client, installer, conf.Agent.Reconciliation)
+				log.Info("Installation successful")
 				return nil
 			}
 
 			// Reset
 			if resetFlag {
 				log.Info("Resetting Elemental")
-				// Mark ElementalHost for deletion
-				if err := client.DeleteHost(currentHostname); err != nil {
-					return fmt.Errorf("marking host for deletion")
-				}
-				// Reset
-				// FIXME: Do not exit program in case of failures, but keep trying.
-				//        Assume the host identity may be deleted already, so we rely on the in-memory identity to recover and finish successfully.
-				if err := installer.Reset(registration); err != nil {
-					// TODO: Patch the Elemental Host with reset failure status and reason
-					return fmt.Errorf("resetting Elemental: %w", err)
-				}
-				// Report reset success
-				if _, err := client.PatchHost(api.HostPatchRequest{
-					Reset: ptr.To(true),
-				}, currentHostname); err != nil {
-					return fmt.Errorf("patching host with reset successfull: %w", err)
-				}
+				handleReset(client, installer, conf.Agent.Reconciliation, currentHostname)
+				log.Info("Reset successful")
 				return nil
 			}
 
+			// Normal reconcile
+			log.Debug("Fetching remote registration")
+			registration, err := client.GetRegistration()
+			if err != nil {
+				return fmt.Errorf("getting remote Registration: %w", err)
+			}
 			log.Info("Entering reconciliation loop")
 			for {
 				// Patch the host and receive the patched remote host back
@@ -173,6 +146,7 @@ func newCommand(fs vfs.FS) *cobra.Command {
 					if err := handleBootstrap(fs, client, currentHostname); err != nil {
 						log.Error(err, "handling bootstrap")
 					}
+					log.Info("Bootstrap config applied successfully")
 				}
 
 				// Handle Reset Needed
@@ -182,6 +156,7 @@ func newCommand(fs vfs.FS) *cobra.Command {
 						log.Error(err, "handling reset needed")
 					} else {
 						// If Reset was triggered successfully, exit the program.
+						log.Info("Reset was triggered successfully. Exiting program.")
 						return nil
 					}
 				}
@@ -220,13 +195,125 @@ func getConfig(fs vfs.FS) (config.Config, error) {
 	return conf, nil
 }
 
-func handleBootstrap(fs vfs.FS, client client.Client, hostname string) error {
-	log.Debug("Fetching bootstrap config")
+// TODO: Would be wiser to decouple host registration/agent-configuration from installation.
+// This could introduce a new --register flag, leaving the --install as optional (for unmanaged OS for example).
+// However, consider that setting the hostname must be part of the registration workflow,
+// so maybe decoupling would not be possible without a state/cache file where to store the hostname-to-be-set.
+func handleInstall(client client.Client, installer host.Installer, installationRecoveryPeriod time.Duration) {
+	alreadyRegistered := false
+	installationError := false
+	var newHostname string
+	for {
+		// Wait for recovery (end user may fix the remote installation instructions meanwhile)
+		if installationError {
+			log.Debugf("Waiting '%s' on installation error for installation instructions to mutate", installationRecoveryPeriod)
+			time.Sleep(installationRecoveryPeriod)
+		}
+		// Fetch remote Registration
+		log.Debug("Fetching remote registration")
+		registration, err := client.GetRegistration()
+		if err != nil {
+			log.Error(err, "getting remote Registration")
+			installationError = true
+			continue
+		}
+		// Pick the new hostname if not done yet
+		if len(newHostname) == 0 {
+			newHostname, err = hostname.PickHostname(registration.Config.Elemental.Agent.Hostname)
+			log.Debugf("Selected hostname: %s", newHostname)
+			if err != nil {
+				log.Error(err, "picking new hostname")
+				installationError = true
+				continue
+			}
+		}
+		// Register new Elemental Host
+		if !alreadyRegistered {
+			log.Debugf("Registering new host: %s", newHostname)
+			if err := client.CreateHost(api.HostCreateRequest{
+				Name:        newHostname,
+				Annotations: registration.HostAnnotations,
+				Labels:      registration.HostLabels,
+			}); err != nil {
+				log.Error(err, "registering new ElementalHost")
+				installationError = true
+				continue
+			}
+			alreadyRegistered = true
+		}
+		// Install
+		if err := installer.Install(registration, newHostname); err != nil {
+			// TODO: Patch the Elemental Host with installation failure status and reason
+			log.Error(err, "installing Elemental")
+			installationError = true
+			continue
+		}
+		// Report installation success
+		if _, err := client.PatchHost(api.HostPatchRequest{
+			Installed: ptr.To(true),
+		}, newHostname); err != nil {
+			log.Error(err, "patching host with installation successful")
+			installationError = true
+			continue
+		}
+		break
+	}
+}
 
+func handleReset(client client.Client, installer host.Installer, resetRecoveryPeriod time.Duration, hostname string) {
+	resetError := false
+	alreadyReset := false
+	for {
+		// Wait for recovery (end user may fix the remote reset instructions meanwhile)
+		if resetError {
+			log.Debugf("Waiting '%s' on reset error for reset instructions to mutate", resetRecoveryPeriod)
+			time.Sleep(resetRecoveryPeriod)
+		}
+		// Fetch remote Registration
+		log.Debug("Fetching remote registration")
+		registration, err := client.GetRegistration()
+		if err != nil {
+			log.Error(err, "getting remote Registration")
+			resetError = true
+			continue
+		}
+		// Mark ElementalHost for deletion
+		log.Debugf("Marking ElementalHost for deletion: %s", hostname)
+		if err := client.DeleteHost(hostname); err != nil {
+			log.Error(err, "marking host for deletion")
+			resetError = true
+			continue
+		}
+		// Reset
+		if !alreadyReset {
+			log.Debug("Resetting...")
+			if err := installer.Reset(registration); err != nil {
+				// TODO: Patch the Elemental Host with reset failure status and reason
+				log.Error(err, "resetting Elemental: %w")
+				resetError = true
+				continue
+			}
+			alreadyReset = true
+		}
+		// Report reset success
+		log.Debug("Patching ElementalHost as reset")
+		if _, err := client.PatchHost(api.HostPatchRequest{
+			Reset: ptr.To(true),
+		}, hostname); err != nil {
+			log.Error(err, "patching host with reset successful")
+			resetError = true
+			continue
+		}
+		break
+	}
+}
+
+func handleBootstrap(fs vfs.FS, client client.Client, hostname string) error {
 	// Avoid applying bootstrap multiple times
 	// See contract: https://cluster-api.sigs.k8s.io/developer/providers/bootstrap.html#sentinel-file
 	_, err := fs.Stat(bootstrapSentinelFile)
 	if os.IsNotExist(err) {
+		log.Debug("Fetching bootstrap config")
 		bootstrap, err := client.GetBootstrap(hostname)
 		if err != nil {
 			return fmt.Errorf("fetching bootstrap config: %w", err)
@@ -243,7 +330,6 @@ func handleBootstrap(fs vfs.FS, client client.Client, hostname string) error {
 				return fmt.Errorf("running bootstrap command: %w", err)
 			}
 		}
-		log.Info("Bootstrap config applied successfully")
 	} else if err != nil {
 		return fmt.Errorf("verifying bootstrap sentinel file '%s': %w", bootstrapSentinelFile, err)
 	}

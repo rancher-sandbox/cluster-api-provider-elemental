@@ -345,6 +345,10 @@ spec:
                     type: string
                 type: object
                 x-kubernetes-map-type: atomic
+              needsReset:
+                description: NeedsReset is true when reset of this host has been triggered.
+                  This can lead to the finalizer and deletion of the ElementalHost.
+                type: boolean
               reset:
                 description: Reset is true when this host reset successfully. This
                   can lead to the finalizer and deletion of the ElementalHost.
@@ -723,6 +727,7 @@ spec:
                           debug: false
                           hostname:
                             useExisting: true
+                          installer: unmanaged
                           reconciliation: 10000000000
                         properties:
                           debug:
@@ -741,9 +746,10 @@ spec:
                             type: boolean
                           insecureSkipTlsVerify:
                             type: boolean
+                          installer:
+                            default: unmanaged
+                            type: string
                           noSmbios:
-                            type: boolean
-                          osNotManaged:
                             type: boolean
                           reconciliation:
                             default: 10000000000
@@ -797,6 +803,7 @@ spec:
                       registration:
                         properties:
                           apiEndpoint:
+                            description: 'FIXME: Move this to operator argument'
                             type: string
                           caCert:
                             type: string
