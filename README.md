@@ -26,7 +26,7 @@ cat << EOF > $HOME/.cluster-api/clusterctl.yaml
 providers:
   # add a custom provider
   - name: "elemental"
-    url: "file:///${HOME}/repos/cluster-api-provider-elemental/infrastructure-elemental/v0.0.1/infrastructure-components.yaml"
+    url: "file:///${HOME}/repos/cluster-api-provider-elemental/infrastructure-elemental/v0.0.0/infrastructure-components.yaml"
     type: "InfrastructureProvider"
 EOF
 ```
