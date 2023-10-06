@@ -329,7 +329,7 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 	var elementalHostCandidate *infrastructurev1beta1.ElementalHost
 	for _, host := range elementalHosts.Items {
 		// Only if this ElementalHost is installed and not already associated
-		if host.Status.Installed && host.Status.MachineRef == nil && !host.Status.NeedsReset {
+		if host.Status.Installed && host.Status.MachineRef == nil && !host.Status.NeedsReset { //TODO: Use label filtering instead
 			host := host
 			elementalHostCandidate = &host
 			break

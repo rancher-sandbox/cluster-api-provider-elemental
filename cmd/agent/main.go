@@ -112,6 +112,8 @@ func newCommand(fs vfs.FS) *cobra.Command {
 					return fmt.Errorf("picking new hostname: %w", err)
 				}
 				// Register new Elemental Host
+				// FIXME: Prevent creation of several hosts in case of failures.
+				//        Instead of exiting on error, continue in a loop by refreshing the remote registration.
 				if err := client.CreateHost(api.HostCreateRequest{
 					Name:        newHostname,
 					Annotations: registration.HostAnnotations,

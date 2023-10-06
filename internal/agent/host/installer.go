@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	hostnameFile            = "/etc/hostname"
 	sentinelFileResetNeeded = "reset.needed"
 )
 
