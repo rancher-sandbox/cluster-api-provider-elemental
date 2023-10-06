@@ -143,6 +143,8 @@ func newCommand(fs vfs.FS) *cobra.Command {
 					return fmt.Errorf("marking host for deletion")
 				}
 				// Reset
+				// FIXME: Do not exit program in case of failures, but keep trying.
+				//        Assume the host identity may be deleted already, so we rely on the in-memory identity to recover and finish successfully.
 				if err := installer.Reset(registration); err != nil {
 					// TODO: Patch the Elemental Host with reset failure status and reason
 					return fmt.Errorf("resetting Elemental: %w", err)
