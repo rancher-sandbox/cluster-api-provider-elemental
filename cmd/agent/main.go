@@ -180,9 +180,10 @@ func newCommand(fs vfs.FS) *cobra.Command {
 					log.Info("Triggering reset")
 					if err := installer.TriggerReset(registration); err != nil {
 						log.Error(err, "handling reset needed")
+					} else {
+						// If Reset was triggered successfully, exit the program.
+						return nil
 					}
-					// If Reset was triggered successfully, exit the program.
-					return nil
 				}
 
 				log.Debug("Waiting '%s' ...", conf.Agent.Reconciliation.String())
