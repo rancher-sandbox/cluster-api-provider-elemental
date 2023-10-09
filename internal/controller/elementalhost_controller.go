@@ -20,10 +20,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -126,11 +126,50 @@ func (r *ElementalHostReconciler) reconcileDelete(ctx context.Context, host *inf
 		WithValues(ilog.KeyElementalHost, host.Name)
 	logger.Info("Deletion ElementalHost reconcile")
 
+	if host.Status.MachineRef != nil {
+		logger = logger.WithValues(ilog.KeyElementalMachine, host.Status.MachineRef.Name)
+		logger.Info("ElementalHost is associated to an ElementalMachine")
+		elementalMachine := &infrastructurev1beta1.ElementalMachine{}
+		err := r.Client.Get(ctx, types.NamespacedName{
+			Name:      host.Status.MachineRef.Name,
+			Namespace: host.Status.MachineRef.Namespace,
+		}, elementalMachine)
+		if apierrors.IsNotFound(err) {
+			logger.Info("ElementalMachine was not found. Assuming deleted.")
+			host.Status.MachineRef = nil
+			return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
+		}
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("fetching associated ElementalMachine: %w", err)
+		}
+
+		if elementalMachine.Status.HostRef != nil &&
+			elementalMachine.Status.HostRef.Name == host.Name &&
+			elementalMachine.Status.HostRef.Namespace == host.Namespace {
+			logger.Info("ElementalMachine is associated to this ElementalHost. Removing reference.")
+			patchHelper, err := patch.NewHelper(elementalMachine, r.Client)
+			if err != nil {
+				return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
+			}
+			elementalMachine.Status.HostRef = nil
+			elementalMachine.Spec.ProviderID = nil
+			if err := patchHelper.Patch(ctx, host); err != nil {
+				return ctrl.Result{}, fmt.Errorf("patching ElementalMachine: %w", err)
+			}
+		}
+	}
+
+	if !host.Status.NeedsReset {
+		logger.Info("Triggering ElementalHost reset")
+		host.Status.NeedsReset = true
+		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
+	}
+
 	if host.Status.Reset {
 		logger.Info("ElementalHost reset successful")
 		controllerutil.RemoveFinalizer(host, infrastructurev1beta1.FinalizerElementalMachine)
 		return ctrl.Result{}, nil
 	}
 
-	return ctrl.Result{RequeueAfter: time.Second}, nil
+	return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
 }

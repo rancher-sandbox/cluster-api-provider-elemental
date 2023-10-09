@@ -2,12 +2,20 @@ package config
 
 import (
 	"fmt"
+	"time"
 
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/twpayne/go-vfs"
 	"gopkg.in/yaml.v3"
+)
+
+// Defaults.
+const (
+	defaultWorkDir        = "/var/lib/elemental/agent"
+	defaultReconciliation = 10 * time.Second
+	defaultInstaller      = "unmanaged"
 )
 
 // Config represents the CAPI Elemental agent configuration.
@@ -50,4 +58,14 @@ func (c *Config) WriteToFile(fs vfs.FS, filePath string) error {
 	}
 
 	return nil
+}
+
+func DefaultConfig() Config {
+	return Config{
+		Agent: infrastructurev1beta1.Agent{
+			WorkDir:        defaultWorkDir,
+			Reconciliation: defaultReconciliation,
+			Installer:      defaultInstaller,
+		},
+	}
 }

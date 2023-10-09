@@ -1,6 +1,13 @@
 package controller
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
+
+const (
+	defaultRequeuePeriod = 10 * time.Second
+)
 
 // Common Errors.
 var (

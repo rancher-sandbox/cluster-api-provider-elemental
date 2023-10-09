@@ -46,7 +46,7 @@ spec:
                         default:
                           debug: false
                           hostname:
-                            useExisting: true
+                            useExisting: false
                           installer: unmanaged
                           reconciliation: 10000000000
                         properties:
@@ -59,7 +59,7 @@ spec:
                               prefix:
                                 type: string
                               useExisting:
-                                default: true
+                                default: false
                                 type: boolean
                             type: object
                           insecureAllowHttp:
@@ -122,9 +122,6 @@ spec:
                         type: object
                       registration:
                         properties:
-                          apiEndpoint:
-                            description: 'FIXME: Move this to operator argument'
-                            type: string
                           caCert:
                             type: string
                           uri:

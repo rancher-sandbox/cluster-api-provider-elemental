@@ -25,19 +25,19 @@ type IdentityManager interface {
 var _ IdentityManager = (*DummyManager)(nil)
 
 type DummyManager struct {
-	dirPath string
+	workDir string
 	fs      vfs.FS
 }
 
-func NewDummyManager(fs vfs.FS, dirPath string) IdentityManager {
+func NewDummyManager(fs vfs.FS, workDir string) IdentityManager {
 	return &DummyManager{
-		dirPath: dirPath,
+		workDir: workDir,
 		fs:      fs,
 	}
 }
 
 func (m *DummyManager) GetOrCreateIdentity() (Identity, error) {
-	log.Debugf("Getting dummy identity in dir: %s", m.dirPath)
+	log.Debugf("Getting dummy identity in dir: %s", m.workDir)
 	identity := &DummyIdentity{}
 	err := identity.LoadFromFile(m.fs, m.formatFilePath())
 
@@ -69,7 +69,7 @@ func (m *DummyManager) newIdentity() (*DummyIdentity, error) {
 }
 
 func (m *DummyManager) formatFilePath() string {
-	return fmt.Sprintf("%s/%s", m.dirPath, IdentityFile)
+	return fmt.Sprintf("%s/%s", m.workDir, IdentityFile)
 }
 
 type Identity interface {

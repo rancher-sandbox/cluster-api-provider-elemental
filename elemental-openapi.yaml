@@ -391,8 +391,6 @@ components:
       type: object
     V1Beta1Registration:
       properties:
-        apiEndpoint:
-          type: string
         caCert:
           type: string
         uri:

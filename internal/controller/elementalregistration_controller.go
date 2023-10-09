@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,7 +37,8 @@ import (
 // ElementalRegistrationReconciler reconciles a ElementalRegistration object.
 type ElementalRegistrationReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme      *runtime.Scheme
+	APIEndpoint *url.URL
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -92,7 +94,7 @@ func (r *ElementalRegistrationReconciler) Reconcile(ctx context.Context, req ctr
 
 func (r *ElementalRegistrationReconciler) setURI(registration *infrastructurev1beta1.ElementalRegistration) {
 	registration.Spec.Config.Elemental.Registration.URI = fmt.Sprintf("%s%s%s/namespaces/%s/registrations/%s",
-		registration.Spec.Config.Elemental.Registration.APIEndpoint,
+		r.APIEndpoint.String(),
 		api.Prefix,
 		api.PrefixV1,
 		registration.Namespace,

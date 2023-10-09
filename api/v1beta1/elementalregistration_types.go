@@ -127,9 +127,6 @@ type Reset struct {
 
 type Registration struct {
 	// +optional
-	// FIXME: Move this to operator argument
-	APIEndpoint string `json:"apiEndpoint,omitempty" yaml:"apiEndpoint,omitempty" mapstructure:"apiEndpoint"`
-	// +optional
 	URI string `json:"uri,omitempty" yaml:"uri,omitempty" mapstructure:"uri"`
 	// +optional
 	CACert string `json:"caCert,omitempty" yaml:"caCert,omitempty" mapstructure:"caCert"`
@@ -162,7 +159,7 @@ type Agent struct {
 
 type Hostname struct {
 	// +optional
-	// +kubebuilder:default:=true
+	// +kubebuilder:default:=false
 	UseExisting bool `json:"useExisting,omitempty" yaml:"useExisting,omitempty" mapstructure:"useExisting"`
 	// +optional
 	Prefix string `json:"prefix,omitempty" yaml:"prefix,omitempty" mapstructure:"prefix"`
@@ -178,6 +175,6 @@ type Elemental struct {
 	// +optional
 	Registration Registration `json:"registration,omitempty" yaml:"registration,omitempty"`
 	// +optional
-	// +kubebuilder:default:={"debug":false,"reconciliation":10000000000,"hostname":{"useExisting":true},"installer":"unmanaged"}
+	// +kubebuilder:default:={"debug":false,"reconciliation":10000000000,"hostname":{"useExisting":false},"installer":"unmanaged"}
 	Agent Agent `json:"agent,omitempty" yaml:"agent,omitempty"`
 }

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
@@ -291,6 +290,7 @@ func (h *DeleteElementalHostHandler) ServeHTTP(response http.ResponseWriter, req
 	registration := &infrastructurev1beta1.ElementalRegistration{}
 	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: registrationName}, registration); err != nil {
 		if k8sapierrors.IsNotFound(err) {
+			logger.Info("ElementalRegistration not found")
 			response.WriteHeader(http.StatusNotFound)
 			WriteResponse(logger, response, fmt.Sprintf("ElementalRegistration '%s' not found", registrationName))
 		} else {
@@ -305,6 +305,7 @@ func (h *DeleteElementalHostHandler) ServeHTTP(response http.ResponseWriter, req
 	host := &infrastructurev1beta1.ElementalHost{}
 	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: hostName}, host); err != nil {
 		if k8sapierrors.IsNotFound(err) {
+			logger.Info("ElementalHost not found")
 			response.WriteHeader(http.StatusNotFound)
 			WriteResponse(logger, response, fmt.Sprintf("ElementalHost '%s' not found", hostName))
 		} else {
@@ -315,27 +316,20 @@ func (h *DeleteElementalHostHandler) ServeHTTP(response http.ResponseWriter, req
 		return
 	}
 
-	// Initializing Patch helper
-	patchHelper, err := patch.NewHelper(host, h.k8sClient)
-	if err != nil {
-		logger.Error(err, "Initializing ElementalHost patch helper")
-		response.WriteHeader(http.StatusInternalServerError)
-		WriteResponse(logger, response, "Could not initialize ElementalHost patch helper")
+	if !host.GetDeletionTimestamp().IsZero() {
+		logger.Info("ElementalHost is already scheduled for deletion")
+		response.WriteHeader(http.StatusAccepted)
 		return
 	}
 
-	now := metav1.NewTime(time.Now())
-	host.DeletionTimestamp = &now
-
-	if err := patchHelper.Patch(request.Context(), host); err != nil {
-		logger.Error(err, "Could not patch ElementalHost")
+	if err := h.k8sClient.Delete(request.Context(), host); err != nil {
+		logger.Error(err, "Deleting ElementalHost")
 		response.WriteHeader(http.StatusInternalServerError)
-		WriteResponse(logger, response, fmt.Sprintf("Could not patch ElementalHost '%s'", hostName))
+		WriteResponse(logger, response, fmt.Sprintf("Could not delete ElementalHost '%s'", hostName))
 		return
 	}
 
 	logger.Info("ElementalHost marked for deletion")
-
 	response.WriteHeader(http.StatusAccepted)
 }
 

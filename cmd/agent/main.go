@@ -101,7 +101,7 @@ func newCommand(fs vfs.FS) *cobra.Command {
 			switch conf.Agent.Installer {
 			case installerUnmanaged:
 				log.Info("Using Unmanaged OS Installer")
-				installer = host.NewUnmanagedInstaller(fs, conf.Agent.WorkDir)
+				installer = host.NewUnmanagedInstaller(fs, configPath, conf.Agent.WorkDir)
 			case installerElemental:
 				log.Info("Using Elemental Installer")
 				installer = host.NewElementalInstaller(fs)
@@ -126,11 +126,6 @@ func newCommand(fs vfs.FS) *cobra.Command {
 			}
 
 			// Normal reconcile
-			log.Debug("Fetching remote registration")
-			registration, err := client.GetRegistration()
-			if err != nil {
-				return fmt.Errorf("getting remote Registration: %w", err)
-			}
 			log.Info("Entering reconciliation loop")
 			for {
 				// Patch the host and receive the patched remote host back
@@ -152,7 +147,7 @@ func newCommand(fs vfs.FS) *cobra.Command {
 				// Handle Reset Needed
 				if host.NeedsReset {
 					log.Info("Triggering reset")
-					if err := installer.TriggerReset(registration); err != nil {
+					if err := installer.TriggerReset(); err != nil {
 						log.Error(err, "handling reset needed")
 					} else {
 						// If Reset was triggered successfully, exit the program.
@@ -161,7 +156,7 @@ func newCommand(fs vfs.FS) *cobra.Command {
 					}
 				}
 
-				log.Debug("Waiting '%s' ...", conf.Agent.Reconciliation.String())
+				log.Debugf("Waiting %s...", conf.Agent.Reconciliation.String())
 				time.Sleep(conf.Agent.Reconciliation)
 			}
 		},
@@ -177,7 +172,7 @@ func newCommand(fs vfs.FS) *cobra.Command {
 }
 
 func getConfig(fs vfs.FS) (config.Config, error) {
-	conf := config.Config{}
+	conf := config.DefaultConfig()
 
 	// Use go-vfs afero compatibility layer (required by Viper)
 	afs := vfsafero.NewAferoFS(fs)

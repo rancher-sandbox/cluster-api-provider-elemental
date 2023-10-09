@@ -16,6 +16,7 @@ import (
 
 const (
 	sentinelFileResetNeeded = "reset.needed"
+	originalHostname        = "original.hostname"
 )
 
 var (
@@ -25,7 +26,7 @@ var (
 
 type Installer interface {
 	Install(conf api.RegistrationResponse, hostnameToSet string) error
-	TriggerReset(conf api.RegistrationResponse) error
+	TriggerReset() error
 	Reset(conf api.RegistrationResponse) error
 }
 
@@ -48,7 +49,7 @@ func (i *ElementalInstaller) Install(_ api.RegistrationResponse, _ string) error
 	return ErrManagedOSNotSupportedYet
 }
 
-func (i *ElementalInstaller) TriggerReset(_ api.RegistrationResponse) error {
+func (i *ElementalInstaller) TriggerReset() error {
 	log.Debug("Triggering Elemental reset")
 	return ErrManagedOSNotSupportedYet
 }
@@ -63,12 +64,14 @@ var _ Installer = (*UnmanagedInstaller)(nil)
 type UnmanagedInstaller struct {
 	fs         vfs.FS
 	configPath string
+	workDir    string
 }
 
-func NewUnmanagedInstaller(fs vfs.FS, configPath string) Installer {
+func NewUnmanagedInstaller(fs vfs.FS, configPath string, workDir string) Installer {
 	return &UnmanagedInstaller{
 		fs:         fs,
 		configPath: configPath,
+		workDir:    workDir,
 	}
 }
 
@@ -89,8 +92,8 @@ func (i *UnmanagedInstaller) Install(conf api.RegistrationResponse, hostnameToSe
 	return nil
 }
 
-func (i *UnmanagedInstaller) TriggerReset(conf api.RegistrationResponse) error {
-	sentinelFile := i.formatResetSentinelFile(conf.Config.Elemental.Agent.WorkDir)
+func (i *UnmanagedInstaller) TriggerReset() error {
+	sentinelFile := i.formatResetSentinelFile(i.workDir)
 	log.Infof("Creating reset sentinel file: %s", sentinelFile)
 	if err := utils.WriteFile(i.fs, api.WriteFile{
 		Path: sentinelFile,

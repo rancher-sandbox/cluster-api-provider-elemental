@@ -2,9 +2,35 @@
 
 ## Usage
 
-```bash
-elemental-agent --help
-```
+1. On a clean host, install Elemental first:  
+
+    ```bash
+    elemental-agent --install
+    ```
+
+    When using the `unmanaged` installer, the agent will fetch the remote `ElementalRegistration` to override the local config.  
+    Also a call to `hostnamectl` will be triggered to set the hostname according to `ElementalRegistration` config.  
+    Finally, a new `ElementalHost` will be created using the selected hostname as unique identifier.  
+    It is *not* possible to run `elemental --install` twice on the same machine, before `elemental --reset` has been called.  
+
+1. Operating normally:  
+
+    ```bash
+    elemental-agent
+    ```
+
+    During normal operation, the agent may receive instructions from the Elemental API to reset this host.  
+    When using the `unmanaged` installer, a `reset.needed` sentinel file will be created in the configured work directory (`/var/lib/elemental/agent` by default).  
+    The agent will then terminate.  
+
+1. Resetting the host:  
+
+    If using the `unmanaged` installer, the `reset.needed` sentinel file must be deleted before reset.  
+    This guarantees the host administrator reset the machine correctly. For example by uninstalling and stopping running services (for example `k3s`), removing configuration files, etc.
+
+    ```bash
+    elemental-agent --reset
+    ```
 
 ## Config
 
@@ -33,9 +59,9 @@ agent:
   workDir: /var/lib/elemental/agent
   # Hostname settings
   hostname:
-    useExisting: true
+    useExisting: false
     prefix: ""
-  # Add SMBIOS labels
+  # Add SMBIOS labels (not implemented yet)
   noSmbios: false
   # Enable agent debug logs
   debug: false

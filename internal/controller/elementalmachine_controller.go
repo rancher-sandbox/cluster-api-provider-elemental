@@ -43,10 +43,6 @@ import (
 	ilog "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/log"
 )
 
-const (
-	defaultMachineRequeuePeriod = 10 * time.Second
-)
-
 // ElementalMachineReconciler reconciles a ElementalMachine object.
 type ElementalMachineReconciler struct {
 	client.Client
@@ -238,7 +234,7 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		}
 	}()
 
-	if elementalMachine.GetDeletionTimestamp() == nil || elementalMachine.GetDeletionTimestamp().IsZero() {
+	if elementalMachine.GetDeletionTimestamp().IsZero() {
 		// The object is not being deleted, so register the finalizer
 		if !controllerutil.ContainsFinalizer(elementalMachine, infrastructurev1beta1.FinalizerElementalMachine) {
 			// Reconciliation step #4: Add the provider-specific finalizer, if needed
@@ -291,7 +287,18 @@ func (r *ElementalMachineReconciler) reconcileNormal(ctx context.Context, elemen
 
 	// Reconciliation step #9: Set status.ready to true
 	host := &infrastructurev1beta1.ElementalHost{}
-	if err := r.Client.Get(ctx, client.ObjectKey{Namespace: elementalMachine.Status.HostRef.Namespace, Name: elementalMachine.Status.HostRef.Name}, host); err != nil {
+	err := r.Client.Get(ctx, client.ObjectKey{Namespace: elementalMachine.Status.HostRef.Namespace, Name: elementalMachine.Status.HostRef.Name}, host)
+	// If the ElementalHost was not found, assume it was deleted, for example due to hardware failure.
+	// Re-association with a new host should happen for this ElementalMachine then.
+	if apierrors.IsNotFound(err) {
+		logger.Info("ElementalHost is not found. Removing association reference", ilog.KeyElementalHost, elementalMachine.Status.HostRef.Name)
+		elementalMachine.Spec.ProviderID = nil
+		elementalMachine.Status.HostRef = nil
+		// TODO: Most likely deserves a specific failure message.
+		elementalMachine.Status.Ready = false
+		return ctrl.Result{RequeueAfter: time.Second}, nil
+	}
+	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("fetching associated ElementalHost: %w", err)
 	}
 	if host.Status.Installed && host.Status.Bootstrapped {
@@ -337,7 +344,7 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 	}
 	if elementalHostCandidate == nil {
 		logger.Info("No ElementalHosts available for association. Waiting for new hosts to be provisioned.")
-		return ctrl.Result{RequeueAfter: defaultMachineRequeuePeriod}, nil
+		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
 	}
 
 	logger = logger.WithValues(ilog.KeyElementalHost, elementalHostCandidate.Name)
