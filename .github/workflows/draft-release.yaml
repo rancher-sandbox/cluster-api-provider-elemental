@@ -35,7 +35,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.GITHUB_REF_NAME }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.GITHUB_REF_NAME }}
       # Update infrastructure manifest with new image tag
       - name: Update infrastructure manifest
         run: IMG_TAG=${{ env.GITHUB_REF_NAME }} make generate-infra-yaml
