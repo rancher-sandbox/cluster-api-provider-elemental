@@ -176,8 +176,8 @@ For more information on how to configure and use the agent, please read the [doc
 1. Install the agent:  
 
     ```bash
-    curl -L https://github.com/rancher-sandbox/cluster-api-provider-elemental/releases/downloads/v0.0.1/elemental_agent_linux_amd64 -o elemental-agent
-    mv ./elemental-agent /usr/local/sbin/elemental-agent
+    curl -L https://github.com/rancher-sandbox/cluster-api-provider-elemental/releases/download/v0.0.1/elemental_agent_linux_amd64 -o elemental-agent
+    install -o root -g root -m 0755 elemental-agent /usr/local/sbin/elemental-agent
     ```
 
 1. Generate the initial agent config file:  
