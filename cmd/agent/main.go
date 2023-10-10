@@ -1,12 +1,14 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
 
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/host"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/hostname"
 	log "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils"
@@ -20,7 +22,10 @@ import (
 )
 
 const (
-	configPathDefault = "/oem/elemental/agent/config.yaml"
+	configPathDefault     = "/etc/elemental/agent/config.yaml"
+	bootstrapSentinelFile = "/run/cluster-api/bootstrap-success.complete"
+	installerUnmanaged    = "unmanaged"
+	installerElemental    = "elemental"
 )
 
 // Flags.
@@ -28,7 +33,17 @@ var (
 	versionFlag bool
 	resetFlag   bool
 	installFlag bool
-	configPath  string
+	debugFlag   bool
+)
+
+// Arguments.
+var (
+	configPath string
+)
+
+// Errors.
+var (
+	ErrUnknownInstaller = errors.New("unknown installer")
 )
 
 func main() {
@@ -52,140 +67,97 @@ func newCommand(fs vfs.FS) *cobra.Command {
 				return nil
 			}
 			// Parse config file
-			config, err := getConfig(fs)
+			conf, err := getConfig(fs)
 			if err != nil {
 				return fmt.Errorf("parsing configuration file '%s': %w", configPath, err)
 			}
 			// Set debug logs
-			if config.Agent.Debug {
+			if conf.Agent.Debug || debugFlag {
 				log.EnableDebug()
 				log.Debug("Debug logging enabled")
 			}
+			// Sanity checks
+			if installFlag && resetFlag {
+				log.Info("--install and --reset are mutually exclusive")
+				return nil
+			}
+			// Initialize WorkDir
+			if err := utils.CreateDirectory(fs, conf.Agent.WorkDir); err != nil {
+				return fmt.Errorf("creating work directory '%s': %w", conf.Agent.WorkDir, err)
+			}
 			// Initialize Elemental API Client
-			client, err := client.NewClient(fs, config)
+			client, err := client.NewClient(fs, conf)
 			if err != nil {
 				return fmt.Errorf("initializing Elemental API client: %w", err)
 			}
+			// Get current hostname
+			currentHostname, err := hostname.GetCurrentHostname()
+			if err != nil {
+				return fmt.Errorf("getting current hostname: %w", err)
+			}
+			// Initialize installer
+			log.Info("Initializing Installer")
+			var installer host.Installer
+			switch conf.Agent.Installer {
+			case installerUnmanaged:
+				log.Info("Using Unmanaged OS Installer")
+				installer = host.NewUnmanagedInstaller(fs, configPath, conf.Agent.WorkDir)
+			case installerElemental:
+				log.Info("Using Elemental Installer")
+				installer = host.NewElementalInstaller(fs)
+			default:
+				return fmt.Errorf("parsing installer '%s': %w", conf.Agent.Installer, ErrUnknownInstaller)
+			}
+
+			// Install
 			if installFlag {
 				log.Info("Installing Elemental")
-				// This should:
-				// 1. Get the remote ElementalRegistration
-				//
-				// client.GetRegistration()
-				//
-				// 2. Pick and set a Hostname according to the remote ElementalRegistration config
-				//	  Still not sure about this. The problem is that the Hostname is used as primary key in the HTTP api.
-				//    This may lead to collisions, so then what should the end user do in this case?
-				//    Do we want to error out and force a reprovisioning in case 2 machines within the same registration have the same hostname?
-				//    If not we can change the primary keys to use the k8s UUIDs instead.
-				//    Note that in any case the elemental-toolkit will need to persist some hostnamectl instructions on install and reset.
-				//
-				// if registration.hostname.useExisting {
-				//	 hostname = hostname.FormatCurrent() // The idea here is that this one may be set by the DHCP client
-				// } else {
-				//   hostname = hostname.FormatRandom()
-				// }
-				//
-				// 3. Create new private/pub keys pair
-				//
-				// tls.yadda yadda
-				//
-				// 4. POST a new ElementalHost through the API (including the pub key to be used to authorize further PATCH request)
-				//
-				// client.CreateMachineHost(mynewhost)
-				//
-				// 4. Install Elemental
-				//    Considering points 2 and 3, we will need elemental-toolkit to persist the hostname and the key pair.
-				//    This can already be done simply by exploting cloud-init, no changes needed.
-				//
-				// installer.InstallElemental()
-				//
-				// 5. PATCH the ElementalHost with the "installed" flag on
-				//    Note that we first register the ElementalHost and then we attempt the installation.
-				//    This has the benefit of enabling tracking of the installation status, but what to do if the installation goes wrong?
-				//    Ideally the agent will try to recover by only repeating step 1. and 4., to fetch a potentially updated registration and try install again.
-				//    However if this ultimately fails, maybe because the hardware is found to be defective beyond repair, the end user will need to clean the ElementalHost manually.
-				//
-				// client.PatchMachineHost(myhostpatch) // --> "installed": true
-				//
-				// 5. Reboot to active system
+				handleInstall(client, installer, conf.Agent.Reconciliation)
+				log.Info("Installation successful")
 				return nil
 			}
+
+			// Reset
 			if resetFlag {
 				log.Info("Resetting Elemental")
-				// Very similar to install flow
+				handleReset(client, installer, conf.Agent.Reconciliation, currentHostname)
+				log.Info("Reset successful")
 				return nil
 			}
 
-			// <JustForDemo>
-			var hname string
-			log.Info("Demoing Elemental")
-			registration, err := client.GetRegistration()
-			if err != nil {
-				return fmt.Errorf("getting remote registration: %w", err)
-			}
-
-			log.Info("Setting hostname")
-			if registration.Config.Elemental.Registration.Hostname.UseExisting {
-				hname, err = hostname.FormatCurrent(registration.Config.Elemental.Registration.Hostname.Prefix)
+			// Normal reconcile
+			log.Info("Entering reconciliation loop")
+			for {
+				// Patch the host and receive the patched remote host back
+				log.Debug("Patching host")
+				host, err := client.PatchHost(api.HostPatchRequest{}, currentHostname)
 				if err != nil {
-					return fmt.Errorf("formatting current hostname with prefix '%s': %w", registration.Config.Elemental.Registration.Hostname.Prefix, err)
-				}
-			} else {
-				hname = hostname.FormatRandom(registration.Config.Elemental.Registration.Hostname.Prefix)
-			}
-			log.Infof("Picked hostname '%s'", hname)
-
-			log.Info("Registering new ElementalHost")
-			if err := client.CreateMachineHost(api.HostCreateRequest{
-				Name: hname,
-			}); err != nil {
-				return fmt.Errorf("registering new ElementalHost: %w", err)
-			}
-
-			log.Info("Pretending that the installation was successful")
-			if _, err := client.PatchMachineHost(api.HostPatchRequest{
-				Installed: ptr.To(true),
-			}, hname); err != nil {
-				return fmt.Errorf("patching ElementalHost after installation: %w", err)
-			}
-			// </JustForDemo>
-
-			// Main host reconciliation loop
-			for { // TODO: Maybe use os signals to exit from here nicely
-				log.Info("Entering reconciliation loop")
-
-				host, err := client.PatchMachineHost(api.HostPatchRequest{}, hname)
-				if err != nil {
-					log.Error(fmt.Errorf("patching ElementalHost during normal reconcile: %w", err), "")
+					log.Error(err, "patching ElementalHost during normal reconcile")
 				}
 
+				// Handle bootstrap if needed
 				if host.BootstrapReady && !host.Bootstrapped {
-					log.Info("Fetching bootstrap instructions")
-					bootstrap, err := client.GetBootstrap(hname)
-					if err != nil {
-						log.Error(fmt.Errorf("fetching bootstrap instructions: %w", err), "")
+					log.Info("Applying bootstrap config")
+					if err := handleBootstrap(fs, client, currentHostname); err != nil {
+						log.Error(err, "handling bootstrap")
 					}
+					log.Info("Bootstrap config applied successfully")
+				}
 
-					for _, file := range bootstrap.Files {
-						if err := utils.WriteFile(fs, file); err != nil {
-							log.Error(err, "writing bootstrap file")
-						}
-					}
-
-					for _, command := range bootstrap.Commands {
-						if err := utils.RunCommand(command); err != nil {
-							log.Error(err, "running bootstrap command")
-						}
-					}
-
-					log.Info("Applied bootstrap instructions")
-					if _, err := client.PatchMachineHost(api.HostPatchRequest{Bootstrapped: ptr.To(true)}, hname); err != nil {
-						log.Error(fmt.Errorf("patching ElementalHost after bootstrap: %w", err), "")
+				// Handle Reset Needed
+				if host.NeedsReset {
+					log.Info("Triggering reset")
+					if err := installer.TriggerReset(); err != nil {
+						log.Error(err, "handling reset needed")
+					} else {
+						// If Reset was triggered successfully, exit the program.
+						log.Info("Reset was triggered successfully. Exiting program.")
+						return nil
 					}
 				}
 
-				time.Sleep(config.Agent.Reconciliation)
+				log.Debugf("Waiting %s...", conf.Agent.Reconciliation.String())
+				time.Sleep(conf.Agent.Reconciliation)
 			}
 		},
 	}
@@ -194,12 +166,13 @@ func newCommand(fs vfs.FS) *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&versionFlag, "version", false, "print version and exit")
 	cmd.PersistentFlags().BoolVar(&resetFlag, "reset", false, "reset the Elemental installation")
 	cmd.PersistentFlags().BoolVar(&installFlag, "install", false, "install Elemental")
+	cmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "enable debug logging")
 	cmd.PersistentFlags().StringVar(&configPath, "config", configPathDefault, "agent config path")
 	return cmd
 }
 
-func getConfig(fs vfs.FS) (agent.Config, error) {
-	config := agent.DefaultConfig()
+func getConfig(fs vfs.FS) (config.Config, error) {
+	conf := config.DefaultConfig()
 
 	// Use go-vfs afero compatibility layer (required by Viper)
 	afs := vfsafero.NewAferoFS(fs)
@@ -207,12 +180,160 @@ func getConfig(fs vfs.FS) (agent.Config, error) {
 
 	viper.SetConfigFile(configPath)
 	if err := viper.ReadInConfig(); err != nil {
-		return agent.Config{}, fmt.Errorf("reading config: %w", err)
+		return config.Config{}, fmt.Errorf("reading config: %w", err)
 	}
 
-	if err := viper.Unmarshal(&config); err != nil {
-		return agent.Config{}, fmt.Errorf("unmarshalling config: %w", err)
+	if err := viper.Unmarshal(&conf); err != nil {
+		return config.Config{}, fmt.Errorf("unmarshalling config: %w", err)
 	}
 
-	return config, nil
+	return conf, nil
+}
+
+// TODO: Would be wiser to decouple host registration/agent-configuration from installation.
+// This could introduce a new --register flag, leaving the --install as optional (for unmanaged OS for example).
+// However, consider that setting the hostname must be part of the registration workflow,
+// so maybe decoupling would not be possible without a state/cache file where to store the hostname-to-be-set.
+func handleInstall(client client.Client, installer host.Installer, installationRecoveryPeriod time.Duration) {
+	alreadyRegistered := false
+	installationError := false
+	var newHostname string
+	for {
+		// Wait for recovery (end user may fix the remote installation instructions meanwhile)
+		if installationError {
+			log.Debugf("Waiting '%s' on installation error for installation instructions to mutate", installationRecoveryPeriod)
+			time.Sleep(installationRecoveryPeriod)
+		}
+		// Fetch remote Registration
+		log.Debug("Fetching remote registration")
+		registration, err := client.GetRegistration()
+		if err != nil {
+			log.Error(err, "getting remote Registration")
+			installationError = true
+			continue
+		}
+		// Pick the new hostname if not done yet
+		if len(newHostname) == 0 {
+			newHostname, err = hostname.PickHostname(registration.Config.Elemental.Agent.Hostname)
+			log.Debugf("Selected hostname: %s", newHostname)
+			if err != nil {
+				log.Error(err, "picking new hostname")
+				installationError = true
+				continue
+			}
+		}
+		// Register new Elemental Host
+		if !alreadyRegistered {
+			log.Debugf("Registering new host: %s", newHostname)
+			if err := client.CreateHost(api.HostCreateRequest{
+				Name:        newHostname,
+				Annotations: registration.HostAnnotations,
+				Labels:      registration.HostLabels,
+			}); err != nil {
+				log.Error(err, "registering new ElementalHost")
+				installationError = true
+				continue
+			}
+			alreadyRegistered = true
+		}
+		// Install
+		if err := installer.Install(registration, newHostname); err != nil {
+			// TODO: Patch the Elemental Host with installation failure status and reason
+			log.Error(err, "installing Elemental")
+			installationError = true
+			continue
+		}
+		// Report installation success
+		if _, err := client.PatchHost(api.HostPatchRequest{
+			Installed: ptr.To(true),
+		}, newHostname); err != nil {
+			log.Error(err, "patching host with installation successful")
+			installationError = true
+			continue
+		}
+		break
+	}
+}
+
+func handleReset(client client.Client, installer host.Installer, resetRecoveryPeriod time.Duration, hostname string) {
+	resetError := false
+	alreadyReset := false
+	for {
+		// Wait for recovery (end user may fix the remote reset instructions meanwhile)
+		if resetError {
+			log.Debugf("Waiting '%s' on reset error for reset instructions to mutate", resetRecoveryPeriod)
+			time.Sleep(resetRecoveryPeriod)
+		}
+		// Fetch remote Registration
+		log.Debug("Fetching remote registration")
+		registration, err := client.GetRegistration()
+		if err != nil {
+			log.Error(err, "getting remote Registration")
+			resetError = true
+			continue
+		}
+		// Mark ElementalHost for deletion
+		log.Debugf("Marking ElementalHost for deletion: %s", hostname)
+		if err := client.DeleteHost(hostname); err != nil {
+			log.Error(err, "marking host for deletion")
+			resetError = true
+			continue
+		}
+		// Reset
+		if !alreadyReset {
+			log.Debug("Resetting...")
+			if err := installer.Reset(registration); err != nil {
+				// TODO: Patch the Elemental Host with reset failure status and reason
+				log.Error(err, "resetting Elemental: %w")
+				resetError = true
+				continue
+			}
+			alreadyReset = true
+		}
+		// Report reset success
+		log.Debug("Patching ElementalHost as reset")
+		if _, err := client.PatchHost(api.HostPatchRequest{
+			Reset: ptr.To(true),
+		}, hostname); err != nil {
+			log.Error(err, "patching host with reset successful")
+			resetError = true
+			continue
+		}
+		break
+	}
+}
+
+func handleBootstrap(fs vfs.FS, client client.Client, hostname string) error {
+	// Avoid applying bootstrap multiple times
+	// See contract: https://cluster-api.sigs.k8s.io/developer/providers/bootstrap.html#sentinel-file
+	_, err := fs.Stat(bootstrapSentinelFile)
+	if os.IsNotExist(err) {
+		log.Debug("Fetching bootstrap config")
+		bootstrap, err := client.GetBootstrap(hostname)
+		if err != nil {
+			return fmt.Errorf("fetching bootstrap config: %w", err)
+		}
+
+		for _, file := range bootstrap.Files {
+			if err := utils.WriteFile(fs, file); err != nil {
+				return fmt.Errorf("writing bootstrap file: %w", err)
+			}
+		}
+
+		for _, command := range bootstrap.Commands {
+			if err := utils.RunCommand(command); err != nil {
+				return fmt.Errorf("running bootstrap command: %w", err)
+			}
+		}
+	} else if err != nil {
+		return fmt.Errorf("verifying bootstrap sentinel file '%s': %w", bootstrapSentinelFile, err)
+	}
+
+	// Patch the ElementalHost as successfully bootstrapped
+	if _, err := client.PatchHost(api.HostPatchRequest{Bootstrapped: ptr.To(true)}, hostname); err != nil {
+		return fmt.Errorf("patching ElementalHost after bootstrap: %w", err)
+	}
+	log.Info("Host successfully patched as bootstrapped")
+
+	return nil
 }

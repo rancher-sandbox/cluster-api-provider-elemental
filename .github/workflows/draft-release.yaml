@@ -1,0 +1,48 @@
+name: Create Release
+on:
+  push:
+    tags:
+    - 'v*'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: go.mod
+      # Build Agent binaries
+      - name: Build agent binaries
+        run: make build-agent-all
+      # Build and publish container image
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ GITHUB_REF_NAME }}
+      # Update infrastructure manifest with new image tag
+      - name: Update infrastructure manifest
+        run: IMG_TAG=${{ GITHUB_REF_NAME }} make generate-infra-yaml
+      # Create release
+      - name: Create release
+        uses: ncipollo/release-action@v1
+        with:
+          draft: true
+          generateReleaseNotes: true
+          artifacts: "bin/elemental_agent_linux_amd64, bin/elemental_agent_linux_arm64, infrastructure-elemental/v0.0.0/*.yaml"

@@ -17,7 +17,7 @@ spec:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: ElementalRegistration is the Schema for the elementalregistrations
+        description: ElementalRegistration is the Schema for the ElementalRegistrations
           API.
         properties:
           apiVersion:
@@ -33,8 +33,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: ElementalRegistrationSpec defines the desired state
-              of ElementalRegistration.
+            description: ElementalRegistrationSpec defines the desired state of ElementalRegistration.
             properties:
               config:
                 description: Config points to Elemental machine configuration.
@@ -43,7 +42,54 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   elemental:
                     properties:
+                      agent:
+                        default:
+                          debug: false
+                          hostname:
+                            useExisting: false
+                          installer: unmanaged
+                          reconciliation: 10000000000
+                        properties:
+                          debug:
+                            type: boolean
+                          hostname:
+                            default:
+                              useExisting: true
+                            properties:
+                              prefix:
+                                type: string
+                              useExisting:
+                                default: false
+                                type: boolean
+                            type: object
+                          insecureAllowHttp:
+                            type: boolean
+                          insecureSkipTlsVerify:
+                            type: boolean
+                          installer:
+                            default: unmanaged
+                            type: string
+                          noSmbios:
+                            type: boolean
+                          reconciliation:
+                            default: 10000000000
+                            description: A Duration represents the elapsed time between
+                              two instants as an int64 nanosecond count. The representation
+                              limits the largest representable duration to approximately
+                              290 years.
+                            format: int64
+                            type: integer
+                          useSystemCertPool:
+                            type: boolean
+                          workDir:
+                            default: /var/lib/elemental/agent
+                            type: string
+                        type: object
                       install:
+                        default:
+                          debug: false
+                          device: /dev/sda
+                          reboot: true
                         properties:
                           configDir:
                             type: string
@@ -78,20 +124,13 @@ spec:
                         properties:
                           caCert:
                             type: string
-                          hostname:
-                            properties:
-                              prefix:
-                                type: string
-                              useExisting:
-                                type: boolean
-                            type: object
-                          noSmbios:
-                            type: boolean
-                          url:
+                          uri:
                             type: string
                         type: object
                       reset:
                         default:
+                          debug: false
+                          enabled: false
                           reboot: true
                           resetOem: true
                           resetPersistent: true
@@ -120,22 +159,22 @@ spec:
                         type: object
                     type: object
                 type: object
-              machineAnnotations:
+              hostAnnotations:
                 additionalProperties:
                   type: string
-                description: MachineAnnotations are labels propagated to each ElementalHost
+                description: HostAnnotations are labels propagated to each ElementalHost
                   object linked to this registration.
                 type: object
-              machineLabels:
+              hostLabels:
                 additionalProperties:
                   type: string
-                description: MachineLabels are labels propagated to each ElementalHost
+                description: HostLabels are labels propagated to each ElementalHost
                   object linked to this registration.
                 type: object
             type: object
           status:
-            description: ElementalRegistrationStatus defines the observed state
-              of ElementalRegistration.
+            description: ElementalRegistrationStatus defines the observed state of
+              ElementalRegistration.
             type: object
         type: object
     served: true

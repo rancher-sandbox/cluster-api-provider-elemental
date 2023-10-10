@@ -77,12 +77,12 @@ spec:
             description: ElementalHostStatus defines the observed state of ElementalHost.
             properties:
               bootstrapped:
-                description: Bootstrapped references this host to have applied the
-                  Boostrap instructions successfully.
+                description: Bootstrapped is true when this host applied the Boostrap
+                  instructions successfully.
                 type: boolean
               installed:
-                description: Installed references this host to have been successfully
-                  installed by Elemental.
+                description: Installed is true when this host successfully installed
+                  by Elemental.
                 type: boolean
               machineRef:
                 description: MachineRef is an optional reference to a Cluster API
@@ -122,6 +122,14 @@ spec:
                     type: string
                 type: object
                 x-kubernetes-map-type: atomic
+              needsReset:
+                description: NeedsReset is true when reset of this host has been triggered.
+                  This can lead to the finalizer and deletion of the ElementalHost.
+                type: boolean
+              reset:
+                description: Reset is true when this host reset successfully. This
+                  can lead to the finalizer and deletion of the ElementalHost.
+                type: boolean
             type: object
         type: object
     served: true

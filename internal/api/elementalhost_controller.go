@@ -55,20 +55,20 @@ func (h *PatchElementalHostHandler) ServeHTTP(response http.ResponseWriter, requ
 	hostName := pathVars["hostName"]
 
 	logger := h.logger.WithValues(log.KeyNamespace, namespace).
-		WithValues(log.KeyElementalMachineRegistration, registrationName).
+		WithValues(log.KeyElementalRegistration, registrationName).
 		WithValues(log.KeyElementalHost, hostName)
 	logger.Info("Patching ElementalHost")
 
 	// Fetch registration
-	registration := &infrastructurev1beta1.ElementalMachineRegistration{}
+	registration := &infrastructurev1beta1.ElementalRegistration{}
 	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: registrationName}, registration); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			response.WriteHeader(http.StatusNotFound)
-			WriteResponse(logger, response, fmt.Sprintf("ElementalMachineRegistration '%s' not found", registrationName))
+			WriteResponse(logger, response, fmt.Sprintf("ElementalRegistration '%s' not found", registrationName))
 		} else {
-			logger.Error(err, "Could not fetch ElementalMachineRegistration")
+			logger.Error(err, "Could not fetch ElementalRegistration")
 			response.WriteHeader(http.StatusInternalServerError)
-			WriteResponse(logger, response, fmt.Sprintf("Could not fetch ElementalMachineRegistration '%s'", registrationName))
+			WriteResponse(logger, response, fmt.Sprintf("Could not fetch ElementalRegistration '%s'", registrationName))
 		}
 		return
 	}
@@ -113,7 +113,7 @@ func (h *PatchElementalHostHandler) ServeHTTP(response http.ResponseWriter, requ
 		return
 	}
 
-	hostPatchRequest.fromElementalHost(host)
+	hostPatchRequest.applyToElementalHost(host)
 	if err := patchHelper.Patch(request.Context(), host); err != nil {
 		logger.Error(err, "Could not patch ElementalHost")
 		response.WriteHeader(http.StatusInternalServerError)
@@ -188,19 +188,19 @@ func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, reque
 	registrationName := pathVars["registrationName"]
 
 	logger := h.logger.WithValues(log.KeyNamespace, namespace).
-		WithValues(log.KeyElementalMachineRegistration, registrationName)
+		WithValues(log.KeyElementalRegistration, registrationName)
 	logger.Info("Creating new ElementalHost")
 
 	// Fetch registration
-	registration := &infrastructurev1beta1.ElementalMachineRegistration{}
+	registration := &infrastructurev1beta1.ElementalRegistration{}
 	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: registrationName}, registration); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			response.WriteHeader(http.StatusNotFound)
-			WriteResponse(logger, response, fmt.Sprintf("ElementalMachineRegistration '%s' not found", registrationName))
+			WriteResponse(logger, response, fmt.Sprintf("ElementalRegistration '%s' not found", registrationName))
 		} else {
-			logger.Error(err, "Could not fetch ElementalMachineRegistration")
+			logger.Error(err, "Could not fetch ElementalRegistration")
 			response.WriteHeader(http.StatusInternalServerError)
-			WriteResponse(logger, response, fmt.Sprintf("Could not fetch ElementalMachineRegistration '%s'", registrationName))
+			WriteResponse(logger, response, fmt.Sprintf("Could not fetch ElementalRegistration '%s'", registrationName))
 		}
 		return
 	}
@@ -225,13 +225,16 @@ func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, reque
 		},
 	}
 
+	logger = logger.WithValues(log.KeyElementalHost, newHost.Name)
+
 	// Create new Host
 	if err := h.k8sClient.Create(request.Context(), &newHost); err != nil {
 		if k8sapierrors.IsAlreadyExists(err) {
+			logger.Error(err, "ElementalHost already exists")
 			response.WriteHeader(http.StatusConflict)
 			WriteResponse(logger, response, fmt.Sprintf("Host '%s' in namespace '%s' already exists", namespace, newHost.Name))
 		} else {
-			logger.Error(err, "Could not create ElementalHost", "namespace", namespace, "hostName", newHost.Name)
+			logger.Error(err, "Could not create ElementalHost")
 			response.WriteHeader(http.StatusInternalServerError)
 			WriteResponse(logger, response, fmt.Sprintf("Could not create Elemental Host '%s'", newHost.Name))
 		}
@@ -240,8 +243,94 @@ func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, reque
 
 	logger.Info("ElementalHost created successfully", log.KeyElementalHost, newHost.Name)
 
-	response.Header().Set("Location", fmt.Sprintf("%s%s/namespaces/%s/registrations/%s/hosts/%s", PrefixAPI, PrefixV1, namespace, registrationName, newHost.Name))
+	response.Header().Set("Location", fmt.Sprintf("%s%s/namespaces/%s/registrations/%s/hosts/%s", Prefix, PrefixV1, namespace, registrationName, newHost.Name))
 	response.WriteHeader(http.StatusCreated)
+}
+
+var _ OpenAPIDecoratedHandler = (*DeleteElementalHostHandler)(nil)
+var _ http.Handler = (*DeleteElementalHostHandler)(nil)
+
+type DeleteElementalHostHandler struct {
+	logger    logr.Logger
+	k8sClient client.Client
+}
+
+func NewDeleteElementalHostHandler(logger logr.Logger, k8sClient client.Client) *DeleteElementalHostHandler {
+	return &DeleteElementalHostHandler{
+		logger:    logger,
+		k8sClient: k8sClient,
+	}
+}
+
+func (h *DeleteElementalHostHandler) SetupOpenAPIOperation(oc openapi.OperationContext) error {
+	oc.SetSummary("Delete an existing ElementalHost")
+	oc.SetDescription("This endpoint deletes an existing ElementalHost.")
+
+	oc.AddReqStructure(HostDeleteRequest{})
+
+	oc.AddRespStructure(nil, WithDecoration("ElementalHost correctly deleted.", "", http.StatusAccepted))
+	oc.AddRespStructure(nil, WithDecoration("ElementalHost not found", "text/html", http.StatusNotFound))
+	oc.AddRespStructure(nil, WithDecoration("", "text/html", http.StatusInternalServerError))
+
+	return nil
+}
+
+func (h *DeleteElementalHostHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
+	pathVars := mux.Vars(request)
+	namespace := pathVars["namespace"]
+	registrationName := pathVars["registrationName"]
+	hostName := pathVars["hostName"]
+
+	logger := h.logger.WithValues(log.KeyNamespace, namespace).
+		WithValues(log.KeyElementalRegistration, registrationName).
+		WithValues(log.KeyElementalHost, hostName)
+	logger.Info("Deleting ElementalHost")
+
+	// Fetch ElementalRegistration (sanity check)
+	registration := &infrastructurev1beta1.ElementalRegistration{}
+	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: registrationName}, registration); err != nil {
+		if k8sapierrors.IsNotFound(err) {
+			logger.Info("ElementalRegistration not found")
+			response.WriteHeader(http.StatusNotFound)
+			WriteResponse(logger, response, fmt.Sprintf("ElementalRegistration '%s' not found", registrationName))
+		} else {
+			logger.Error(err, "Could not fetch ElementalRegistration")
+			response.WriteHeader(http.StatusInternalServerError)
+			WriteResponse(logger, response, fmt.Sprintf("Could not fetch ElementalRegistration '%s'", registrationName))
+		}
+		return
+	}
+
+	// Fetch ElementalHost
+	host := &infrastructurev1beta1.ElementalHost{}
+	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: hostName}, host); err != nil {
+		if k8sapierrors.IsNotFound(err) {
+			logger.Info("ElementalHost not found")
+			response.WriteHeader(http.StatusNotFound)
+			WriteResponse(logger, response, fmt.Sprintf("ElementalHost '%s' not found", hostName))
+		} else {
+			logger.Error(err, "Could not fetch ElementalHost")
+			response.WriteHeader(http.StatusInternalServerError)
+			WriteResponse(logger, response, fmt.Sprintf("Could not fetch ElementalHost '%s'", hostName))
+		}
+		return
+	}
+
+	if !host.GetDeletionTimestamp().IsZero() {
+		logger.Info("ElementalHost is already scheduled for deletion")
+		response.WriteHeader(http.StatusAccepted)
+		return
+	}
+
+	if err := h.k8sClient.Delete(request.Context(), host); err != nil {
+		logger.Error(err, "Deleting ElementalHost")
+		response.WriteHeader(http.StatusInternalServerError)
+		WriteResponse(logger, response, fmt.Sprintf("Could not delete ElementalHost '%s'", hostName))
+		return
+	}
+
+	logger.Info("ElementalHost marked for deletion")
+	response.WriteHeader(http.StatusAccepted)
 }
 
 var _ OpenAPIDecoratedHandler = (*GetElementalHostBootstrapHandler)(nil)
@@ -279,20 +368,20 @@ func (h *GetElementalHostBootstrapHandler) ServeHTTP(response http.ResponseWrite
 	hostName := pathVars["hostName"]
 
 	logger := h.logger.WithValues(log.KeyNamespace, namespace).
-		WithValues(log.KeyElementalMachineRegistration, registrationName).
+		WithValues(log.KeyElementalRegistration, registrationName).
 		WithValues(log.KeyElementalHost, hostName)
 	logger.Info("Getting ElementalHost Bootstrap")
 
 	// Fetch registration
-	registration := &infrastructurev1beta1.ElementalMachineRegistration{}
+	registration := &infrastructurev1beta1.ElementalRegistration{}
 	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: registrationName}, registration); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			response.WriteHeader(http.StatusNotFound)
-			WriteResponse(logger, response, fmt.Sprintf("ElementalMachineRegistration '%s' not found", registrationName))
+			WriteResponse(logger, response, fmt.Sprintf("ElementalRegistration '%s' not found", registrationName))
 		} else {
-			logger.Error(err, "Could not fetch ElementalMachineRegistration")
+			logger.Error(err, "Could not fetch ElementalRegistration")
 			response.WriteHeader(http.StatusInternalServerError)
-			WriteResponse(logger, response, fmt.Sprintf("Could not fetch ElementalMachineRegistration '%s'", registrationName))
+			WriteResponse(logger, response, fmt.Sprintf("Could not fetch ElementalRegistration '%s'", registrationName))
 		}
 		return
 	}

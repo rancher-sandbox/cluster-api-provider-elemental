@@ -5,5 +5,5 @@ resources:
 - infrastructure_v1beta1_elementalmachinetemplate.yaml
 - infrastructure_v1beta1_elementalcluster.yaml
 - infrastructure_v1beta1_elementalclustertemplate.yaml
-- infrastructure_v1beta1_elementalmachineregistration.yaml
+- infrastructure_v1beta1_elementalregistration.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

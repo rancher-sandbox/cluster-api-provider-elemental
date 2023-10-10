@@ -35,12 +35,20 @@ type ElementalHostStatus struct {
 	// using this host.
 	// +optional
 	MachineRef *corev1.ObjectReference `json:"machineRef,omitempty"`
-	// Installed references this host to have been successfully installed by Elemental.
+	// Installed is true when this host successfully installed by Elemental.
 	// +optional
 	Installed bool `json:"installed,omitempty"`
-	// Bootstrapped references this host to have applied the Boostrap instructions successfully.
+	// Bootstrapped is true when this host applied the Boostrap instructions successfully.
 	// +optional
 	Bootstrapped bool `json:"bootstrapped,omitempty"`
+	// Reset is true when this host reset successfully.
+	// This can lead to the finalizer and deletion of the ElementalHost.
+	// +optional
+	Reset bool `json:"reset,omitempty"`
+	// NeedsReset is true when reset of this host has been triggered.
+	// This can lead to the finalizer and deletion of the ElementalHost.
+	// +optional
+	NeedsReset bool `json:"needsReset,omitempty"`
 }
 
 //+kubebuilder:object:root=true

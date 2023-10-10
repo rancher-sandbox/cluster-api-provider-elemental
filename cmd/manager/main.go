@@ -17,7 +17,10 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"flag"
+	"fmt"
+	"net/url"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -38,6 +41,17 @@ import (
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/controller"
 	//+kubebuilder:scaffold:imports
+)
+
+// Environment variables.
+const (
+	envElementalAPIURL = "ELEMENTAL_API_URL"
+)
+
+// Errors.
+var (
+	ErrElementalAPIURLNotSet   = errors.New("ELEMENTAL_API_URL environment variable is not set")
+	ErrElementalAPIURLNotValid = errors.New("ELEMENTAL_API_URL is not a valid URL")
 )
 
 var (
@@ -72,6 +86,17 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	ctx := ctrl.SetupSignalHandler()
+
+	elementalAPIURLValue := os.Getenv(envElementalAPIURL)
+	if len(elementalAPIURLValue) == 0 {
+		setupLog.Error(ErrElementalAPIURLNotSet, "unable to start manager")
+		os.Exit(1)
+	}
+	elementalAPIURL, err := url.Parse(elementalAPIURLValue)
+	if err != nil {
+		setupLog.Error(ErrElementalAPIURLNotValid, fmt.Sprintf("parsing '%s' as URL", elementalAPIURLValue))
+		os.Exit(1)
+	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
@@ -133,11 +158,12 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ElementalClusterTemplate")
 		os.Exit(1)
 	}
-	if err = (&controller.ElementalMachineRegistrationReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+	if err = (&controller.ElementalRegistrationReconciler{
+		Client:      mgr.GetClient(),
+		Scheme:      mgr.GetScheme(),
+		APIEndpoint: elementalAPIURL,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ElementalMachineRegistration")
+		setupLog.Error(err, "unable to create controller", "controller", "ElementalRegistration")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

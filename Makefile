@@ -2,7 +2,9 @@ GIT_COMMIT?=$(shell git rev-parse HEAD)
 GIT_COMMIT_SHORT?=$(shell git rev-parse --short HEAD)
 GIT_TAG?=$(shell git describe --abbrev=0 --tags 2>/dev/null || echo "v0.0.0" )
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG_NAME ?= ghcr.io/rancher-sandbox/cluster-api-provider-elemental
+IMG_TAG ?= latest
+IMG = ${IMG_NAME}:${IMG_TAG}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.27.1
 
@@ -78,8 +80,13 @@ test: manifests generate fmt vet envtest ## Run tests.
 ##@ Build
 
 .PHONY: build-agent
-build-agent: manifests generate fmt vet ## Build manager binary.
-	CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o bin/agent cmd/agent/main.go
+build-agent: manifests generate fmt vet ## Build manager binary for local architecture.
+	CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o bin/elemental_agent cmd/agent/main.go
+
+.PHONY: build-agent-all
+build-agent-all: manifests generate fmt vet ## Build manager binary for all architectures.
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags '$(LDFLAGS)' -o bin/elemental_agent_linux_amd64 cmd/agent/main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags '$(LDFLAGS)' -o bin/elemental_agent_linux_arm64 cmd/agent/main.go
 
 .PHONY: build-manager
 build-manager: manifests generate fmt vet ## Build manager binary.
@@ -101,10 +108,12 @@ docker-build: test ## Build docker image with the manager.
 		-t ${IMG} .
 
 .PHONY: docker-build-agent
-docker-build-agent: test build-agent ## Build docker image with the manager.
-	mkdir -p demo/bin
-	cp bin/agent demo/bin/agent
-	$(CONTAINER_TOOL) build -t agent:latest --no-cache ./demo
+docker-build-agent: test ## Build docker image with the manager.
+	$(CONTAINER_TOOL) build \
+		--build-arg "TAG=${GIT_TAG}" \
+		--build-arg "COMMIT=${GIT_COMMIT}" \
+		--build-arg "COMMITDATE=${COMMITDATE}" \
+		-t agent:latest -f Dockerfile.agent .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
@@ -189,11 +198,12 @@ $(ENVTEST): $(LOCALBIN)
 
 .PHONY: kind-load
 kind-load: docker-build
-	kind load docker-image docker.io/library/controller:latest
+	kind load docker-image ${IMG} --name elemental-capi-management
 
 .PHONY: generate-infra-yaml
 generate-infra-yaml:kustomize # Generate infrastructure-components.yaml for the provider
-	$(KUSTOMIZE) build config/default > infrastructure-elemental/v0.0.1/infrastructure-components.yaml
+	$(KUSTOMIZE) build config/default > infrastructure-elemental/v0.0.0/infrastructure-components.yaml
+	sed -i "s/IMAGE_TAG/${IMG_TAG}/g" infrastructure-elemental/v0.0.0/infrastructure-components.yaml
 
 .PHONY: lint
 lint: ## See: https://golangci-lint.run/usage/linters/
@@ -223,14 +233,14 @@ verify: $(addprefix verify-,$(ALL_VERIFY_CHECKS))
 verify-manifests: manifests
 	@if !(git diff --quiet HEAD); then \
 		git diff; \
-		echo "generated files are out of date, run make generate"; exit 1; \
+		echo "generated files are out of date, run make manifests"; exit 1; \
 	fi
 
 .PHONY: verify-openapi
 verify-openapi: openapi
 	@if !(git diff --quiet HEAD); then \
 		git diff; \
-		echo "generated files are out of date, run make generate"; exit 1; \
+		echo "generated files are out of date, run make openapi"; exit 1; \
 	fi
 
 .PHONY: verify-generate
@@ -238,4 +248,11 @@ verify-generate: generate
 	@if !(git diff --quiet HEAD); then \
 		git diff; \
 		echo "generated files are out of date, run make generate"; exit 1; \
+	fi
+
+.PHONY: verify-generate-infra-yaml
+verify-generate-infra-yaml: generate-infra-yaml
+	@if !(git diff --quiet HEAD); then \
+		git diff; \
+		echo "generated files are out of date, run make generate-infra-yaml"; exit 1; \
 	fi

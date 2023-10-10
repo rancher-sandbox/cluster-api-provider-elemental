@@ -1,5 +1,0 @@
-registration:
-  uri: http://172.18.0.2:30009/elemental/v1/namespaces/default/registrations/my-registration
-agent:
-  debug: true
-  reconciliation: 10s

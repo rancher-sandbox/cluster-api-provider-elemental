@@ -29,6 +29,12 @@ func (h *HostCreateRequest) toElementalHost(namespace string) infrastructurev1be
 	}
 }
 
+type HostDeleteRequest struct {
+	Namespace        string `path:"namespace"`
+	RegistrationName string `path:"registrationName"`
+	HostName         string `path:"hostName"`
+}
+
 type HostPatchRequest struct {
 	Namespace        string `path:"namespace"`
 	RegistrationName string `path:"registrationName"`
@@ -38,9 +44,10 @@ type HostPatchRequest struct {
 	Labels       map[string]string `json:"labels,omitempty"`
 	Bootstrapped *bool             `json:"bootstrapped,omitempty"`
 	Installed    *bool             `json:"installed,omitempty"`
+	Reset        *bool             `json:"reset,omitempty"`
 }
 
-func (h *HostPatchRequest) fromElementalHost(elementalHost *infrastructurev1beta1.ElementalHost) {
+func (h *HostPatchRequest) applyToElementalHost(elementalHost *infrastructurev1beta1.ElementalHost) {
 	elementalHost.Annotations = h.Annotations
 	elementalHost.Labels = h.Labels
 	if h.Installed != nil {
@@ -48,6 +55,9 @@ func (h *HostPatchRequest) fromElementalHost(elementalHost *infrastructurev1beta
 	}
 	if h.Bootstrapped != nil {
 		elementalHost.Status.Bootstrapped = *h.Bootstrapped
+	}
+	if h.Reset != nil {
+		elementalHost.Status.Reset = *h.Reset
 	}
 }
 
@@ -58,6 +68,7 @@ type HostResponse struct {
 	BootstrapReady bool              `json:"bootstrapReady,omitempty"`
 	Bootstrapped   bool              `json:"bootstrapped,omitempty"`
 	Installed      bool              `json:"installed,omitempty"`
+	NeedsReset     bool              `json:"needsReset,omitempty"`
 }
 
 func (h *HostResponse) fromElementalHost(elementalHost infrastructurev1beta1.ElementalHost) {
@@ -67,6 +78,7 @@ func (h *HostResponse) fromElementalHost(elementalHost infrastructurev1beta1.Ele
 	h.BootstrapReady = elementalHost.Spec.BootstrapSecret != nil
 	h.Bootstrapped = elementalHost.Status.Bootstrapped
 	h.Installed = elementalHost.Status.Installed
+	h.NeedsReset = elementalHost.Status.NeedsReset
 }
 
 type RegistrationGetRequest struct {
@@ -75,20 +87,20 @@ type RegistrationGetRequest struct {
 }
 
 type RegistrationResponse struct {
-	// MachineLabels are labels propagated to each ElementalHost object linked to this registration.
+	// HostLabels are labels propagated to each ElementalHost object linked to this registration.
 	// +optional
-	MachineLabels map[string]string `json:"machineLabels,omitempty"`
-	// MachineAnnotations are labels propagated to each ElementalHost object linked to this registration.
+	HostLabels map[string]string `json:"hostLabels,omitempty"`
+	// HostAnnotations are labels propagated to each ElementalHost object linked to this registration.
 	// +optional
-	MachineAnnotations map[string]string `json:"machineAnnotations,omitempty"`
+	HostAnnotations map[string]string `json:"hostAnnotations,omitempty"`
 	// Config points to Elemental machine configuration.
 	// +optional
 	Config *infrastructurev1beta1.Config `json:"config,omitempty"`
 }
 
-func (r *RegistrationResponse) fromElementalMachineRegistration(elementalRegistration infrastructurev1beta1.ElementalMachineRegistration) {
-	r.MachineLabels = elementalRegistration.Spec.MachineLabels
-	r.MachineAnnotations = elementalRegistration.Spec.MachineAnnotations
+func (r *RegistrationResponse) fromElementalRegistration(elementalRegistration infrastructurev1beta1.ElementalRegistration) {
+	r.HostLabels = elementalRegistration.Spec.HostLabels
+	r.HostAnnotations = elementalRegistration.Spec.HostAnnotations
 	r.Config = elementalRegistration.Spec.Config
 }
 
@@ -99,11 +111,11 @@ type BootstrapGetRequest struct {
 }
 
 type BootstrapResponse struct {
-	Files    []BootstrapFile `json:"write_files" yaml:"write_files"` //nolint:tagliatelle //Matching cloud-init schema
-	Commands []string        `json:"runcmd" yaml:"runcmd"`
+	Files    []WriteFile `json:"write_files" yaml:"write_files"` //nolint:tagliatelle //Matching cloud-init schema
+	Commands []string    `json:"runcmd" yaml:"runcmd"`
 }
 
-type BootstrapFile struct {
+type WriteFile struct {
 	Path        string `json:"path" yaml:"path"`
 	Owner       string `json:"owner" yaml:"owner"`
 	Permissions string `json:"permissions" yaml:"permissions"`

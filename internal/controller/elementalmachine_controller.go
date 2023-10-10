@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -26,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/patch"
@@ -39,10 +41,6 @@ import (
 
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	ilog "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/log"
-)
-
-const (
-	defaultRequeuePeriod = 10 * time.Second
 )
 
 // ElementalMachineReconciler reconciles a ElementalMachine object.
@@ -232,11 +230,11 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	defer func() {
 		// Reconciliation step #12: Patch the resource to persist changes
 		if err := patchHelper.Patch(ctx, elementalMachine); err != nil {
-			rerr = fmt.Errorf("patching ElementalMachine: %w", err)
+			rerr = errors.Join(rerr, fmt.Errorf("patching ElementalMachine: %w", err))
 		}
 	}()
 
-	if elementalMachine.GetDeletionTimestamp() == nil || elementalMachine.GetDeletionTimestamp().IsZero() {
+	if elementalMachine.GetDeletionTimestamp().IsZero() {
 		// The object is not being deleted, so register the finalizer
 		if !controllerutil.ContainsFinalizer(elementalMachine, infrastructurev1beta1.FinalizerElementalMachine) {
 			// Reconciliation step #4: Add the provider-specific finalizer, if needed
@@ -264,9 +262,11 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	// The object is up for deletion
 	if controllerutil.ContainsFinalizer(elementalMachine, infrastructurev1beta1.FinalizerElementalMachine) {
-		if err := r.reconcileDelete(ctx, elementalMachine); err != nil {
+		result, err := r.reconcileDelete(ctx, elementalMachine)
+		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("reconciling ElementalMachine deletion: %w", err)
 		}
+		return result, err
 	}
 
 	return ctrl.Result{}, nil
@@ -287,7 +287,18 @@ func (r *ElementalMachineReconciler) reconcileNormal(ctx context.Context, elemen
 
 	// Reconciliation step #9: Set status.ready to true
 	host := &infrastructurev1beta1.ElementalHost{}
-	if err := r.Client.Get(ctx, client.ObjectKey{Namespace: elementalMachine.Status.HostRef.Namespace, Name: elementalMachine.Status.HostRef.Name}, host); err != nil {
+	err := r.Client.Get(ctx, client.ObjectKey{Namespace: elementalMachine.Status.HostRef.Namespace, Name: elementalMachine.Status.HostRef.Name}, host)
+	// If the ElementalHost was not found, assume it was deleted, for example due to hardware failure.
+	// Re-association with a new host should happen for this ElementalMachine then.
+	if apierrors.IsNotFound(err) {
+		logger.Info("ElementalHost is not found. Removing association reference", ilog.KeyElementalHost, elementalMachine.Status.HostRef.Name)
+		elementalMachine.Spec.ProviderID = nil
+		elementalMachine.Status.HostRef = nil
+		// TODO: Most likely deserves a specific failure message.
+		elementalMachine.Status.Ready = false
+		return ctrl.Result{RequeueAfter: time.Second}, nil
+	}
+	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("fetching associated ElementalHost: %w", err)
 	}
 	if host.Status.Installed && host.Status.Bootstrapped {
@@ -325,7 +336,7 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 	var elementalHostCandidate *infrastructurev1beta1.ElementalHost
 	for _, host := range elementalHosts.Items {
 		// Only if this ElementalHost is installed and not already associated
-		if host.Status.Installed && host.Status.MachineRef == nil {
+		if host.Status.Installed && host.Status.MachineRef == nil && !host.Status.NeedsReset { //TODO: Use label filtering instead
 			host := host
 			elementalHostCandidate = &host
 			break
@@ -387,11 +398,41 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 	return ctrl.Result{}, nil
 }
 
-func (r *ElementalMachineReconciler) reconcileDelete(ctx context.Context, elementalMachine *infrastructurev1beta1.ElementalMachine) error {
+func (r *ElementalMachineReconciler) reconcileDelete(ctx context.Context, elementalMachine *infrastructurev1beta1.ElementalMachine) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).
 		WithValues(ilog.KeyNamespace, elementalMachine.Namespace).
 		WithValues(ilog.KeyElementalMachine, elementalMachine.Name)
 	logger.Info("Deletion ElementalMachine reconcile")
+
+	// If the ElementalMachine was already associated to an ElementalHost, trigger the reset of such host.
+	if elementalMachine.Status.HostRef != nil {
+		logger = logger.WithValues(ilog.KeyElementalHost, elementalMachine.Status.HostRef.Name)
+		logger.Info("Triggering Reset on associated ElementalHost")
+		// Fetch the ElementalHost.
+		host := &infrastructurev1beta1.ElementalHost{}
+		if err := r.Client.Get(ctx, types.NamespacedName{
+			Namespace: elementalMachine.Status.HostRef.Namespace,
+			Name:      elementalMachine.Status.HostRef.Name,
+		}, host); err != nil {
+			if apierrors.IsNotFound(err) {
+				return ctrl.Result{}, nil
+			}
+			return ctrl.Result{}, fmt.Errorf("fetching ElementalHost: %w", err)
+		}
+		// Create the patch helper.
+		patchHelper, err := patch.NewHelper(host, r.Client)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
+		}
+
+		host.Status.NeedsReset = true
+
+		// Patch
+		if err := patchHelper.Patch(ctx, host); err != nil {
+			return ctrl.Result{}, fmt.Errorf("patching ElementalHost: %w", err)
+		}
+	}
+
 	controllerutil.RemoveFinalizer(elementalMachine, infrastructurev1beta1.FinalizerElementalMachine)
-	return nil
+	return ctrl.Result{}, nil
 }

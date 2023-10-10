@@ -70,7 +70,7 @@ spec:
         - /manager
         args:
         - --leader-elect
-        image: docker.io/library/controller:latest
+        image: controller
         imagePullPolicy: IfNotPresent
         name: manager
         securityContext:

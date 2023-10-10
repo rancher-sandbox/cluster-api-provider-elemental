@@ -92,6 +92,40 @@ paths:
           description: Internal Server Error
       summary: Create a new ElementalHost
   /elemental/v1/namespaces/{namespace}/registrations/{registrationName}/hosts/{hostName}:
+    delete:
+      description: This endpoint deletes an existing ElementalHost.
+      parameters:
+      - in: path
+        name: namespace
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: registrationName
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: hostName
+        required: true
+        schema:
+          type: string
+      responses:
+        "202":
+          description: ElementalHost correctly deleted.
+        "404":
+          content:
+            text/html:
+              schema:
+                type: string
+          description: ElementalHost not found
+        "500":
+          content:
+            text/html:
+              schema:
+                type: string
+          description: Internal Server Error
+      summary: Delete an existing ElementalHost
     patch:
       description: This endpoint patches an existing ElementalHost.
       parameters:
@@ -183,17 +217,6 @@ paths:
       summary: Get ElementalHost bootstrap
 components:
   schemas:
-    ApiBootstrapFile:
-      properties:
-        content:
-          type: string
-        owner:
-          type: string
-        path:
-          type: string
-        permissions:
-          type: string
-      type: object
     ApiBootstrapResponse:
       properties:
         runcmd:
@@ -203,7 +226,7 @@ components:
           type: array
         write_files:
           items:
-            $ref: '#/components/schemas/ApiBootstrapFile'
+            $ref: '#/components/schemas/ApiWriteFile'
           nullable: true
           type: array
       type: object
@@ -236,6 +259,9 @@ components:
           additionalProperties:
             type: string
           type: object
+        reset:
+          nullable: true
+          type: boolean
       type: object
     ApiHostResponse:
       properties:
@@ -255,21 +281,55 @@ components:
           type: object
         name:
           type: string
+        needsReset:
+          type: boolean
       type: object
     ApiRegistrationResponse:
       properties:
         config:
           $ref: '#/components/schemas/V1Beta1Config'
-        machineAnnotations:
+        hostAnnotations:
           additionalProperties:
             type: string
           type: object
-        machineLabels:
+        hostLabels:
           additionalProperties:
             type: string
           type: object
       type: object
+    ApiWriteFile:
+      properties:
+        content:
+          type: string
+        owner:
+          type: string
+        path:
+          type: string
+        permissions:
+          type: string
+      type: object
     RuntimeRawExtension:
+      type: object
+    V1Beta1Agent:
+      properties:
+        debug:
+          type: boolean
+        hostname:
+          $ref: '#/components/schemas/V1Beta1Hostname'
+        insecureAllowHttp:
+          type: boolean
+        insecureSkipTlsVerify:
+          type: boolean
+        installer:
+          type: string
+        noSmbios:
+          type: boolean
+        reconciliation:
+          type: integer
+        useSystemCertPool:
+          type: boolean
+        workDir:
+          type: string
       type: object
     V1Beta1Config:
       properties:
@@ -282,6 +342,8 @@ components:
       type: object
     V1Beta1Elemental:
       properties:
+        agent:
+          $ref: '#/components/schemas/V1Beta1Agent'
         install:
           $ref: '#/components/schemas/V1Beta1Install'
         registration:
@@ -331,11 +393,7 @@ components:
       properties:
         caCert:
           type: string
-        hostname:
-          $ref: '#/components/schemas/V1Beta1Hostname'
-        noSmbios:
-          type: boolean
-        url:
+        uri:
           type: string
       type: object
     V1Beta1Reset:
