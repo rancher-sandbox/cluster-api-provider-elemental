@@ -81,12 +81,12 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 .PHONY: build-agent
 build-agent: manifests generate fmt vet ## Build manager binary for local architecture.
-	CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o bin/agent cmd/agent/main.go
+	CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o bin/elemental_agent cmd/agent/main.go
 
 .PHONY: build-agent-all
 build-agent-all: manifests generate fmt vet ## Build manager binary for all architectures.
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags '$(LDFLAGS)' -o bin/agent_linux_amd64 cmd/agent/main.go
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags '$(LDFLAGS)' -o bin/agent_linux_arm64 cmd/agent/main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags '$(LDFLAGS)' -o bin/elemental_agent_linux_amd64 cmd/agent/main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags '$(LDFLAGS)' -o bin/elemental_agent_linux_arm64 cmd/agent/main.go
 
 .PHONY: build-manager
 build-manager: manifests generate fmt vet ## Build manager binary.

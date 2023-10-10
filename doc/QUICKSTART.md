@@ -2,16 +2,50 @@
 
 ## Prerequisites
 
-1. [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) is used to bootstrap a CAPI management cluster.  
+1. This setup uses two machines. One to deploy the CAPI management cluster and one to deploy a single node k3s cluster.  
+   The machines must be able to reach each other on the network.  
+   The setup assumes `192.168.122.10` will be used for the CAPI management cluster (and to expose the Elemental API).  
+   `192.168.122.100` will be used by the host and used as `CONTROL_PLANE_ENDPOINT_IP` of the downstream k3s cluster.  
+
+1. On the **management** machine, [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) is used to bootstrap a CAPI management cluster.  
    The ElementalAPI will be exposed using a `NodePort` on `30009`. This port needs to be free and not blocked by any firewall.  
 
-1. A different host can be used to provision the downstream cluster using Elemental.  
-   The host and the CAPI management must be able to reach each other on the network.  
-   It is recommended to disable and stop the firewall to not interfere with the k3s deployment.  
-   If you are using VM under a [libvirt network](https://libvirt.org/formatnetwork.html#id3), please specify `forward mode="open"` to allow the CAPI management cluster to reach the VM.  
-   Note that if you are also provisioning the management cluster on a different VM within the same network, the default `forward mode="nat"` can be used.  
+1. On the **host** machine, it is recommended to disable and stop the firewall to not interfere with the k3s deployment.  
 
-## Management Cluster initialization
+## Preparation
+
+1. On the **management** machine, install the required dependencies: `docker`, `kind`, `helm`, `kubectl`, and `clusterctl`.
+   For example on a fresh OpenSUSE Tumbleweed installation, run:
+
+    ```bash
+    # Install dependencies
+    zypper install -y docker helm kubernetes1.27-client
+
+    # Install kind
+    [ $(uname -m) = x86_64 ] && curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+    chmod +x ./kind
+    mv ./kind /usr/local/bin/kind
+
+    # Install clusterctl
+    curl -L https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.5.2/clusterctl-linux-amd64 -o clusterctl
+    install -o root -g root -m 0755 clusterctl /usr/local/bin/clusterctl
+
+    systemctl enable docker
+    systemctl disable firewalld
+
+    # Reboot to please docker
+    reboot
+    ```
+
+1. On the **host** machine, no dependencies are needed since they will be included by `k3s`.  
+   The firewall however should be disabled.  
+
+   ```bash
+   systemctl disable firewalld
+   systemctl stop firewalld
+   ```
+
+## Management Cluster configuration
 
 1. Initialize a cluster:
 
@@ -21,10 +55,22 @@
     apiVersion: kind.x-k8s.io/v1alpha4
     nodes:
     - role: control-plane
+      image: kindest/node:v1.26.4
+      kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
       extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP
       - containerPort: 30009
         hostPort: 30009
-        listenAddress: "0.0.0.0"
         protocol: TCP
     EOF
     ```
@@ -81,17 +127,17 @@
 1. Set the `ELEMENTAL_API_URL` on the operator:
 
     ```bash
-    export ELEMENTAL_API_URL="http://172.18.0.2:30009" 
+    export ELEMENTAL_API_URL="http://192.168.122.10:30009" 
     kubectl -n elemental-system patch deployment elemental-controller-manager -p '{"spec":{"template":{"spec":{"containers":[{"name":"manager","env":[{"name":"ELEMENTAL_API_URL","value":"'${ELEMENTAL_API_URL}'"}]}]}}}}'
     ```
 
 1. Generate `cluster.yaml` config:
 
     ```bash
-    CONTROL_PLANE_ENDPOINT_IP=192.168.122.102 clusterctl generate cluster \
-    --infrastructure elemental:v0.0.0 \
+    CONTROL_PLANE_ENDPOINT_IP=192.168.122.100 clusterctl generate cluster \
+    --infrastructure elemental:v0.0.1 \
     --flavor k3s-single-node \
-    --kubernetes-version v1.27.4 \
+    --kubernetes-version v1.28.2 \
     elemental-cluster-k3s > $HOME/elemental-cluster-k3s.yaml
     ```
 
@@ -130,9 +176,8 @@ For more information on how to configure and use the agent, please read the [doc
 1. Install the agent:  
 
     ```bash
-    curl -Lo ./elemental-agent https://github.com/rancher-sandbox/cluster-api-provider-elemental/releases/downloads/v0.0.1/agent_linux_amd64
-    chmod +x ./elemental-agent
-    mv ./elemental-agent /usr/local/bin/elemental-agent
+    curl -L https://github.com/rancher-sandbox/cluster-api-provider-elemental/releases/downloads/v0.0.1/elemental_agent_linux_amd64 -o elemental-agent
+    mv ./elemental-agent /usr/local/sbin/elemental-agent
     ```
 
 1. Generate the initial agent config file:  
@@ -146,7 +191,7 @@ For more information on how to configure and use the agent, please read the [doc
       insecureAllowHttp: true
       reconciliation: 10s
     registration:
-      uri: http://172.18.0.2:30009/elemental/v1/namespaces/default/registrations/my-registration
+      uri: http://192.168.122.10:30009/elemental/v1/namespaces/default/registrations/my-registration
     EOF
     ```
 

@@ -152,8 +152,9 @@ func (r *ElementalHostReconciler) reconcileDelete(ctx context.Context, host *inf
 				return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
 			}
 			elementalMachine.Status.HostRef = nil
+			elementalMachine.Status.Ready = false
 			elementalMachine.Spec.ProviderID = nil
-			if err := patchHelper.Patch(ctx, host); err != nil {
+			if err := patchHelper.Patch(ctx, elementalMachine); err != nil {
 				return ctrl.Result{}, fmt.Errorf("patching ElementalMachine: %w", err)
 			}
 		}

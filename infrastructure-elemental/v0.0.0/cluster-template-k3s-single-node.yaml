@@ -34,10 +34,6 @@ spec:
     name: ${CLUSTER_NAME}-control-plane
   replicas: 1
   version: ${KUBERNETES_VERSION}+k3s1
-  # kthreesConfigSpec:
-  #   agentConfig:
-  #     nodeTaints:
-  #     - node-role.kubernetes.io/master:-
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: ElementalCluster

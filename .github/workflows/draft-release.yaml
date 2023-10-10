@@ -45,4 +45,4 @@ jobs:
         with:
           draft: true
           generateReleaseNotes: true
-          artifacts: "bin/agent_linux_amd64, bin/agent_linux_arm64, infrastructure-elemental/v0.0.0/*.yaml"
+          artifacts: "bin/elemental_agent_linux_amd64, bin/elemental_agent_linux_arm64, infrastructure-elemental/v0.0.0/*.yaml"
