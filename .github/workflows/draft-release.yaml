@@ -35,10 +35,10 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ GITHUB_REF_NAME }}
+          tags: ${{ env.GITHUB_REF_NAME }}
       # Update infrastructure manifest with new image tag
       - name: Update infrastructure manifest
-        run: IMG_TAG=${{ GITHUB_REF_NAME }} make generate-infra-yaml
+        run: IMG_TAG=${{ env.GITHUB_REF_NAME }} make generate-infra-yaml
       # Create release
       - name: Create release
         uses: ncipollo/release-action@v1
