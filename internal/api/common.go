@@ -14,9 +14,6 @@ func WriteResponse(logger logr.Logger, writer http.ResponseWriter, response stri
 
 // WriteResponseBytes is a wrapper to handle HTTP response writing errors with logging.
 func WriteResponseBytes(logger logr.Logger, writer http.ResponseWriter, response []byte) {
-	if response == nil || len(response) == 0 {
-		return
-	}
 	if n, err := writer.Write(response); err != nil {
 		logger.Error(err, fmt.Sprintf("Could not write response, written %d bytes", n))
 	}
