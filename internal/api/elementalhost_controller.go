@@ -233,7 +233,7 @@ func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, reque
 		if k8sapierrors.IsAlreadyExists(err) {
 			logger.Error(err, "ElementalHost already exists")
 			response.WriteHeader(http.StatusConflict)
-			WriteResponse(logger, response, fmt.Sprintf("Host '%s' in namespace '%s' already exists", namespace, newHost.Name))
+			WriteResponse(logger, response, fmt.Sprintf("Host '%s' in namespace '%s' already exists", html.EscapeString(namespace), html.EscapeString(newHost.Name)))
 		} else {
 			logger.Error(err, "Could not create ElementalHost")
 			response.WriteHeader(http.StatusInternalServerError)
