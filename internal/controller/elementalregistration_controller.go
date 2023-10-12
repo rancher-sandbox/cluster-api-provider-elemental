@@ -34,6 +34,8 @@ import (
 	ilog "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/log"
 )
 
+var ErrAPIEndpointNil = errors.New("API endpoint is nil, the controller was not initialized correctly")
+
 // ElementalRegistrationReconciler reconciles a ElementalRegistration object.
 type ElementalRegistrationReconciler struct {
 	client.Client
@@ -87,16 +89,25 @@ func (r *ElementalRegistrationReconciler) Reconcile(ctx context.Context, req ctr
 		}
 	}()
 
-	r.setURI(registration)
+	// Only set the URI if not set before or manually by the end user.
+	if len(registration.Spec.Config.Elemental.Registration.URI) == 0 {
+		if err := r.setURI(registration); err != nil {
+			return ctrl.Result{}, fmt.Errorf("updating registration URI: %w", err)
+		}
+	}
 
 	return ctrl.Result{}, nil
 }
 
-func (r *ElementalRegistrationReconciler) setURI(registration *infrastructurev1beta1.ElementalRegistration) {
+func (r *ElementalRegistrationReconciler) setURI(registration *infrastructurev1beta1.ElementalRegistration) error {
+	if r.APIEndpoint == nil {
+		return ErrAPIEndpointNil
+	}
 	registration.Spec.Config.Elemental.Registration.URI = fmt.Sprintf("%s%s%s/namespaces/%s/registrations/%s",
 		r.APIEndpoint.String(),
 		api.Prefix,
 		api.PrefixV1,
 		registration.Namespace,
 		registration.Name)
+	return nil
 }

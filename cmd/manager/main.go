@@ -43,6 +43,8 @@ import (
 	//+kubebuilder:scaffold:imports
 )
 
+const elementalAPIPort = 9090
+
 // Environment variables.
 const (
 	envElementalAPIURL = "ELEMENTAL_API_URL"
@@ -177,9 +179,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	elementalAPIServer := api.NewServer(ctx, mgr.GetClient())
+	elementalAPIServer := api.NewServer(ctx, mgr.GetClient(), elementalAPIPort)
 	go func() {
-		if err := elementalAPIServer.Start(); err != nil {
+		if err := elementalAPIServer.Start(ctx); err != nil {
 			setupLog.Error(err, "running Elemental API server")
 			os.Exit(1)
 		}
@@ -188,11 +190,6 @@ func main() {
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
-	}
-
-	if err := elementalAPIServer.Stop(); err != nil {
-		setupLog.Error(err, "shutting down Elemental API Server")
 		os.Exit(1)
 	}
 }

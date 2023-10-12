@@ -17,6 +17,9 @@ limitations under the License.
 package controller
 
 import (
+	"context"
+	"fmt"
+	"net/url"
 	"path/filepath"
 	"testing"
 
@@ -29,17 +32,29 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
+
 	//+kubebuilder:scaffold:imports
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
-var cfg *rest.Config
-var k8sClient client.Client
-var testEnv *envtest.Environment
+const elementalAPIPort = 9191
+
+var (
+	cfg       *rest.Config
+	k8sClient client.Client
+	testEnv   *envtest.Environment
+	ctx       context.Context
+	cancel    context.CancelFunc
+	server    *api.Server
+	serverURL string = fmt.Sprintf("http://localhost:%d", elementalAPIPort)
+)
 
 func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -49,6 +64,7 @@ func TestControllers(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+	ctx, cancel = context.WithCancel(context.TODO())
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
@@ -71,9 +87,43 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
+	// Start the controllers
+	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
+		Scheme: scheme.Scheme,
+	})
+	Expect(err).ToNot(HaveOccurred())
+
+	// Start the Elemental API server
+	server = api.NewServer(context.Background(), k8sClient, elementalAPIPort)
+	go func() {
+		defer GinkgoRecover()
+		err := server.Start(ctx)
+		Expect(err).ToNot(HaveOccurred(), "failed to start Elemental API server")
+	}()
+
+	setupAllWithManager(k8sManager)
+
+	// Start the controllers
+	go func() {
+		defer GinkgoRecover()
+		err := k8sManager.Start(ctx)
+		Expect(err).ToNot(HaveOccurred(), "failed to run manager")
+	}()
 })
 
+func setupAllWithManager(k8sManager manager.Manager) {
+	apiEndpoint, err := url.Parse(serverURL)
+	Expect(err).ToNot(HaveOccurred(), "failed to parse test url")
+	err = (&ElementalRegistrationReconciler{
+		Client:      k8sManager.GetClient(),
+		Scheme:      k8sManager.GetScheme(),
+		APIEndpoint: apiEndpoint,
+	}).SetupWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+}
+
 var _ = AfterSuite(func() {
+	cancel()
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
