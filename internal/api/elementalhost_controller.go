@@ -225,6 +225,7 @@ func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, reque
 			Controller: ptr.To(true),
 		},
 	}
+	newHostName := html.EscapeString(newHost.Name)
 
 	logger = logger.WithValues(log.KeyElementalHost, newHost.Name)
 
@@ -233,18 +234,18 @@ func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, reque
 		if k8sapierrors.IsAlreadyExists(err) {
 			logger.Error(err, "ElementalHost already exists")
 			response.WriteHeader(http.StatusConflict)
-			WriteResponse(logger, response, fmt.Sprintf("Host '%s' in namespace '%s' already exists", html.EscapeString(namespace), html.EscapeString(newHost.Name)))
+			WriteResponse(logger, response, fmt.Sprintf("Host '%s' in namespace '%s' already exists", namespace, newHostName))
 		} else {
 			logger.Error(err, "Could not create ElementalHost")
 			response.WriteHeader(http.StatusInternalServerError)
-			WriteResponse(logger, response, fmt.Sprintf("Could not create Elemental Host '%s'", newHost.Name))
+			WriteResponse(logger, response, fmt.Sprintf("Could not create Elemental Host '%s'", newHostName))
 		}
 		return
 	}
 
-	logger.Info("ElementalHost created successfully", log.KeyElementalHost, newHost.Name)
+	logger.Info("ElementalHost created successfully", log.KeyElementalHost, newHostName)
 
-	response.Header().Set("Location", fmt.Sprintf("%s%s/namespaces/%s/registrations/%s/hosts/%s", Prefix, PrefixV1, namespace, registrationName, newHost.Name))
+	response.Header().Set("Location", fmt.Sprintf("%s%s/namespaces/%s/registrations/%s/hosts/%s", Prefix, PrefixV1, namespace, registrationName, newHostName))
 	response.WriteHeader(http.StatusCreated)
 }
 
