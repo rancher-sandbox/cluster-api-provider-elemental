@@ -1,6 +1,7 @@
 GIT_COMMIT?=$(shell git rev-parse HEAD)
 GIT_COMMIT_SHORT?=$(shell git rev-parse --short HEAD)
 GIT_TAG?=$(shell git describe --abbrev=0 --tags 2>/dev/null || echo "v0.0.0" )
+GIT_COMMIT_DATE?=$(shell git show -s --format='%cI' HEAD)
 # Image URL to use all building/pushing image targets
 IMG_NAME ?= ghcr.io/rancher-sandbox/cluster-api-provider-elemental
 IMG_TAG ?= latest
@@ -29,7 +30,7 @@ SHELL = /usr/bin/env bash -o pipefail
 LDFLAGS := -w -s
 LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.Version=${GIT_TAG}"
 LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.Commit=${GIT_COMMIT}"
-LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.CommitDate=${COMMITDATE}"
+LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.CommitDate=${GIT_COMMIT_DATE}"
 
 .PHONY: all
 all: build-provider
@@ -104,7 +105,7 @@ docker-build: test ## Build docker image with the manager.
 	$(CONTAINER_TOOL) build \
 		--build-arg "TAG=${GIT_TAG}" \
 		--build-arg "COMMIT=${GIT_COMMIT}" \
-		--build-arg "COMMITDATE=${COMMITDATE}" \
+		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
 		-t ${IMG} .
 
 .PHONY: docker-build-agent
@@ -112,7 +113,7 @@ docker-build-agent: test ## Build docker image with the manager.
 	$(CONTAINER_TOOL) build \
 		--build-arg "TAG=${GIT_TAG}" \
 		--build-arg "COMMIT=${GIT_COMMIT}" \
-		--build-arg "COMMITDATE=${COMMITDATE}" \
+		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
 		-t agent:latest -f Dockerfile.agent .
 
 .PHONY: docker-push

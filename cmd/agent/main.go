@@ -57,7 +57,7 @@ func newCommand(fs vfs.FS, installerSelector host.InstallerSelector, client clie
 		RunE: func(_ *cobra.Command, args []string) error {
 			// Display version
 			if versionFlag {
-				log.Infof("Register version %s, commit %s, commit date %s", version.Version, version.Commit, version.CommitDate)
+				log.Infof("Agent version %s, commit %s, commit date %s", version.Version, version.Commit, version.CommitDate)
 				return nil
 			}
 			// Parse config file
