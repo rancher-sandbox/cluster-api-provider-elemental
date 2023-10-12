@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -24,8 +23,6 @@ import (
 const (
 	configPathDefault     = "/etc/elemental/agent/config.yaml"
 	bootstrapSentinelFile = "/run/cluster-api/bootstrap-success.complete"
-	installerUnmanaged    = "unmanaged"
-	installerElemental    = "elemental"
 )
 
 // Flags.
@@ -41,21 +38,18 @@ var (
 	configPath string
 )
 
-// Errors.
-var (
-	ErrUnknownInstaller = errors.New("unknown installer")
-)
-
 func main() {
 	fs := vfs.OSFS
-	cmd := newCommand(fs)
+	installerSelector := host.NewInstallerSelector()
+	client := client.NewClient()
+	cmd := newCommand(fs, installerSelector, client)
 	if err := cmd.Execute(); err != nil {
 		log.Error(err, "running elemental-agent")
 		os.Exit(1)
 	}
 }
 
-func newCommand(fs vfs.FS) *cobra.Command {
+func newCommand(fs vfs.FS, installerSelector host.InstallerSelector, client client.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "elemental-agent",
 		Short: "Elemental Agent command",
@@ -86,8 +80,7 @@ func newCommand(fs vfs.FS) *cobra.Command {
 				return fmt.Errorf("creating work directory '%s': %w", conf.Agent.WorkDir, err)
 			}
 			// Initialize Elemental API Client
-			client, err := client.NewClient(fs, conf)
-			if err != nil {
+			if err := client.Init(fs, conf); err != nil {
 				return fmt.Errorf("initializing Elemental API client: %w", err)
 			}
 			// Get current hostname
@@ -97,16 +90,9 @@ func newCommand(fs vfs.FS) *cobra.Command {
 			}
 			// Initialize installer
 			log.Info("Initializing Installer")
-			var installer host.Installer
-			switch conf.Agent.Installer {
-			case installerUnmanaged:
-				log.Info("Using Unmanaged OS Installer")
-				installer = host.NewUnmanagedInstaller(fs, configPath, conf.Agent.WorkDir)
-			case installerElemental:
-				log.Info("Using Elemental Installer")
-				installer = host.NewElementalInstaller(fs)
-			default:
-				return fmt.Errorf("parsing installer '%s': %w", conf.Agent.Installer, ErrUnknownInstaller)
+			installer, err := installerSelector.GetInstaller(fs, configPath, conf)
+			if err != nil {
+				return fmt.Errorf("initializing installer: %w", err)
 			}
 
 			// Install
