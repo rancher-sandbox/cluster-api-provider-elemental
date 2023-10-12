@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 
 	"github.com/go-logr/logr"
@@ -50,9 +51,9 @@ func (h *PatchElementalHostHandler) SetupOpenAPIOperation(oc openapi.OperationCo
 
 func (h *PatchElementalHostHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	pathVars := mux.Vars(request)
-	namespace := pathVars["namespace"]
-	registrationName := pathVars["registrationName"]
-	hostName := pathVars["hostName"]
+	namespace := html.EscapeString(pathVars["namespace"])
+	registrationName := html.EscapeString(pathVars["registrationName"])
+	hostName := html.EscapeString(pathVars["hostName"])
 
 	logger := h.logger.WithValues(log.KeyNamespace, namespace).
 		WithValues(log.KeyElementalRegistration, registrationName).
@@ -184,8 +185,8 @@ func (h *PostElementalHostHandler) SetupOpenAPIOperation(oc openapi.OperationCon
 
 func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	pathVars := mux.Vars(request)
-	namespace := pathVars["namespace"]
-	registrationName := pathVars["registrationName"]
+	namespace := html.EscapeString(pathVars["namespace"])
+	registrationName := html.EscapeString(pathVars["registrationName"])
 
 	logger := h.logger.WithValues(log.KeyNamespace, namespace).
 		WithValues(log.KeyElementalRegistration, registrationName)
@@ -277,9 +278,9 @@ func (h *DeleteElementalHostHandler) SetupOpenAPIOperation(oc openapi.OperationC
 
 func (h *DeleteElementalHostHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	pathVars := mux.Vars(request)
-	namespace := pathVars["namespace"]
-	registrationName := pathVars["registrationName"]
-	hostName := pathVars["hostName"]
+	namespace := html.EscapeString(pathVars["namespace"])
+	registrationName := html.EscapeString(pathVars["registrationName"])
+	hostName := html.EscapeString(pathVars["hostName"])
 
 	logger := h.logger.WithValues(log.KeyNamespace, namespace).
 		WithValues(log.KeyElementalRegistration, registrationName).
@@ -363,9 +364,9 @@ func (h *GetElementalHostBootstrapHandler) SetupOpenAPIOperation(oc openapi.Oper
 
 func (h *GetElementalHostBootstrapHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	pathVars := mux.Vars(request)
-	namespace := pathVars["namespace"]
-	registrationName := pathVars["registrationName"]
-	hostName := pathVars["hostName"]
+	namespace := html.EscapeString(pathVars["namespace"])
+	registrationName := html.EscapeString(pathVars["registrationName"])
+	hostName := html.EscapeString(pathVars["hostName"])
 
 	logger := h.logger.WithValues(log.KeyNamespace, namespace).
 		WithValues(log.KeyElementalRegistration, registrationName).
