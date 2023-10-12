@@ -32,6 +32,16 @@ LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/interna
 LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.Commit=${GIT_COMMIT}"
 LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.CommitDate=${GIT_COMMIT_DATE}"
 
+ABS_TOOLS_DIR :=  $(abspath bin/)
+GO_INSTALL := ./test/scripts/go_install.sh
+
+GINKGO_VER := v2.13.0
+GINKGO := $(ABS_TOOLS_DIR)/ginkgo-$(GINKGO_VER)
+GINKGO_PKG := github.com/onsi/ginkgo/v2/ginkgo
+
+$(GINKGO):
+	GOBIN=$(ABS_TOOLS_DIR) $(GO_INSTALL) $(GINKGO_PKG) ginkgo $(GINKGO_VER)
+
 .PHONY: all
 all: build-provider
 
@@ -61,6 +71,7 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	./test/scripts/generate_mocks.sh
 
 .PHONY: openapi
 openapi: ## Generate Elemental OpenAPI specs
@@ -75,8 +86,9 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: test
-test: manifests generate fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./... -coverprofile cover.out
+test: manifests generate fmt vet envtest $(GINKGO) ## Run tests.
+#	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./... -coverprofile coverage.out
+	$(GINKGO) -v -r --trace --race --covermode=atomic --coverprofile=coverage.out --coverpkg=github.com/rancher-sandbox/cluster-api-provider-elemental/... ./internal/... ./cmd/...
 
 ##@ Build
 

@@ -43,7 +43,7 @@ func (s *installerSelector) GetInstaller(fs vfs.FS, configPath string, conf conf
 	switch conf.Agent.Installer {
 	case installerUnmanaged:
 		log.Info("Using Unmanaged OS Installer")
-		installer = NewUnmanagedInstaller(fs, configPath, conf.Agent.WorkDir)
+		installer = NewUnmanagedInstaller(fs, hostname.NewManager(), configPath, conf.Agent.WorkDir)
 	case installerElemental:
 		log.Info("Using Elemental Installer")
 		installer = NewElementalInstaller(fs)
@@ -91,16 +91,18 @@ func (i *ElementalInstaller) Reset(_ api.RegistrationResponse) error {
 var _ Installer = (*UnmanagedInstaller)(nil)
 
 type UnmanagedInstaller struct {
-	fs         vfs.FS
-	configPath string
-	workDir    string
+	fs              vfs.FS
+	hostnameManager hostname.Manager
+	configPath      string
+	workDir         string
 }
 
-func NewUnmanagedInstaller(fs vfs.FS, configPath string, workDir string) Installer {
+func NewUnmanagedInstaller(fs vfs.FS, hostnameManager hostname.Manager, configPath string, workDir string) Installer {
 	return &UnmanagedInstaller{
-		fs:         fs,
-		configPath: configPath,
-		workDir:    workDir,
+		fs:              fs,
+		hostnameManager: hostnameManager,
+		configPath:      configPath,
+		workDir:         workDir,
 	}
 }
 
@@ -108,7 +110,7 @@ func (i *UnmanagedInstaller) Install(conf api.RegistrationResponse, hostnameToSe
 	log.Debug("Installing unmanaged OS.")
 
 	// Set the Hostname
-	if err := hostname.SetHostname(hostnameToSet); err != nil {
+	if err := i.hostnameManager.SetHostname(hostnameToSet); err != nil {
 		return fmt.Errorf("setting hostname: %w", err)
 	}
 	log.Infof("Hostname set: %s", hostnameToSet)
