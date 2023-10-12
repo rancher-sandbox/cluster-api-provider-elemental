@@ -53,7 +53,7 @@ var (
 	ctx       context.Context
 	cancel    context.CancelFunc
 	server    *api.Server
-	serverURL string = fmt.Sprintf("http://localhost:%d", elementalAPIPort)
+	serverURL = fmt.Sprintf("http://localhost:%d", elementalAPIPort)
 )
 
 func TestControllers(t *testing.T) {
