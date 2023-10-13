@@ -95,7 +95,7 @@ type RegistrationResponse struct {
 	HostAnnotations map[string]string `json:"hostAnnotations,omitempty"`
 	// Config points to Elemental machine configuration.
 	// +optional
-	Config *infrastructurev1beta1.Config `json:"config,omitempty"`
+	Config infrastructurev1beta1.Config `json:"config,omitempty"`
 }
 
 func (r *RegistrationResponse) fromElementalRegistration(elementalRegistration infrastructurev1beta1.ElementalRegistration) {

@@ -1,6 +1,7 @@
 GIT_COMMIT?=$(shell git rev-parse HEAD)
 GIT_COMMIT_SHORT?=$(shell git rev-parse --short HEAD)
 GIT_TAG?=$(shell git describe --abbrev=0 --tags 2>/dev/null || echo "v0.0.0" )
+GIT_COMMIT_DATE?=$(shell git show -s --format='%cI' HEAD)
 # Image URL to use all building/pushing image targets
 IMG_NAME ?= ghcr.io/rancher-sandbox/cluster-api-provider-elemental
 IMG_TAG ?= latest
@@ -29,7 +30,17 @@ SHELL = /usr/bin/env bash -o pipefail
 LDFLAGS := -w -s
 LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.Version=${GIT_TAG}"
 LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.Commit=${GIT_COMMIT}"
-LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.CommitDate=${COMMITDATE}"
+LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.CommitDate=${GIT_COMMIT_DATE}"
+
+ABS_TOOLS_DIR :=  $(abspath bin/)
+GO_INSTALL := ./test/scripts/go_install.sh
+
+GINKGO_VER := v2.13.0
+GINKGO := $(ABS_TOOLS_DIR)/ginkgo-$(GINKGO_VER)
+GINKGO_PKG := github.com/onsi/ginkgo/v2/ginkgo
+
+$(GINKGO):
+	GOBIN=$(ABS_TOOLS_DIR) $(GO_INSTALL) $(GINKGO_PKG) ginkgo $(GINKGO_VER)
 
 .PHONY: all
 all: build-provider
@@ -60,6 +71,7 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	./test/scripts/generate_mocks.sh
 
 .PHONY: openapi
 openapi: ## Generate Elemental OpenAPI specs
@@ -74,8 +86,8 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: test
-test: manifests generate fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./... -coverprofile cover.out
+test: manifests generate fmt vet envtest $(GINKGO) ## Run tests.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GINKGO) -v -r --trace --race --covermode=atomic --coverprofile=coverage.out --coverpkg=github.com/rancher-sandbox/cluster-api-provider-elemental/... ./internal/... ./cmd/...
 
 ##@ Build
 
@@ -104,7 +116,7 @@ docker-build: test ## Build docker image with the manager.
 	$(CONTAINER_TOOL) build \
 		--build-arg "TAG=${GIT_TAG}" \
 		--build-arg "COMMIT=${GIT_COMMIT}" \
-		--build-arg "COMMITDATE=${COMMITDATE}" \
+		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
 		-t ${IMG} .
 
 .PHONY: docker-build-agent
@@ -112,7 +124,7 @@ docker-build-agent: test ## Build docker image with the manager.
 	$(CONTAINER_TOOL) build \
 		--build-arg "TAG=${GIT_TAG}" \
 		--build-arg "COMMIT=${GIT_COMMIT}" \
-		--build-arg "COMMITDATE=${COMMITDATE}" \
+		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
 		-t agent:latest -f Dockerfile.agent .
 
 .PHONY: docker-push

@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 
 	"github.com/go-logr/logr"
@@ -50,9 +51,9 @@ func (h *PatchElementalHostHandler) SetupOpenAPIOperation(oc openapi.OperationCo
 
 func (h *PatchElementalHostHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	pathVars := mux.Vars(request)
-	namespace := pathVars["namespace"]
-	registrationName := pathVars["registrationName"]
-	hostName := pathVars["hostName"]
+	namespace := html.EscapeString(pathVars["namespace"])
+	registrationName := html.EscapeString(pathVars["registrationName"])
+	hostName := html.EscapeString(pathVars["hostName"])
 
 	logger := h.logger.WithValues(log.KeyNamespace, namespace).
 		WithValues(log.KeyElementalRegistration, registrationName).
@@ -184,8 +185,8 @@ func (h *PostElementalHostHandler) SetupOpenAPIOperation(oc openapi.OperationCon
 
 func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	pathVars := mux.Vars(request)
-	namespace := pathVars["namespace"]
-	registrationName := pathVars["registrationName"]
+	namespace := html.EscapeString(pathVars["namespace"])
+	registrationName := html.EscapeString(pathVars["registrationName"])
 
 	logger := h.logger.WithValues(log.KeyNamespace, namespace).
 		WithValues(log.KeyElementalRegistration, registrationName)
@@ -224,6 +225,7 @@ func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, reque
 			Controller: ptr.To(true),
 		},
 	}
+	newHostName := html.EscapeString(newHost.Name)
 
 	logger = logger.WithValues(log.KeyElementalHost, newHost.Name)
 
@@ -232,18 +234,18 @@ func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, reque
 		if k8sapierrors.IsAlreadyExists(err) {
 			logger.Error(err, "ElementalHost already exists")
 			response.WriteHeader(http.StatusConflict)
-			WriteResponse(logger, response, fmt.Sprintf("Host '%s' in namespace '%s' already exists", namespace, newHost.Name))
+			WriteResponse(logger, response, fmt.Sprintf("Host '%s' in namespace '%s' already exists", namespace, newHostName))
 		} else {
 			logger.Error(err, "Could not create ElementalHost")
 			response.WriteHeader(http.StatusInternalServerError)
-			WriteResponse(logger, response, fmt.Sprintf("Could not create Elemental Host '%s'", newHost.Name))
+			WriteResponse(logger, response, fmt.Sprintf("Could not create Elemental Host '%s'", newHostName))
 		}
 		return
 	}
 
-	logger.Info("ElementalHost created successfully", log.KeyElementalHost, newHost.Name)
+	logger.Info("ElementalHost created successfully", log.KeyElementalHost, newHostName)
 
-	response.Header().Set("Location", fmt.Sprintf("%s%s/namespaces/%s/registrations/%s/hosts/%s", Prefix, PrefixV1, namespace, registrationName, newHost.Name))
+	response.Header().Set("Location", fmt.Sprintf("%s%s/namespaces/%s/registrations/%s/hosts/%s", Prefix, PrefixV1, namespace, registrationName, newHostName))
 	response.WriteHeader(http.StatusCreated)
 }
 
@@ -277,9 +279,9 @@ func (h *DeleteElementalHostHandler) SetupOpenAPIOperation(oc openapi.OperationC
 
 func (h *DeleteElementalHostHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	pathVars := mux.Vars(request)
-	namespace := pathVars["namespace"]
-	registrationName := pathVars["registrationName"]
-	hostName := pathVars["hostName"]
+	namespace := html.EscapeString(pathVars["namespace"])
+	registrationName := html.EscapeString(pathVars["registrationName"])
+	hostName := html.EscapeString(pathVars["hostName"])
 
 	logger := h.logger.WithValues(log.KeyNamespace, namespace).
 		WithValues(log.KeyElementalRegistration, registrationName).
@@ -363,9 +365,9 @@ func (h *GetElementalHostBootstrapHandler) SetupOpenAPIOperation(oc openapi.Oper
 
 func (h *GetElementalHostBootstrapHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	pathVars := mux.Vars(request)
-	namespace := pathVars["namespace"]
-	registrationName := pathVars["registrationName"]
-	hostName := pathVars["hostName"]
+	namespace := html.EscapeString(pathVars["namespace"])
+	registrationName := html.EscapeString(pathVars["registrationName"])
+	hostName := html.EscapeString(pathVars["hostName"])
 
 	logger := h.logger.WithValues(log.KeyNamespace, namespace).
 		WithValues(log.KeyElementalRegistration, registrationName).

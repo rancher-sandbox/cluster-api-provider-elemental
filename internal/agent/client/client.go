@@ -24,6 +24,7 @@ var (
 )
 
 type Client interface {
+	Init(fs vfs.FS, conf config.Config) error
 	GetRegistration() (api.RegistrationResponse, error)
 	CreateHost(host api.HostCreateRequest) error
 	DeleteHost(hostname string) error
@@ -39,43 +40,51 @@ type client struct {
 	identity        host.Identity
 }
 
-func NewClient(fs vfs.FS, conf config.Config) (Client, error) {
+func NewClient() Client {
+	return &client{}
+}
+
+func (c *client) Init(fs vfs.FS, conf config.Config) error {
 	log.Debug("Initializing Client")
 	url, err := url.Parse(conf.Registration.URI)
 	if err != nil {
-		return nil, fmt.Errorf("parsing registration URI: %w", err)
+		return fmt.Errorf("parsing registration URI: %w", err)
 	}
 
-	if !conf.Agent.InsecureAllowHTTP && strings.ToLower(url.Scheme) != "https" {
-		return nil, fmt.Errorf("using '%s' scheme: %w", url.Scheme, ErrInvalidScheme)
+	scheme := strings.ToLower(url.Scheme)
+	if scheme != "http" && scheme != "https" {
+		return fmt.Errorf("unknown scheme '%s': %w", url.Scheme, ErrInvalidScheme)
+	}
+
+	if !conf.Agent.InsecureAllowHTTP && scheme != "https" {
+		return fmt.Errorf("using '%s' scheme: %w", url.Scheme, ErrInvalidScheme)
 	}
 
 	caCert, err := tls.GetCACert(fs, conf.Registration.CACert)
 	if err != nil {
-		return nil, fmt.Errorf("reading CA Cert from configuration: %w", err)
+		return fmt.Errorf("reading CA Cert from configuration: %w", err)
 	}
 
 	tlsConfig, err := tls.GetTLSClientConfig(caCert, conf.Agent.UseSystemCertPool, conf.Agent.InsecureSkipTLSVerify)
 	if err != nil {
-		return nil, fmt.Errorf("configuring TLS client: %w", err)
+		return fmt.Errorf("configuring TLS client: %w", err)
 	}
 
 	// Initialize Identity
 	identityManager := host.NewDummyManager(fs, conf.Agent.WorkDir)
 	identity, err := identityManager.GetOrCreateIdentity()
 	if err != nil {
-		return nil, fmt.Errorf("initializing host identity: %w", err)
+		return fmt.Errorf("initializing host identity: %w", err)
 	}
 
-	return &client{
-		registrationURI: conf.Registration.URI,
-		httpClient: http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: tlsConfig,
-			},
+	c.registrationURI = conf.Registration.URI
+	c.httpClient = http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
 		},
-		identity: identity,
-	}, nil
+	}
+	c.identity = identity
+	return nil
 }
 
 func (c *client) GetRegistration() (api.RegistrationResponse, error) {

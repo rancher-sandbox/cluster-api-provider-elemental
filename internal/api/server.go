@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -20,14 +21,16 @@ const (
 
 type Server struct {
 	context    context.Context
+	port       uint
 	k8sClient  client.Client
 	httpServer *http.Server
 	logger     logr.Logger
 }
 
-func NewServer(ctx context.Context, k8sClient client.Client) *Server {
+func NewServer(ctx context.Context, k8sClient client.Client, port uint) *Server {
 	return &Server{
 		context:   ctx,
+		port:      port,
 		k8sClient: k8sClient,
 		logger:    log.FromContext(ctx),
 	}
@@ -60,25 +63,29 @@ func (s *Server) NewRouter() *mux.Router {
 	return router
 }
 
-func (s *Server) Start() error {
+func (s *Server) Start(ctx context.Context) error {
 	s.logger.Info("Starting Elemental API V1 Server")
 
 	s.httpServer = &http.Server{
 		Handler:      s.NewRouter(),
-		Addr:         ":9090",
+		Addr:         fmt.Sprintf(":%d", s.port),
 		WriteTimeout: 30 * time.Second,
 		ReadTimeout:  30 * time.Second,
 	}
 
-	if err := s.httpServer.ListenAndServe(); err != nil {
-		return fmt.Errorf("listening for TCP incoming connections: %w", err)
-	}
-	return nil
-}
+	go func() {
+		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			s.logger.Error(err, "FATAL: listening for TCP incoming connections")
+			os.Exit(1)
+		}
+	}()
+	<-ctx.Done()
 
-func (s *Server) Stop() error {
-	if err := s.httpServer.Shutdown(s.context); err != nil {
-		return fmt.Errorf("shutting down server: %w", err)
+	s.logger.Info("Shutting down Elemental API V1 Server")
+	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	if err := s.httpServer.Shutdown(shutdownCtx); err != nil {
+		s.logger.Error(err, "shutting down http server")
 	}
 	return nil
 }

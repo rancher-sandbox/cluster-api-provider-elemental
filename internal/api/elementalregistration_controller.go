@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 
 	"github.com/go-logr/logr"
@@ -45,8 +46,8 @@ func (h *GetElementalRegistrationHandler) SetupOpenAPIOperation(oc openapi.Opera
 
 func (h *GetElementalRegistrationHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	pathVars := mux.Vars(request)
-	namespace := pathVars["namespace"]
-	registrationName := pathVars["registrationName"]
+	namespace := html.EscapeString(pathVars["namespace"])
+	registrationName := html.EscapeString(pathVars["registrationName"])
 
 	logger := h.logger.WithValues(log.KeyNamespace, namespace).
 		WithValues(log.KeyElementalRegistration, registrationName)

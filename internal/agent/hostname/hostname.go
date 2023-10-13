@@ -10,7 +10,21 @@ import (
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils"
 )
 
-func SetHostname(hostname string) error {
+type Manager interface {
+	SetHostname(hostname string) error
+	PickHostname(conf infrastructurev1beta1.Hostname) (string, error)
+	GetCurrentHostname() (string, error)
+}
+
+func NewManager() Manager {
+	return &manager{}
+}
+
+var _ Manager = (*manager)(nil)
+
+type manager struct{}
+
+func (m *manager) SetHostname(hostname string) error {
 	log.Debugf("Setting hostname: %s", hostname)
 	if err := utils.RunCommand(fmt.Sprintf("hostnamectl set-hostname %s", hostname)); err != nil {
 		return fmt.Errorf("running hostnamectl: %w", err)
@@ -18,12 +32,12 @@ func SetHostname(hostname string) error {
 	return nil
 }
 
-func PickHostname(conf infrastructurev1beta1.Hostname) (string, error) {
+func (m *manager) PickHostname(conf infrastructurev1beta1.Hostname) (string, error) {
 	var newHostname string
 	var err error
 	if conf.UseExisting {
 		log.Debug("Using existing hostname")
-		if newHostname, err = formatCurrent(conf.Prefix); err != nil {
+		if newHostname, err = m.formatCurrent(conf.Prefix); err != nil {
 			return "", fmt.Errorf("setting current hostname: %w", err)
 		}
 		return newHostname, nil
@@ -31,13 +45,13 @@ func PickHostname(conf infrastructurev1beta1.Hostname) (string, error) {
 	}
 
 	log.Debug("Using random hostname")
-	if newHostname, err = formatRandom(conf.Prefix); err != nil {
+	if newHostname, err = m.formatRandom(conf.Prefix); err != nil {
 		return "", fmt.Errorf("setting random hostname: %w", err)
 	}
 	return newHostname, nil
 }
 
-func GetCurrentHostname() (string, error) {
+func (m *manager) GetCurrentHostname() (string, error) {
 	currentHostname, err := os.Hostname()
 	if err != nil {
 		return "", fmt.Errorf("getting current hostname: %w", err)
@@ -45,7 +59,7 @@ func GetCurrentHostname() (string, error) {
 	return currentHostname, nil
 }
 
-func formatRandom(prefix string) (string, error) {
+func (m *manager) formatRandom(prefix string) (string, error) {
 	uuid, err := uuid.NewRandom()
 	if err != nil {
 		return "", fmt.Errorf("generating new random UUID: %w", err)
@@ -53,7 +67,7 @@ func formatRandom(prefix string) (string, error) {
 	return fmt.Sprintf("%s%s", prefix, uuid.String()), nil
 }
 
-func formatCurrent(prefix string) (string, error) {
+func (m *manager) formatCurrent(prefix string) (string, error) {
 	currentHostname, err := os.Hostname()
 	if err != nil {
 		return "", fmt.Errorf("getting current hostname: %w", err)
