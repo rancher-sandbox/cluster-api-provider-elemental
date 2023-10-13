@@ -51,7 +51,12 @@ func (c *client) Init(fs vfs.FS, conf config.Config) error {
 		return fmt.Errorf("parsing registration URI: %w", err)
 	}
 
-	if !conf.Agent.InsecureAllowHTTP && strings.ToLower(url.Scheme) != "https" {
+	scheme := strings.ToLower(url.Scheme)
+	if scheme != "http" && scheme != "https" {
+		return fmt.Errorf("unknown scheme '%s': %w", url.Scheme, ErrInvalidScheme)
+	}
+
+	if !conf.Agent.InsecureAllowHTTP && scheme != "https" {
 		return fmt.Errorf("using '%s' scheme: %w", url.Scheme, ErrInvalidScheme)
 	}
 

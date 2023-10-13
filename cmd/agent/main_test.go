@@ -52,7 +52,7 @@ var (
 	registrationFixture = api.RegistrationResponse{
 		HostLabels:      map[string]string{"test-label": "test"},
 		HostAnnotations: map[string]string{"test-annotation": "test"},
-		Config: &infrastructurev1beta1.Config{
+		Config: infrastructurev1beta1.Config{
 			Elemental: infrastructurev1beta1.Elemental{
 				Registration: configFixture.Registration,
 				Agent:        configFixture.Agent,

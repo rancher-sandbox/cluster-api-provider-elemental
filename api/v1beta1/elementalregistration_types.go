@@ -33,7 +33,7 @@ type ElementalRegistrationSpec struct {
 	HostAnnotations map[string]string `json:"hostAnnotations,omitempty"`
 	// Config points to Elemental machine configuration.
 	// +optional
-	Config *Config `json:"config,omitempty"`
+	Config Config `json:"config,omitempty"`
 }
 
 // ElementalRegistrationStatus defines the observed state of ElementalRegistration.
