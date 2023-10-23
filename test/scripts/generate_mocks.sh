@@ -2,7 +2,7 @@
 
 go install go.uber.org/mock/mockgen@v0.3.0
 
-# Always create mock files into a "mocks" subfolder to be ignored in test coverage.
+# Always create mock files into a "_mocks.go" file to be ignored in test coverage.
 # See codecov.yml for more info 
 
 mockgen -copyright_file=hack/boilerplate.go.txt -destination=internal/agent/client/client_mocks.go -package=client github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client Client
