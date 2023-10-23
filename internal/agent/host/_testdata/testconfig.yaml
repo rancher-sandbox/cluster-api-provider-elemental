@@ -1,0 +1,11 @@
+registration:
+    uri: https://test.test/elemental/v1/namespaces/test/registrations/test
+    caCert: just a CA cert
+agent:
+    workDir: /test/work/dir
+    hostname:
+        prefix: test-
+    noSmbios: true
+    debug: true
+    installer: test
+    reconciliation: 1s
