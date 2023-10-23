@@ -83,24 +83,21 @@
     cat << EOF > $HOME/.cluster-api/clusterctl.yaml
     providers:
     - name: "elemental"
-      url: "https://github.com/rancher-sandbox/cluster-api-provider-elemental/releases/v0.0.1/infrastructure-components.yaml"
+      url: "https://github.com/rancher-sandbox/cluster-api-provider-elemental/releases/v0.0.2/infrastructure-components.yaml"
       type: "InfrastructureProvider"
+    - name: "k3s"
+      url: "https://github.com/cluster-api-provider-k3s/cluster-api-k3s/releases/v0.1.8/bootstrap-components.yaml"
+      type: "BootstrapProvider"
+    - name: "k3s"
+      url: "https://github.com/cluster-api-provider-k3s/cluster-api-k3s/releases/v0.1.8/control-plane-components.yaml"
+      type: "ControlPlaneProvider"
     EOF
     ```
 
-1. Install CAPI Core provider and the Elemental Infrastructure provider:  
+1. Install CAPI Core provider, the k3s Control Plane and Bootstrap providers, and the Elemental Infrastructure provider:  
 
     ```bash
-    clusterctl init --bootstrap "-" --control-plane "-" --infrastructure elemental:v0.0.1
-    ```
-
-1. Install the **k3s** bootstrap and control plane providers:
-
-   **Note**: This is a workaround for the current [issue](https://github.com/cluster-api-provider-k3s/cluster-api-k3s/issues/55) using `clusterctl init`.  
-
-    ```bash
-    kubectl apply -f https://github.com/cluster-api-provider-k3s/cluster-api-k3s/releases/download/v0.1.7/bootstrap-components.yaml
-    kubectl apply -f https://github.com/cluster-api-provider-k3s/cluster-api-k3s/releases/download/v0.1.7/control-plane-components.yaml
+    clusterctl init --bootstrap k3s:v0.1.8 --control-plane k3s:v0.1.8 --infrastructure elemental:v0.0.2
     ```
 
 1. Expose the Elemental API server:  
@@ -135,7 +132,7 @@
 
     ```bash
     CONTROL_PLANE_ENDPOINT_IP=192.168.122.100 clusterctl generate cluster \
-    --infrastructure elemental:v0.0.1 \
+    --infrastructure elemental:v0.0.2 \
     --flavor k3s-single-node \
     --kubernetes-version v1.28.2 \
     elemental-cluster-k3s > $HOME/elemental-cluster-k3s.yaml
@@ -176,7 +173,7 @@ For more information on how to configure and use the agent, please read the [doc
 1. Install the agent:  
 
     ```bash
-    curl -L https://github.com/rancher-sandbox/cluster-api-provider-elemental/releases/download/v0.0.1/elemental_agent_linux_amd64 -o elemental-agent
+    curl -L https://github.com/rancher-sandbox/cluster-api-provider-elemental/releases/download/v0.0.2/elemental_agent_linux_amd64 -o elemental-agent
     install -o root -g root -m 0755 elemental-agent /usr/local/sbin/elemental-agent
     ```
 
@@ -247,23 +244,3 @@ The `k3s` components also need to be deleted.
 
   hostnamectl set-hostname my-bare-metal-host
   ```
-
-<!-- This part is not really working yet: https://github.com/cluster-api-provider-k3s/cluster-api-k3s/issues/55 -->
-<!-- 1. Configure `clusterctl` to use the custom providers:
-
-    ```bash
-    mkdir -p $HOME/.cluster-api 
-
-    cat << EOF > $HOME/.cluster-api/clusterctl.yaml
-    providers:
-    - name: "elemental"
-      url: "https://github.com/rancher-sandbox/cluster-api-provider-elemental/releases/v0.0.1/infrastructure-components.yaml"
-      type: "InfrastructureProvider"
-    - name: "k3s"
-      url: "https://github.com/cluster-api-provider-k3s/cluster-api-k3s/releases/v0.1.7/bootstrap-components.yaml"
-      type: "BootstrapProvider"
-    - name: "k3s"
-      url: "https://github.com/cluster-api-provider-k3s/cluster-api-k3s/releases/v0.1.7/control-plane-components.yaml"
-      type: "ControlPlaneProvider"
-    EOF
-    ``` -->
