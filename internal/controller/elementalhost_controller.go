@@ -84,6 +84,11 @@ func (r *ElementalHostReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}()
 
+	// Init labels map
+	if host.Labels == nil {
+		host.Labels = map[string]string{}
+	}
+
 	// The object is not up for deletion
 	if host.GetDeletionTimestamp() == nil || host.GetDeletionTimestamp().IsZero() {
 		// The object is not being deleted, so register the finalizer

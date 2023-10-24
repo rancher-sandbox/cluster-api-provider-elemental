@@ -173,7 +173,23 @@ var _ = Describe("ElementalMachine controller", Label("controller", "elemental-m
 				Namespace: elementalMachine.Namespace},
 				updatedMachine)).Should(Succeed())
 			return updatedMachine.Status.Ready
-		}).WithTimeout(time.Minute).Should(BeFalse(), "Ready should be false as the host is not bootstrapped yet")
+		}).WithTimeout(time.Minute).Should(BeFalse(), "ElementalMachine should not be ready as the host is not bootstrapped yet")
+
+		// Now mark the host as bootstrapped
+		updatedHost := &v1beta1.ElementalHost{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{
+			Name:      installedHost.Name,
+			Namespace: installedHost.Namespace,
+		}, updatedHost)).Should(Succeed())
+		updatedHost.Labels[v1beta1.LabelElementalHostBootstrapped] = "true"
+		Expect(k8sClient.Update(ctx, updatedHost)).Should(Succeed())
+		Eventually(func() bool {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachine.Name,
+				Namespace: elementalMachine.Namespace},
+				updatedMachine)).Should(Succeed())
+			return updatedMachine.Status.Ready
+		}).WithTimeout(time.Minute).Should(BeTrue(), "ElementalMachine should be ready")
 	})
 	It("should mark already associated machine as ready", func() {
 		updatedMachine := &v1beta1.ElementalMachine{}

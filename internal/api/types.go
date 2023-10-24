@@ -50,6 +50,9 @@ type HostPatchRequest struct {
 func (h *HostPatchRequest) applyToElementalHost(elementalHost *infrastructurev1beta1.ElementalHost) {
 	elementalHost.Annotations = h.Annotations
 	elementalHost.Labels = h.Labels
+	if elementalHost.Labels == nil {
+		elementalHost.Labels = map[string]string{}
+	}
 	// Map request values to ElementalHost labels
 	if h.Installed != nil {
 		elementalHost.Labels[infrastructurev1beta1.LabelElementalHostInstalled] = "true"
@@ -77,6 +80,9 @@ func (h *HostResponse) fromElementalHost(elementalHost infrastructurev1beta1.Ele
 	h.Annotations = elementalHost.Annotations
 	h.Labels = elementalHost.Labels
 	h.BootstrapReady = elementalHost.Spec.BootstrapSecret != nil
+	if elementalHost.Labels == nil {
+		return
+	}
 	// Map ElementalHost labels to response values
 	if value, found := elementalHost.Labels[infrastructurev1beta1.LabelElementalHostBootstrapped]; found && value == "true" {
 		h.Bootstrapped = true

@@ -450,6 +450,9 @@ func (r *ElementalMachineReconciler) reconcileDelete(ctx context.Context, elemen
 		}
 
 		// Mark this host for reset
+		if host.Labels == nil {
+			host.Labels = map[string]string{}
+		}
 		host.Labels[infrastructurev1beta1.LabelElementalHostNeedsReset] = "true"
 
 		// Patch
