@@ -32,6 +32,11 @@ type ElementalMachineSpec struct {
 	// Selector can be used to associate ElementalHost that match certain labels.
 	// +optional
 	Selector *metav1.LabelSelector `json:"selector,omitempty"`
+
+	// HostRef is an optional reference to a ElementalHost
+	// using this host.
+	// +optional
+	HostRef *corev1.ObjectReference `json:"hostRef,omitempty"`
 }
 
 // ElementalMachineStatus defines the observed state of ElementalMachine.
@@ -39,11 +44,6 @@ type ElementalMachineStatus struct {
 	// +kubebuilder:default=false
 	// Ready indicates the provider-specific infrastructure has been provisioned and is ready.
 	Ready bool `json:"ready,omitempty"`
-
-	// HostRef is an optional reference to a ElementalHost
-	// using this host.
-	// +optional
-	HostRef *corev1.ObjectReference `json:"hostRef,omitempty"`
 
 	// Conditions defines current service state of the ElementalCluster.
 	// +optional

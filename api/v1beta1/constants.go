@@ -21,5 +21,14 @@ const (
 const (
 	AnnotationElementalRegistrationName      = "elementalregistration.infrastructure.cluster.x-k8s.io/name"
 	AnnotationElementalRegistrationNamespace = "elementalregistration.infrastructure.cluster.x-k8s.io/namespace"
-	AnnotationElementalHostPublicKey         = "elementalhost.infrastructure.cluster.x-k8s.io/pubkey"
+	AnnotationElementalHostPublicKey         = "elementalhost.infrastructure.cluster.x-k8s.io/pub-key"
+)
+
+// Labels.
+const (
+	LabelElementalHostMachineName  = "elementalhost.infrastructure.cluster.x-k8s.io/machine-name"
+	LabelElementalHostInstalled    = "elementalhost.infrastructure.cluster.x-k8s.io/installed"
+	LabelElementalHostBootstrapped = "elementalhost.infrastructure.cluster.x-k8s.io/bootstrapped"
+	LabelElementalHostNeedsReset   = "elementalhost.infrastructure.cluster.x-k8s.io/needs-reset"
+	LabelElementalHostReset        = "elementalhost.infrastructure.cluster.x-k8s.io/reset"
 )

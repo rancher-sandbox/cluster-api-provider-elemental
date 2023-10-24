@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"go/build"
 	"net/url"
 	"path/filepath"
 	"testing"
@@ -28,6 +29,8 @@ import (
 
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -68,9 +71,16 @@ var _ = BeforeSuite(func() {
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},
+		CRDDirectoryPaths: []string{
+			filepath.Join("..", "..", "config", "crd", "bases"),
+			filepath.Join(build.Default.GOPATH, "pkg", "mod", "sigs.k8s.io", "cluster-api@v1.5.2", "config", "crd", "bases"),
+		},
+
 		ErrorIfCRDPathMissing: true,
 	}
+
+	// Add schemes
+	Expect(clusterv1.AddToScheme(scheme.Scheme)).Should(Succeed())
 
 	var err error
 	// cfg is defined in this file globally.
@@ -78,8 +88,8 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
-	err = infrastructurev1beta1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
+	Expect(infrastructurev1beta1.AddToScheme(scheme.Scheme)).Should(Succeed())
+	Expect(clusterv1.AddToScheme(scheme.Scheme)).Should(Succeed())
 
 	//+kubebuilder:scaffold:scheme
 
@@ -94,7 +104,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	// Start the Elemental API server
-	server = api.NewServer(context.Background(), k8sClient, elementalAPIPort)
+	server = api.NewServer(ctx, k8sClient, elementalAPIPort)
 	go func() {
 		defer GinkgoRecover()
 		err := server.Start(ctx)
@@ -109,6 +119,7 @@ var _ = BeforeSuite(func() {
 		err := k8sManager.Start(ctx)
 		Expect(err).ToNot(HaveOccurred(), "failed to run manager")
 	}()
+
 })
 
 func setupAllWithManager(k8sManager manager.Manager) {
@@ -120,6 +131,16 @@ func setupAllWithManager(k8sManager manager.Manager) {
 		APIEndpoint: apiEndpoint,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
+	err = (&ElementalMachineReconciler{
+		Client: k8sManager.GetClient(),
+		Scheme: k8sManager.GetScheme(),
+	}).SetupWithManager(ctx, k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+	err = (&ElementalHostReconciler{
+		Client: k8sManager.GetClient(),
+		Scheme: k8sManager.GetScheme(),
+	}).SetupWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
 }
 
 var _ = AfterSuite(func() {
@@ -128,3 +149,9 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })
+
+func patchObject(ctx context.Context, k8sClient client.Client, obj client.Object, patchObj client.Object) {
+	patchHelper, err := patch.NewHelper(obj, k8sClient)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(patchHelper.Patch(ctx, patchObj)).Should(Succeed())
+}

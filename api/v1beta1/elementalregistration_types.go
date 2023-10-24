@@ -37,8 +37,7 @@ type ElementalRegistrationSpec struct {
 }
 
 // ElementalRegistrationStatus defines the observed state of ElementalRegistration.
-type ElementalRegistrationStatus struct {
-}
+type ElementalRegistrationStatus struct{}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status

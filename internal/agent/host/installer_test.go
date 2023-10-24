@@ -67,7 +67,7 @@ func TestControllers(t *testing.T) {
 	RunSpecs(t, "Installer Suite")
 }
 
-var _ = Describe("Unmanaged Installer", func() {
+var _ = Describe("Unmanaged Installer", Label("agent", "installer", "unmanaged"), func() {
 	var installer Installer
 	var hostnameManager *hostname.MockManager
 	var mockCtrl *gomock.Controller

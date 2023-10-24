@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/cluster-api/util/patch"
 )
 
-var _ = Describe("Registration controller", Ordered, func() {
+var _ = Describe("ElementalRegistration controller", Label("controller", "elemental-registration"), Ordered, func() {
 	ctx := context.Background()
 	namespace := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{

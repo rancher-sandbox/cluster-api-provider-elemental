@@ -27,29 +27,14 @@ type ElementalHostSpec struct {
 	// for bootstrap purpose.
 	// +optional
 	BootstrapSecret *corev1.ObjectReference `json:"bootstrapSecret,omitempty"`
-}
-
-// ElementalHostStatus defines the observed state of ElementalHost.
-type ElementalHostStatus struct {
 	// MachineRef is an optional reference to a Cluster API ElementalMachine
 	// using this host.
 	// +optional
 	MachineRef *corev1.ObjectReference `json:"machineRef,omitempty"`
-	// Installed is true when this host successfully installed by Elemental.
-	// +optional
-	Installed bool `json:"installed,omitempty"`
-	// Bootstrapped is true when this host applied the Boostrap instructions successfully.
-	// +optional
-	Bootstrapped bool `json:"bootstrapped,omitempty"`
-	// Reset is true when this host reset successfully.
-	// This can lead to the finalizer and deletion of the ElementalHost.
-	// +optional
-	Reset bool `json:"reset,omitempty"`
-	// NeedsReset is true when reset of this host has been triggered.
-	// This can lead to the finalizer and deletion of the ElementalHost.
-	// +optional
-	NeedsReset bool `json:"needsReset,omitempty"`
 }
+
+// ElementalHostStatus defines the observed state of ElementalHost.
+type ElementalHostStatus struct{}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
