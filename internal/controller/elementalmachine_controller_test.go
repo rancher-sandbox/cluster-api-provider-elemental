@@ -229,4 +229,74 @@ var _ = Describe("ElementalMachine controller", Label("controller", "elemental-m
 			return false
 		}).WithTimeout(time.Minute).Should(BeTrue())
 	})
+	It("should use label selector when specified", func() {
+		// Add new CAPI Machine
+		newMachine := clusterv1.Machine{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-new",
+				Namespace: namespace.Name,
+			},
+			Spec: clusterv1.MachineSpec{
+				Bootstrap: clusterv1.Bootstrap{
+					DataSecretName: &testBootstrapSecretName,
+				},
+				ClusterName: "test",
+			},
+		}
+		Expect(k8sClient.Create(ctx, &newMachine)).Should(Succeed())
+		// Add owned ElementalMachine with selector
+		elementalMachineWithSelector := v1beta1.ElementalMachine{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-with-selector",
+				Namespace: namespace.Name,
+				Labels:    map[string]string{"cluster.x-k8s.io/cluster-name": cluster.Name},
+			},
+			Spec: v1beta1.ElementalMachineSpec{
+				Selector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{"foo": "bar"},
+				},
+			},
+		}
+		elementalMachineWithSelector.ObjectMeta.OwnerReferences = []metav1.OwnerReference{{
+			APIVersion: "cluster.x-k8s.io/v1beta1",
+			Kind:       "Machine",
+			Name:       newMachine.Name,
+			UID:        newMachine.UID,
+		}}
+		Expect(k8sClient.Create(ctx, &elementalMachineWithSelector)).Should(Succeed())
+		// Add installed host with selector
+		hostWithSelector := host
+		hostWithSelector.ObjectMeta.Name = "test-with-selector"
+		hostWithSelector.Labels = map[string]string{v1beta1.LabelElementalHostInstalled: "true"}
+		hostWithSelector.Labels["foo"] = "bar"
+		Expect(k8sClient.Create(ctx, &hostWithSelector)).Should(Succeed())
+
+		updatedMachine := &v1beta1.ElementalMachine{}
+		wantProviderID := fmt.Sprintf("elemental://%s/%s", hostWithSelector.Namespace, hostWithSelector.Name)
+		wantHostRef := corev1.ObjectReference{
+			APIVersion: "infrastructure.cluster.x-k8s.io/v1beta1",
+			Kind:       "ElementalHost",
+			Namespace:  hostWithSelector.Namespace,
+			Name:       hostWithSelector.Name,
+			UID:        hostWithSelector.UID,
+		}
+		Eventually(func() string {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachineWithSelector.Name,
+				Namespace: elementalMachineWithSelector.Namespace},
+				updatedMachine)).Should(Succeed())
+			if updatedMachine.Spec.ProviderID == nil {
+				return ""
+			}
+			return *updatedMachine.Spec.ProviderID
+		}).WithTimeout(time.Minute).Should(Equal(wantProviderID), "ProviderID must be updated")
+		Eventually(func() corev1.ObjectReference {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachineWithSelector.Name,
+				Namespace: elementalMachineWithSelector.Namespace},
+				updatedMachine)).Should(Succeed())
+			return *updatedMachine.Spec.HostRef
+		}).WithTimeout(time.Minute).Should(Equal(wantHostRef), "HostRef must be updated")
+	})
+
 })

@@ -343,19 +343,19 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("adding host installed label requirement: %w", err)
 	}
-	selector.Add(*requirement)
+	selector = selector.Add(*requirement)
 	// Select hosts that are not undergoing a Reset flow
 	requirement, err = labels.NewRequirement(infrastructurev1beta1.LabelElementalHostNeedsReset, selection.DoesNotExist, nil)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("adding host needs reset label requirement: %w", err)
 	}
-	selector.Add(*requirement)
+	selector = selector.Add(*requirement)
 	// Select hosts that have not been associated yet
 	requirement, err = labels.NewRequirement(infrastructurev1beta1.LabelElementalHostMachineName, selection.DoesNotExist, nil)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("adding host machine name label requirement: %w", err)
 	}
-	selector.Add(*requirement)
+	selector = selector.Add(*requirement)
 
 	// Query the available ElementalHosts within the same namespace as the ElementalMachine
 	if err := r.Client.List(ctx, elementalHosts, client.InNamespace(elementalMachine.Namespace), &client.ListOptions{LabelSelector: selector}); err != nil {
