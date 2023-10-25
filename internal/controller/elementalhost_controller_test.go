@@ -105,7 +105,7 @@ var _ = Describe("ElementalHost controller", Label("controller", "elemental-host
 	})
 })
 
-var _ = Describe("Elemental API Host controller", Label("controller", "elemental-host"), Ordered, func() {
+var _ = Describe("Elemental API Host controller", Label("api", "elemental-host"), Ordered, func() {
 	ctx := context.Background()
 	trueVar := true
 	namespace := corev1.Namespace{
