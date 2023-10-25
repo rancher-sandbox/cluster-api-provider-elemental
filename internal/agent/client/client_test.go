@@ -17,7 +17,7 @@ func TestControllers(t *testing.T) {
 	RunSpecs(t, "Client Suite")
 }
 
-var _ = Describe("Elemental API Client Init", func() {
+var _ = Describe("Elemental API Client Init", Label("agent", "client"), func() {
 	var client Client
 	var fs vfs.FS
 	var err error

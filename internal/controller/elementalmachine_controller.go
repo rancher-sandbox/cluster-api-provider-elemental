@@ -20,13 +20,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util"
@@ -91,9 +91,9 @@ func (r *ElementalMachineReconciler) ElementalHostToElementalMachine(ctx context
 	}
 
 	// Check the ElementalHost was associated to any ElementalMachine
-	if host.Status.MachineRef != nil {
-		logger.Info("Adding ElementalMachine to reconciliation request", ilog.KeyElementalMachine, host.Status.MachineRef.Name)
-		name := client.ObjectKey{Namespace: host.Status.MachineRef.Namespace, Name: host.Status.MachineRef.Name}
+	if host.Spec.MachineRef != nil {
+		logger.Info("Adding ElementalMachine to reconciliation request", ilog.KeyElementalMachine, host.Spec.MachineRef.Name)
+		name := client.ObjectKey{Namespace: host.Spec.MachineRef.Namespace, Name: host.Spec.MachineRef.Name}
 		requests = append(requests, ctrl.Request{NamespacedName: name})
 	}
 
@@ -287,24 +287,34 @@ func (r *ElementalMachineReconciler) reconcileNormal(ctx context.Context, elemen
 
 	// Reconciliation step #9: Set status.ready to true
 	host := &infrastructurev1beta1.ElementalHost{}
-	err := r.Client.Get(ctx, client.ObjectKey{Namespace: elementalMachine.Status.HostRef.Namespace, Name: elementalMachine.Status.HostRef.Name}, host)
+	err := r.Client.Get(ctx, client.ObjectKey{Namespace: elementalMachine.Spec.HostRef.Namespace, Name: elementalMachine.Spec.HostRef.Name}, host)
 	// If the ElementalHost was not found, assume it was deleted, for example due to hardware failure.
 	// Re-association with a new host should happen for this ElementalMachine then.
 	if apierrors.IsNotFound(err) {
-		logger.Info("ElementalHost is not found. Removing association reference", ilog.KeyElementalHost, elementalMachine.Status.HostRef.Name)
+		logger.Info("ElementalHost is not found. Removing association reference", ilog.KeyElementalHost, elementalMachine.Spec.HostRef.Name)
 		elementalMachine.Spec.ProviderID = nil
-		elementalMachine.Status.HostRef = nil
+		elementalMachine.Spec.HostRef = nil
 		// TODO: Most likely deserves a specific failure message.
 		elementalMachine.Status.Ready = false
-		return ctrl.Result{RequeueAfter: time.Second}, nil
+		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
 	}
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("fetching associated ElementalHost: %w", err)
 	}
-	if host.Status.Installed && host.Status.Bootstrapped {
-		logger.Info("ElementalMachine is ready")
-		elementalMachine.Status.Ready = true
+	logger = logger.WithValues(ilog.KeyElementalHost, host.Name)
+
+	// Check if the Host is installed and Bootstrapped
+	if value, found := host.Labels[infrastructurev1beta1.LabelElementalHostInstalled]; !found || value != "true" {
+		logger.Info("Waiting for ElementalHost to be installed")
+		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
 	}
+	if value, found := host.Labels[infrastructurev1beta1.LabelElementalHostBootstrapped]; !found || value != "true" {
+		logger.Info("Waiting for ElementalHost to be bootstrapped")
+		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
+	}
+
+	// Mark the ElementalMachine as ready
+	elementalMachine.Status.Ready = true
 
 	// Reconciliation step #11: Set spec.failureDomain to the provider-specific failure domain the instance is running in (optional)
 	// TODO: Not implemented yet.
@@ -328,24 +338,38 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 		selector = labels.NewSelector()
 	}
 
-	if err := r.Client.List(ctx, elementalHosts, &client.ListOptions{LabelSelector: selector}); err != nil {
+	// Select hosts that are Installed (all components installed, host ready to be bootstrapped)
+	requirement, err := labels.NewRequirement(infrastructurev1beta1.LabelElementalHostInstalled, selection.Equals, []string{"true"})
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("adding host installed label requirement: %w", err)
+	}
+	selector = selector.Add(*requirement)
+	// Select hosts that are not undergoing a Reset flow
+	requirement, err = labels.NewRequirement(infrastructurev1beta1.LabelElementalHostNeedsReset, selection.DoesNotExist, nil)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("adding host needs reset label requirement: %w", err)
+	}
+	selector = selector.Add(*requirement)
+	// Select hosts that have not been associated yet
+	requirement, err = labels.NewRequirement(infrastructurev1beta1.LabelElementalHostMachineName, selection.DoesNotExist, nil)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("adding host machine name label requirement: %w", err)
+	}
+	selector = selector.Add(*requirement)
+
+	// Query the available ElementalHosts within the same namespace as the ElementalMachine
+	if err := r.Client.List(ctx, elementalHosts, client.InNamespace(elementalMachine.Namespace), &client.ListOptions{LabelSelector: selector}); err != nil {
 		return ctrl.Result{}, fmt.Errorf("listing available ElementalHosts: %w", err)
 	}
 
-	// Associate the first ElementalHost in the list that is ready to be bootstrapped
-	var elementalHostCandidate *infrastructurev1beta1.ElementalHost
-	for _, host := range elementalHosts.Items {
-		// Only if this ElementalHost is installed and not already associated
-		if host.Status.Installed && host.Status.MachineRef == nil && !host.Status.NeedsReset { //TODO: Use label filtering instead
-			host := host
-			elementalHostCandidate = &host
-			break
-		}
-	}
-	if elementalHostCandidate == nil {
+	// If there are no available, wait for new hosts to be installed
+	if len(elementalHosts.Items) == 0 {
 		logger.Info("No ElementalHosts available for association. Waiting for new hosts to be provisioned.")
 		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
 	}
+
+	// Pick the first one available
+	elementalHostCandidate := elementalHosts.Items[0]
 
 	logger = logger.WithValues(ilog.KeyElementalHost, elementalHostCandidate.Name)
 	logger.Info("Associating ElementalMachine to ElementalHost")
@@ -353,7 +377,7 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 	// Reconciliation step #8: Set spec.providerID to the provider-specific identifier for the provider’s machine instance
 	providerID := fmt.Sprintf("elemental://%s/%s", elementalHostCandidate.Namespace, elementalHostCandidate.Name)
 	elementalMachine.Spec.ProviderID = &providerID
-	elementalMachine.Status.HostRef = &corev1.ObjectReference{
+	elementalMachine.Spec.HostRef = &corev1.ObjectReference{
 		APIVersion: elementalHostCandidate.APIVersion,
 		Kind:       elementalHostCandidate.Kind,
 		Namespace:  elementalHostCandidate.Namespace,
@@ -362,13 +386,14 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 	}
 
 	// Create the patch helper.
-	patchHelper, err := patch.NewHelper(elementalHostCandidate, r.Client)
+	patchHelper, err := patch.NewHelper(&elementalHostCandidate, r.Client)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
 	}
 
 	// Link the ElementalMachine to ElementalHost
-	elementalHostCandidate.Status.MachineRef = &corev1.ObjectReference{
+	elementalHostCandidate.Labels[infrastructurev1beta1.LabelElementalHostMachineName] = elementalMachine.Name
+	elementalHostCandidate.Spec.MachineRef = &corev1.ObjectReference{
 		APIVersion: elementalMachine.APIVersion,
 		Kind:       elementalMachine.Kind,
 		Namespace:  elementalMachine.Namespace,
@@ -389,7 +414,7 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 	// TODO: Fetch the addresses from ElementalHost to update the associated ElementalMachine
 
 	// Patch the associated ElementalHost
-	if err := patchHelper.Patch(ctx, elementalHostCandidate); err != nil {
+	if err := patchHelper.Patch(ctx, &elementalHostCandidate); err != nil {
 		return ctrl.Result{}, fmt.Errorf("patching ElementalHost: %w", err)
 	}
 
@@ -405,14 +430,14 @@ func (r *ElementalMachineReconciler) reconcileDelete(ctx context.Context, elemen
 	logger.Info("Deletion ElementalMachine reconcile")
 
 	// If the ElementalMachine was already associated to an ElementalHost, trigger the reset of such host.
-	if elementalMachine.Status.HostRef != nil {
-		logger = logger.WithValues(ilog.KeyElementalHost, elementalMachine.Status.HostRef.Name)
+	if elementalMachine.Spec.HostRef != nil {
+		logger = logger.WithValues(ilog.KeyElementalHost, elementalMachine.Spec.HostRef.Name)
 		logger.Info("Triggering Reset on associated ElementalHost")
 		// Fetch the ElementalHost.
 		host := &infrastructurev1beta1.ElementalHost{}
 		if err := r.Client.Get(ctx, types.NamespacedName{
-			Namespace: elementalMachine.Status.HostRef.Namespace,
-			Name:      elementalMachine.Status.HostRef.Name,
+			Namespace: elementalMachine.Spec.HostRef.Namespace,
+			Name:      elementalMachine.Spec.HostRef.Name,
 		}, host); err != nil {
 			if apierrors.IsNotFound(err) {
 				return ctrl.Result{}, nil
@@ -425,7 +450,11 @@ func (r *ElementalMachineReconciler) reconcileDelete(ctx context.Context, elemen
 			return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
 		}
 
-		host.Status.NeedsReset = true
+		// Mark this host for reset
+		if host.Labels == nil {
+			host.Labels = map[string]string{}
+		}
+		host.Labels[infrastructurev1beta1.LabelElementalHostNeedsReset] = "true"
 
 		// Patch
 		if err := patchHelper.Patch(ctx, host); err != nil {
