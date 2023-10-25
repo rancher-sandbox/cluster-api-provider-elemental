@@ -392,6 +392,7 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 	}
 
 	// Link the ElementalMachine to ElementalHost
+	elementalHostCandidate.Labels[infrastructurev1beta1.LabelElementalHostMachineName] = elementalMachine.Name
 	elementalHostCandidate.Spec.MachineRef = &corev1.ObjectReference{
 		APIVersion: elementalMachine.APIVersion,
 		Kind:       elementalMachine.Kind,

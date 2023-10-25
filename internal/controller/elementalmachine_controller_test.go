@@ -167,6 +167,14 @@ var _ = Describe("ElementalMachine controller", Label("controller", "elemental-m
 				updatedMachine)).Should(Succeed())
 			return *updatedMachine.Spec.HostRef
 		}).WithTimeout(time.Minute).Should(Equal(wantHostRef), "HostRef must be updated")
+
+		updatedHost := &v1beta1.ElementalHost{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{
+			Name:      installedHost.Name,
+			Namespace: installedHost.Namespace,
+		}, updatedHost)).Should(Succeed())
+		Expect(updatedHost.Labels[v1beta1.LabelElementalHostMachineName]).Should(Equal(elementalMachine.Name), "machine-name label must be set")
+
 		Eventually(func() bool {
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
 				Name:      elementalMachine.Name,
@@ -176,7 +184,6 @@ var _ = Describe("ElementalMachine controller", Label("controller", "elemental-m
 		}).WithTimeout(time.Minute).Should(BeFalse(), "ElementalMachine should not be ready as the host is not bootstrapped yet")
 
 		// Now mark the host as bootstrapped
-		updatedHost := &v1beta1.ElementalHost{}
 		Expect(k8sClient.Get(ctx, types.NamespacedName{
 			Name:      installedHost.Name,
 			Namespace: installedHost.Namespace,
