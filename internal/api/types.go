@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,11 +49,14 @@ type HostPatchRequest struct {
 }
 
 func (h *HostPatchRequest) applyToElementalHost(elementalHost *infrastructurev1beta1.ElementalHost) {
-	elementalHost.Annotations = h.Annotations
-	elementalHost.Labels = h.Labels
+	if elementalHost.Annotations == nil {
+		elementalHost.Annotations = map[string]string{}
+	}
 	if elementalHost.Labels == nil {
 		elementalHost.Labels = map[string]string{}
 	}
+	maps.Copy(elementalHost.Annotations, h.Annotations)
+	maps.Copy(elementalHost.Labels, h.Labels)
 	// Map request values to ElementalHost labels
 	if h.Installed != nil {
 		elementalHost.Labels[infrastructurev1beta1.LabelElementalHostInstalled] = "true"

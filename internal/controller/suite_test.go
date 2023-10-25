@@ -73,14 +73,11 @@ var _ = BeforeSuite(func() {
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths: []string{
 			filepath.Join("..", "..", "config", "crd", "bases"),
-			filepath.Join(build.Default.GOPATH, "pkg", "mod", "sigs.k8s.io", "cluster-api@v1.5.2", "config", "crd", "bases"),
+			filepath.Join(build.Default.GOPATH, "pkg", "mod", "sigs.k8s.io", "cluster-api@v1.5.2", "config", "crd", "bases"), // Load the CAPI CRDs
 		},
 
 		ErrorIfCRDPathMissing: true,
 	}
-
-	// Add schemes
-	Expect(clusterv1.AddToScheme(scheme.Scheme)).Should(Succeed())
 
 	var err error
 	// cfg is defined in this file globally.

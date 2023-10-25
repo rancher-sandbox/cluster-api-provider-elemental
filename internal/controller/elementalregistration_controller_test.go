@@ -89,7 +89,7 @@ var _ = Describe("ElementalRegistration controller", Label("controller", "elemen
 	})
 })
 
-var _ = Describe("Elemental API Registration controller", Ordered, func() {
+var _ = Describe("Elemental API Registration controller", Label("api", "elemental-registration"), Ordered, func() {
 	ctx := context.Background()
 	namespace := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{

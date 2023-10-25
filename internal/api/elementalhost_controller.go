@@ -206,6 +206,20 @@ func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, reque
 		return
 	}
 
+	// FIXME: During testing the registration has empty TypeMeta.
+	//        Disabling the client cache for this object type does not help.
+	//        Fetching this object twice does not help either.
+	//        See: https://github.com/kubernetes-sigs/controller-runtime/issues/1517
+	//
+	//        This is probably the wrong solution, as the APIVersion may diverge from the input one,
+	//        most likely breaking the owner reference.
+	//        However this does not seem to be reproducible outside of the test environment.
+	if registration.APIVersion == "" || registration.Kind == "" {
+		logger.V(log.DebugLevel).Info("Sanitizing empty TypeMeta in ElementalRegistration")
+		registration.Kind = "ElementalRegistration"
+		registration.APIVersion = infrastructurev1beta1.GroupVersion.String()
+	}
+
 	// Unmarshal POST request body.
 	hostCreateRequest := &HostCreateRequest{}
 	if err := json.NewDecoder(request.Body).Decode(hostCreateRequest); err != nil {
