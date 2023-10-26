@@ -238,6 +238,17 @@ lint: ## See: https://golangci-lint.run/usage/linters/
 
 ALL_VERIFY_CHECKS = manifests generate openapi
 
+.PHONY: build-iso
+build-iso: 
+	$(CONTAINER_TOOL) build \
+		--build-arg "TAG=${GIT_TAG}" \
+		--build-arg "COMMIT=${GIT_COMMIT}" \
+		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
+		-t elemental-iso:latest -f Dockerfile.iso .
+	$(CONTAINER_TOOL) run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ./iso:/build \
+		--entrypoint /usr/sbin/elemental docker.io/library/elemental-iso:latest --debug build-iso --bootloader-in-rootfs -n elemental-dev \
+		--local --squash-no-compression -o /build docker.io/library/elemental-iso:latest
+
 .PHONY: verify
 verify: $(addprefix verify-,$(ALL_VERIFY_CHECKS))
 

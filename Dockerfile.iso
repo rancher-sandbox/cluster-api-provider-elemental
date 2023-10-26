@@ -1,0 +1,97 @@
+FROM golang:1.21 as AGENT
+ARG TARGETOS
+ARG TARGETARCH
+
+# Copy the Go Modules manifests
+WORKDIR /workspace
+COPY go.mod go.mod
+COPY go.sum go.sum
+# cache deps before building and copying source so that we don't need to re-download as much
+# and so that source changes don't invalidate our downloaded layer
+RUN go mod download
+
+# Copy the go source
+COPY cmd/agent/main.go cmd/agent/main.go
+COPY api/ api/
+COPY internal/ internal/
+
+ARG TAG=v0.0.0
+ARG COMMIT=""
+ARG COMMITDATE=""
+
+RUN CGO_ENABLED=0 go build \
+    -ldflags "-w -s  \
+    -X github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.Version=$TAG  \
+    -X github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.Commit=$COMMIT  \
+    -X github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.CommitDate=$COMMITDATE"  \
+    -a -o elemental-agent cmd/agent/main.go
+
+FROM  ghcr.io/rancher/elemental-toolkit/elemental-cli:latest as TOOLKIT
+
+# OS base image of our choice
+FROM opensuse/leap:15.5 as OS
+
+# install kernel, systemd, dracut, grub2 and other required tools
+RUN ARCH=$(uname -m); \
+    if [[ $ARCH == "aarch64" ]]; then ARCH="arm64"; fi; \
+    zypper --non-interactive install --no-recommends -- \
+      kernel-default \
+      device-mapper \
+      dracut \
+      grub2 \
+      grub2-${ARCH}-efi \
+      shim \
+      haveged \
+      systemd \
+      NetworkManager \
+      openssh-server \
+      openssh-clients \
+      timezone \
+      parted \
+      e2fsprogs \
+      dosfstools \
+      mtools \
+      xorriso \
+      findutils \
+      gptfdisk \
+      rsync \
+      squashfs \
+      lvm2 \
+      tar \
+      gzip \
+      vim \
+      which \
+      less \
+      sudo \
+      curl \
+      sed
+
+# Add the elemental cli
+COPY --from=TOOLKIT /usr/bin/elemental /usr/sbin/elemental
+# Add the elemental-agent
+COPY --from=AGENT /workspace/elemental-agent /usr/sbin/elemental-agent
+
+COPY framework/files/system/oem/ /system/oem/
+COPY framework/files/usr/lib/systemd/system/ /usr/lib/systemd/system/
+COPY iso/config/example-config.yaml /oem/elemental/agent/config.yaml
+
+# Enable essential services
+RUN systemctl enable NetworkManager.service sshd
+
+# Enable /tmp to be on tmpfs
+RUN cp /usr/share/systemd/tmp.mount /etc/systemd/system
+
+# Generate initrd with required elemental services
+RUN elemental init -f && \
+    kernel=$(ls /boot/Image-* | head -n1) && \
+    if [ -e "$kernel" ]; then ln -sf "${kernel#/boot/}" /boot/vmlinuz; fi && \
+    rm -rf /var/log/update* && \
+    >/var/log/lastlog && \
+    rm -rf /boot/vmlinux*
+
+# Update os-release file with some metadata
+RUN echo TIMESTAMP="`date +'%Y%m%d%H%M%S'`" >> /etc/os-release && \
+    echo GRUB_ENTRY_NAME=\"Elemental\" >> /etc/os-release
+
+# Good for validation after the build
+CMD /bin/bash

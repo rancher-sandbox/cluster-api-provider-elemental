@@ -1,0 +1,6 @@
+agent:
+  debug: true
+  insecureAllowHttp: true
+  reconciliation: 10s
+registration:
+  uri: http://192.168.122.10:30009/elemental/v1/namespaces/default/registrations/my-registration
