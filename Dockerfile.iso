@@ -67,12 +67,14 @@ RUN ARCH=$(uname -m); \
       sed
 
 # Add the elemental cli
-COPY --from=TOOLKIT /usr/bin/elemental /usr/sbin/elemental
+COPY --from=TOOLKIT /usr/bin/elemental /usr/bin/elemental
 # Add the elemental-agent
 COPY --from=AGENT /workspace/elemental-agent /usr/sbin/elemental-agent
 
-COPY framework/files/system/oem/ /system/oem/
-COPY framework/files/usr/lib/systemd/system/ /usr/lib/systemd/system/
+# Add framework files
+COPY framework/files/ /
+
+# Add agent config
 COPY iso/config/example-config.yaml /oem/elemental/agent/config.yaml
 
 # Enable essential services

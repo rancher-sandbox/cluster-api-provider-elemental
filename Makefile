@@ -246,7 +246,7 @@ build-iso:
 		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
 		-t elemental-iso:latest -f Dockerfile.iso .
 	$(CONTAINER_TOOL) run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ./iso:/build \
-		--entrypoint /usr/sbin/elemental docker.io/library/elemental-iso:latest --debug build-iso --bootloader-in-rootfs -n elemental-dev \
+		--entrypoint /usr/bin/elemental docker.io/library/elemental-iso:latest --debug build-iso --bootloader-in-rootfs -n elemental-dev \
 		--local --squash-no-compression -o /build docker.io/library/elemental-iso:latest
 
 .PHONY: verify
