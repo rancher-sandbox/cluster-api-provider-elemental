@@ -345,11 +345,15 @@ components:
         agent:
           $ref: '#/components/schemas/V1Beta1Agent'
         install:
-          $ref: '#/components/schemas/V1Beta1Install'
+          additionalProperties:
+            $ref: '#/components/schemas/RuntimeRawExtension'
+          type: object
         registration:
           $ref: '#/components/schemas/V1Beta1Registration'
         reset:
-          $ref: '#/components/schemas/V1Beta1Reset'
+          additionalProperties:
+            $ref: '#/components/schemas/RuntimeRawExtension'
+          type: object
       type: object
     V1Beta1Hostname:
       properties:
@@ -358,62 +362,10 @@ components:
         useExisting:
           type: boolean
       type: object
-    V1Beta1Install:
-      properties:
-        configDir:
-          type: string
-        configUrls:
-          items:
-            type: string
-          type: array
-        debug:
-          type: boolean
-        device:
-          type: string
-        disableBootEntry:
-          type: boolean
-        ejectCd:
-          type: boolean
-        firmware:
-          type: string
-        iso:
-          type: string
-        noFormat:
-          type: boolean
-        poweroff:
-          type: boolean
-        reboot:
-          type: boolean
-        systemUri:
-          type: string
-        tty:
-          type: string
-      type: object
     V1Beta1Registration:
       properties:
         caCert:
           type: string
         uri:
-          type: string
-      type: object
-    V1Beta1Reset:
-      properties:
-        configUrls:
-          items:
-            type: string
-          type: array
-        debug:
-          type: boolean
-        enabled:
-          type: boolean
-        poweroff:
-          type: boolean
-        reboot:
-          type: boolean
-        resetOem:
-          type: boolean
-        resetPersistent:
-          type: boolean
-        systemUri:
           type: string
       type: object

@@ -18,6 +18,7 @@ import (
 	"github.com/twpayne/go-vfs/vfst"
 	gomock "go.uber.org/mock/gomock"
 	"gopkg.in/yaml.v3"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
@@ -54,8 +55,16 @@ var (
 			Elemental: infrastructurev1beta1.Elemental{
 				Registration: configFixture.Registration,
 				Agent:        configFixture.Agent,
-				Install:      infrastructurev1beta1.Install{Debug: true},
-				Reset:        infrastructurev1beta1.Reset{Debug: true},
+				Install: map[string]runtime.RawExtension{
+					"foo": {
+						Raw: []byte(`{"bar":{"foobar":"barfoo"}}`),
+					},
+				},
+				Reset: map[string]runtime.RawExtension{
+					"foo": {
+						Raw: []byte(`{"bar":{"foobar":"barfoo"}}`),
+					},
+				},
 			},
 		},
 	}
@@ -93,6 +102,13 @@ var _ = Describe("Unmanaged Installer", Label("agent", "installer", "unmanaged")
 			hostnameManager.EXPECT().SetHostname(testHostname).Return(errors.New("just a test error"))
 			Expect(installer.Install(registrationFixture, testHostname)).ShouldNot(Succeed())
 		})
+		It("should write install config to file", func() {
+			testInstallPath := fmt.Sprintf("%s/install.yaml", testWorkDir)
+			marshalIntoFile(fs, []byte("to be overwritten"), testInstallPath) // Initialize dummy install file to be overwritten
+			hostnameManager.EXPECT().SetHostname(testHostname).Return(nil)
+			Expect(installer.Install(registrationFixture, testHostname)).Should(Succeed())
+			compareFiles(fs, testInstallPath, "_testdata/testinstall.yaml")
+		})
 	})
 	When("Triggering Reset", func() {
 		It("should write reset sentinel file", func() {
@@ -108,6 +124,12 @@ var _ = Describe("Unmanaged Installer", Label("agent", "installer", "unmanaged")
 		})
 		It("should succeed if reset sentinel file was deleted", func() {
 			Expect(installer.Reset(registrationFixture)).Should(Succeed())
+		})
+		It("should write reset config to file", func() {
+			testResetPath := fmt.Sprintf("%s/reset.yaml", testWorkDir)
+			marshalIntoFile(fs, []byte("to be overwritten"), testResetPath) // Initialize dummy reset file to be overwritten
+			Expect(installer.Reset(registrationFixture)).Should(Succeed())
+			compareFiles(fs, testResetPath, "_testdata/testinstall.yaml")
 		})
 	})
 })

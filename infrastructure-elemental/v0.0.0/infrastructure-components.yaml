@@ -788,40 +788,7 @@ spec:
                             type: string
                         type: object
                       install:
-                        default:
-                          debug: false
-                          device: /dev/sda
-                          reboot: true
-                        properties:
-                          configDir:
-                            type: string
-                          configUrls:
-                            items:
-                              type: string
-                            type: array
-                          debug:
-                            type: boolean
-                          device:
-                            type: string
-                          disableBootEntry:
-                            type: boolean
-                          ejectCd:
-                            type: boolean
-                          firmware:
-                            type: string
-                          iso:
-                            type: string
-                          noFormat:
-                            type: boolean
-                          poweroff:
-                            type: boolean
-                          reboot:
-                            type: boolean
-                          systemUri:
-                            type: string
-                          tty:
-                            type: string
-                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       registration:
                         properties:
                           caCert:
@@ -830,35 +797,7 @@ spec:
                             type: string
                         type: object
                       reset:
-                        default:
-                          debug: false
-                          enabled: false
-                          reboot: true
-                          resetOem: true
-                          resetPersistent: true
-                        properties:
-                          configUrls:
-                            items:
-                              type: string
-                            type: array
-                          debug:
-                            type: boolean
-                          enabled:
-                            type: boolean
-                          poweroff:
-                            type: boolean
-                          reboot:
-                            default: true
-                            type: boolean
-                          resetOem:
-                            default: true
-                            type: boolean
-                          resetPersistent:
-                            default: true
-                            type: boolean
-                          systemUri:
-                            type: string
-                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
                     type: object
                 type: object
               hostAnnotations:

@@ -73,57 +73,6 @@ type Config struct {
 	CloudConfig map[string]runtime.RawExtension `json:"cloudConfig,omitempty" yaml:"cloudConfig,omitempty"`
 }
 
-type Install struct {
-	// +optional
-	Firmware string `json:"firmware,omitempty" yaml:"firmware,omitempty"`
-	// +optional
-	Device string `json:"device,omitempty" yaml:"device,omitempty"`
-	// +optional
-	NoFormat bool `json:"noFormat,omitempty" yaml:"noFormat,omitempty"`
-	// +optional
-	ConfigURLs []string `json:"configUrls,omitempty" yaml:"configUrls,omitempty"`
-	// +optional
-	ISO string `json:"iso,omitempty" yaml:"iso,omitempty"`
-	// +optional
-	SystemURI string `json:"systemUri,omitempty" yaml:"systemUri,omitempty"`
-	// +optional
-	Debug bool `json:"debug,omitempty" yaml:"debug,omitempty"`
-	// +optional
-	TTY string `json:"tty,omitempty" yaml:"tty,omitempty"`
-	// +optional
-	PowerOff bool `json:"poweroff,omitempty" yaml:"poweroff,omitempty"`
-	// +optional
-	Reboot bool `json:"reboot,omitempty" yaml:"reboot,omitempty"`
-	// +optional
-	EjectCD bool `json:"ejectCd,omitempty" yaml:"ejectCd,omitempty"`
-	// +optional
-	DisableBootEntry bool `json:"disableBootEntry,omitempty" yaml:"disableBootEntry,omitempty"`
-	// +optional
-	ConfigDir string `json:"configDir,omitempty" yaml:"configDir,omitempty"`
-}
-
-type Reset struct {
-	// +optional
-	Enabled bool `json:"enabled,omitempty" yaml:"enabled,omitempty" mapstructure:"enabled"`
-	// +optional
-	// +kubebuilder:default:=true
-	ResetPersistent bool `json:"resetPersistent,omitempty" yaml:"resetPersistent,omitempty" mapstructure:"resetPersistent"`
-	// +optional
-	// +kubebuilder:default:=true
-	ResetOEM bool `json:"resetOem,omitempty" yaml:"resetOem,omitempty" mapstructure:"resetOem"`
-	// +optional
-	ConfigURLs []string `json:"configUrls,omitempty" yaml:"configUrls,omitempty" mapstructure:"configUrls"`
-	// +optional
-	SystemURI string `json:"systemUri,omitempty" yaml:"systemUri,omitempty" mapstructure:"systemUri"`
-	// +optional
-	Debug bool `json:"debug,omitempty" yaml:"debug,omitempty" mapstructure:"debug"`
-	// +optional
-	PowerOff bool `json:"poweroff,omitempty" yaml:"poweroff,omitempty" mapstructure:"poweroff"`
-	// +optional
-	// +kubebuilder:default:=true
-	Reboot bool `json:"reboot,omitempty" yaml:"reboot,omitempty" mapstructure:"reboot"`
-}
-
 type Registration struct {
 	// +optional
 	URI string `json:"uri,omitempty" yaml:"uri,omitempty" mapstructure:"uri"`
@@ -166,11 +115,13 @@ type Hostname struct {
 
 type Elemental struct {
 	// +optional
-	// +kubebuilder:default:={"debug":false,"device":"/dev/sda","reboot":true}
-	Install Install `json:"install,omitempty" yaml:"install,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
+	Install map[string]runtime.RawExtension `json:"install,omitempty" yaml:"install,omitempty"`
 	// +optional
-	// +kubebuilder:default:={"debug":false,"enabled":false,"resetPersistent":true,"resetOem":true,"reboot":true}
-	Reset Reset `json:"reset,omitempty" yaml:"reset,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
+	Reset map[string]runtime.RawExtension `json:"reset,omitempty" yaml:"reset,omitempty"`
 	// +optional
 	Registration Registration `json:"registration,omitempty" yaml:"registration,omitempty"`
 	// +optional

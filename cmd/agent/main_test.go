@@ -56,8 +56,6 @@ var (
 			Elemental: infrastructurev1beta1.Elemental{
 				Registration: configFixture.Registration,
 				Agent:        configFixture.Agent,
-				Install:      infrastructurev1beta1.Install{Debug: true},
-				Reset:        infrastructurev1beta1.Reset{Debug: true},
 			},
 		},
 	}
