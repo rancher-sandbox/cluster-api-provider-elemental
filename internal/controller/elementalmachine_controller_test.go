@@ -237,6 +237,8 @@ var _ = Describe("ElementalMachine controller", Label("controller", "elemental-m
 				updatedMachine)).Should(Succeed())
 			return updatedMachine.Status.Ready
 		}).WithTimeout(time.Minute).Should(BeFalse())
+		// Remove this machine as no longer needed for further tests
+		Expect(k8sClient.Delete(ctx, &alreadyAssociatedMachine)).Should(Succeed())
 	})
 	It("should trigger host reset upon deletion", func() {
 		Expect(k8sClient.Delete(ctx, &elementalMachine)).Should(Succeed())
