@@ -17,16 +17,20 @@ type Manager interface {
 }
 
 func NewManager() Manager {
-	return &manager{}
+	return &manager{
+		cmdRunner: utils.NewCommandRunner(),
+	}
 }
 
 var _ Manager = (*manager)(nil)
 
-type manager struct{}
+type manager struct {
+	cmdRunner utils.CommandRunner
+}
 
 func (m *manager) SetHostname(hostname string) error {
 	log.Debugf("Setting hostname: %s", hostname)
-	if err := utils.RunCommand(fmt.Sprintf("hostnamectl set-hostname %s", hostname)); err != nil {
+	if err := m.cmdRunner.RunCommand(fmt.Sprintf("hostnamectl set-hostname %s", hostname)); err != nil {
 		return fmt.Errorf("running hostnamectl: %w", err)
 	}
 	return nil

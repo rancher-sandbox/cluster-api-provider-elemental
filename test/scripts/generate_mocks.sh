@@ -8,3 +8,5 @@ go install go.uber.org/mock/mockgen@v0.3.0
 mockgen -copyright_file=hack/boilerplate.go.txt -destination=internal/agent/client/client_mocks.go -package=client github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client Client
 mockgen -copyright_file=hack/boilerplate.go.txt -destination=internal/agent/host/installer_mocks.go -package=host github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/host InstallerSelector,Installer
 mockgen -copyright_file=hack/boilerplate.go.txt -destination=internal/agent/hostname/hostname_mocks.go -package=hostname github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/hostname Manager
+mockgen -copyright_file=hack/boilerplate.go.txt -destination=internal/agent/elementalcli/runner_mocks.go -package=elementalcli github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/elementalcli Runner
+mockgen -copyright_file=hack/boilerplate.go.txt -destination=internal/agent/utils/runner_mocks.go -package=utils github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils CommandRunner

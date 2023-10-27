@@ -299,6 +299,7 @@ func handleBootstrap(fs vfs.FS, client client.Client, hostname string) error {
 	// Avoid applying bootstrap multiple times
 	// See contract: https://cluster-api.sigs.k8s.io/developer/providers/bootstrap.html#sentinel-file
 	_, err := fs.Stat(bootstrapSentinelFile)
+	cmdRunner := utils.NewCommandRunner()
 	if os.IsNotExist(err) {
 		log.Debug("Fetching bootstrap config")
 		bootstrap, err := client.GetBootstrap(hostname)
@@ -313,7 +314,7 @@ func handleBootstrap(fs vfs.FS, client client.Client, hostname string) error {
 		}
 
 		for _, command := range bootstrap.Commands {
-			if err := utils.RunCommand(command); err != nil {
+			if err := cmdRunner.RunCommand(command); err != nil {
 				return fmt.Errorf("running bootstrap command: %w", err)
 			}
 		}

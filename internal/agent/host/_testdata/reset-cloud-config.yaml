@@ -1,0 +1,8 @@
+name: Elemental Reset
+stages:
+    network.after:
+        - commands:
+            - elemental-agent --debug --reset --config /oem/elemental/agent/config.yaml
+            - systemctl start elemental-agent-install
+          if: '[ -f /run/cos/recovery_mode ]'
+          name: Runs elemental reset and reinstall the system
