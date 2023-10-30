@@ -61,6 +61,14 @@ agent:
   hostname:
     useExisting: false
     prefix: ""
+  # Post Install behavior (when running --install)
+  postInstall:
+    powerOff: false
+    reboot: false
+  # Post Reset behavior (when running --reset)
+  postReset:
+    powerOff: false
+    reboot: false
   # Add SMBIOS labels (not implemented yet)
   noSmbios: false
   # Enable agent debug logs
