@@ -82,7 +82,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 	var cmd *cobra.Command
 	var mockCtrl *gomock.Controller
 	var mClient *client.MockClient
-	var mInstallerSelector *installer.MockInstallerSelector
+	var mInstallerSelector *installer.MockSelector
 	var mInstaller *installer.MockInstaller
 	var mHostManager *host.MockManager
 	BeforeEach(func() {
@@ -91,7 +91,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 		Expect(err).ToNot(HaveOccurred())
 		mockCtrl = gomock.NewController(GinkgoT())
 		mClient = client.NewMockClient(mockCtrl)
-		mInstallerSelector = installer.NewMockInstallerSelector(mockCtrl)
+		mInstallerSelector = installer.NewMockSelector(mockCtrl)
 		mInstaller = installer.NewMockInstaller(mockCtrl)
 		mHostManager = host.NewMockManager(mockCtrl)
 		cmd = newCommand(fs, mInstallerSelector, mHostManager, mClient)
