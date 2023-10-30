@@ -1,117 +1,121 @@
 package installer
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
+	"os"
 
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/host"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/twpayne/go-vfs"
-	"gopkg.in/yaml.v3"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
-const (
-	sentinelFileResetNeeded = "reset.needed"
-	installFile             = "install.yaml"
-	resetFile               = "reset.yaml"
-	cloudInitFile           = "cloud-init.yaml"
-	hostConfigFile          = "host-config.yaml"
-	temporaryDir            = "/tmp"
-	installerUnmanaged      = "unmanaged"
-	installerElemental      = "elemental"
-)
+var _ Installer = (*UnmanagedInstaller)(nil)
 
-var (
-	ErrUnmanagedOSNotReset = errors.New("unmanaged OS reset sentinel file still exists")
-	ErrUnknownInstaller    = errors.New("unknown installer")
-)
-
-type InstallerSelector interface {
-	GetInstaller(fs vfs.FS, configPath string, conf config.Config) (Installer, error)
+type UnmanagedInstaller struct {
+	fs          vfs.FS
+	hostManager host.Manager
+	configPath  string
+	workDir     string
 }
 
-func NewInstallerSelector() InstallerSelector {
-	return &installerSelector{}
-}
-
-var _ InstallerSelector = (*installerSelector)(nil)
-
-type installerSelector struct{}
-
-func (s *installerSelector) GetInstaller(fs vfs.FS, configPath string, conf config.Config) (Installer, error) {
-	var installer Installer
-	switch conf.Agent.Installer {
-	case installerUnmanaged:
-		log.Info("Using Unmanaged OS Installer")
-		installer = NewUnmanagedInstaller(fs, host.NewManager(), configPath, conf.Agent.WorkDir)
-	case installerElemental:
-		log.Info("Using Elemental Installer")
-		installer = NewElementalInstaller(fs, host.NewManager(), configPath, conf.Agent.WorkDir)
-	default:
-		return nil, fmt.Errorf("parsing installer '%s': %w", conf.Agent.Installer, ErrUnknownInstaller)
+func NewUnmanagedInstaller(fs vfs.FS, hostManager host.Manager, configPath string, workDir string) Installer {
+	return &UnmanagedInstaller{
+		fs:          fs,
+		hostManager: hostManager,
+		configPath:  configPath,
+		workDir:     workDir,
 	}
-	return installer, nil
 }
 
-type Installer interface {
-	Install(conf api.RegistrationResponse, hostnameToSet string) error
-	TriggerReset() error
-	Reset(conf api.RegistrationResponse) error
-}
-
-func formatCloudConfig(cloudConfig map[string]runtime.RawExtension) ([]byte, error) {
-	cloudInitBytes := []byte("#cloud-config\n")
-	cloudInitContentBytes, err := unmarshalRawMapToYaml(cloudConfig)
+func (i *UnmanagedInstaller) Install(conf api.RegistrationResponse, hostnameToSet string) error {
+	log.Debug("Installing Unmanaged OS")
+	// Write the install config
+	installBytes, err := unmarshalRawMapToYaml(conf.Config.Elemental.Install)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshalling cloud init config: %w", err)
+		return fmt.Errorf("unmarshalling install config: %w", err)
 	}
-	cloudInitBytes = append(cloudInitBytes, cloudInitContentBytes...)
-	return cloudInitBytes, nil
-}
-
-func unmarshalRawMapToYaml(input map[string]runtime.RawExtension) ([]byte, error) {
-	yamlData := []byte{}
-	if len(input) == 0 {
-		log.Debug("nothing to decode")
-		return yamlData, nil
+	installPath := fmt.Sprintf("%s/%s", conf.Config.Elemental.Agent.WorkDir, installFile)
+	log.Infof("Writing install config file: %s", installPath)
+	if err := utils.WriteFile(i.fs, api.WriteFile{
+		Content:     string(installBytes),
+		Path:        installPath,
+		Owner:       "root:root",
+		Permissions: "0640",
+	}); err != nil {
+		return fmt.Errorf("writing install file to path '%s': %w", installPath, err)
 	}
-
-	jsonObject := map[string]any{}
-	for key, value := range input {
-		var jsonData any
-		if err := json.Unmarshal(value.Raw, &jsonData); err != nil {
-			return nil, fmt.Errorf("unmarshalling '%s' key with '%s' value: %w", key, string(value.Raw), err)
-		}
-		jsonObject[key] = jsonData
-	}
-
-	yamlData, err := yaml.Marshal(jsonObject)
+	// Write the cloud-init config
+	cloudInitBytes, err := formatCloudConfig(conf.Config.CloudConfig)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling raw json map to to yaml: %w", err)
+		return fmt.Errorf("formatting cloud-init config: %w", err)
 	}
-
-	return yamlData, nil
-}
-
-func unmarshalRaw(input map[string]runtime.RawExtension, output any) error {
-	if len(input) == 0 {
-		log.Debug("nothing to decode")
-		return nil
+	cloudInitPath := fmt.Sprintf("%s/%s", conf.Config.Elemental.Agent.WorkDir, cloudInitFile)
+	if err := utils.WriteFile(i.fs, api.WriteFile{
+		Content:     string(cloudInitBytes),
+		Path:        cloudInitPath,
+		Owner:       "root:root",
+		Permissions: "0640",
+	}); err != nil {
+		return fmt.Errorf("writing cloud-init file to path '%s': %w", installPath, err)
 	}
-
-	jsonBytes := []byte("{")
-	for key, value := range input {
-		jsonBytes = append(jsonBytes, append([]byte(fmt.Sprintf(`"%s":`, key)), value.Raw...)...)
-		jsonBytes = append(jsonBytes, []byte(`,`)...)
+	// Set the Hostname
+	if err := i.hostManager.SetHostname(hostnameToSet); err != nil {
+		return fmt.Errorf("setting hostname: %w", err)
 	}
-	jsonBytes[len(jsonBytes)-1] = byte('}')
-
-	if err := json.Unmarshal(jsonBytes, output); err != nil {
-		return fmt.Errorf("unmarshalling json: %w", err)
+	log.Infof("Hostname set: %s", hostnameToSet)
+	// Install the agent config file
+	agentConfig := config.FromAPI(conf)
+	if err := agentConfig.WriteToFile(i.fs, i.configPath); err != nil {
+		return fmt.Errorf("installing agent config: %w", err)
 	}
 	return nil
+}
+
+func (i *UnmanagedInstaller) TriggerReset() error {
+	log.Debug("Triggering Unmanaged OS reset")
+	sentinelFile := i.formatResetSentinelFile(i.workDir)
+	log.Infof("Creating reset sentinel file: %s", sentinelFile)
+	if err := utils.WriteFile(i.fs, api.WriteFile{
+		Path: sentinelFile,
+	}); err != nil {
+		return fmt.Errorf("writing reset sentinel file: %w", err)
+	}
+	return nil
+}
+
+func (i *UnmanagedInstaller) Reset(conf api.RegistrationResponse) error {
+	log.Debug("Resetting Unmanaged OS")
+	// Write the reset config
+	resetBytes, err := unmarshalRawMapToYaml(conf.Config.Elemental.Reset)
+	if err != nil {
+		return fmt.Errorf("unmarshalling reset config: %w", err)
+	}
+	resetPath := fmt.Sprintf("%s/%s", conf.Config.Elemental.Agent.WorkDir, resetFile)
+	log.Infof("Writing reset config file: %s", resetPath)
+	if err := utils.WriteFile(i.fs, api.WriteFile{
+		Content:     string(resetBytes),
+		Path:        resetPath,
+		Owner:       "root:root",
+		Permissions: "0640",
+	}); err != nil {
+		return fmt.Errorf("writing reset file to path '%s': %w", resetPath, err)
+	}
+	// Check reset sentinel file
+	sentinelFile := i.formatResetSentinelFile(conf.Config.Elemental.Agent.WorkDir)
+	log.Infof("Verifying reset sentinel file '%s' has been deleted", sentinelFile)
+	_, err = i.fs.Stat(i.formatResetSentinelFile(conf.Config.Elemental.Agent.WorkDir))
+	if err == nil {
+		return ErrUnmanagedOSNotReset
+	}
+	if !os.IsNotExist(err) {
+		return fmt.Errorf("getting info for file '%s': %w", sentinelFile, err)
+	}
+	return nil
+}
+
+func (i *UnmanagedInstaller) formatResetSentinelFile(workDir string) string {
+	return fmt.Sprintf("%s/%s", workDir, sentinelFileResetNeeded)
 }

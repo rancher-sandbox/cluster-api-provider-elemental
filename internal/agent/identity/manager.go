@@ -18,18 +18,18 @@ const (
 
 var ErrIdentityDoesNotExist = errors.New("no identity found")
 
-type IdentityManager interface {
+type Manager interface {
 	GetOrCreateIdentity() (Identity, error)
 }
 
-var _ IdentityManager = (*DummyManager)(nil)
+var _ Manager = (*DummyManager)(nil)
 
 type DummyManager struct {
 	workDir string
 	fs      vfs.FS
 }
 
-func NewDummyManager(fs vfs.FS, workDir string) IdentityManager {
+func NewDummyManager(fs vfs.FS, workDir string) Manager {
 	return &DummyManager{
 		workDir: workDir,
 		fs:      fs,

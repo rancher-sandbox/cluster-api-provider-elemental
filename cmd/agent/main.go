@@ -45,7 +45,7 @@ var (
 
 func main() {
 	fs := vfs.OSFS
-	installerSelector := installer.NewInstallerSelector()
+	installerSelector := installer.NewSelector()
 	hostManager := host.NewManager()
 	client := client.NewClient()
 	cmd := newCommand(fs, installerSelector, hostManager, client)
@@ -55,7 +55,7 @@ func main() {
 	}
 }
 
-func newCommand(fs vfs.FS, installerSelector installer.InstallerSelector, hostManager host.Manager, client client.Client) *cobra.Command {
+func newCommand(fs vfs.FS, installerSelector installer.Selector, hostManager host.Manager, client client.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "elemental-agent",
 		Short: "Elemental Agent command",
