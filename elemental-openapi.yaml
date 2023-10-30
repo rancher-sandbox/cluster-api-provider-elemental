@@ -324,6 +324,10 @@ components:
           type: string
         noSmbios:
           type: boolean
+        postInstall:
+          $ref: '#/components/schemas/V1Beta1PostInstall'
+        postReset:
+          $ref: '#/components/schemas/V1Beta1PostReset'
         reconciliation:
           type: integer
         useSystemCertPool:
@@ -360,6 +364,20 @@ components:
         prefix:
           type: string
         useExisting:
+          type: boolean
+      type: object
+    V1Beta1PostInstall:
+      properties:
+        powerOff:
+          type: boolean
+        reboot:
+          type: boolean
+      type: object
+    V1Beta1PostReset:
+      properties:
+        powerOff:
+          type: boolean
+        reboot:
           type: boolean
       type: object
     V1Beta1Registration:
