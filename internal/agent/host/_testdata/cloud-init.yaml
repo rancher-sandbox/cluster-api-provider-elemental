@@ -1,3 +1,4 @@
-foo:
-  bar:
-    foobar: barfoo
+#cloud-config
+users:
+    - name: root
+      passwd: root

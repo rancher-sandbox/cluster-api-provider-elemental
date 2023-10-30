@@ -31,6 +31,8 @@ FROM  ghcr.io/rancher/elemental-toolkit/elemental-cli:latest as TOOLKIT
 # OS base image of our choice
 FROM opensuse/leap:15.5 as OS
 
+ARG AGENT_CONFIG_FILE=iso/config/example-config.yaml
+
 # install kernel, systemd, dracut, grub2 and other required tools
 RUN ARCH=$(uname -m); \
     if [[ $ARCH == "aarch64" ]]; then ARCH="arm64"; fi; \
@@ -75,7 +77,7 @@ COPY --from=AGENT /workspace/elemental-agent /usr/sbin/elemental-agent
 COPY framework/files/ /
 
 # Add agent config
-COPY iso/config/example-config.yaml /oem/elemental/agent/config.yaml
+COPY $AGENT_CONFIG_FILE /oem/elemental/agent/config.yaml
 
 # Enable essential services
 RUN systemctl enable NetworkManager.service sshd

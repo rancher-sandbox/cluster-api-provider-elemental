@@ -166,7 +166,7 @@
     EOF
     ```
 
-## Elemental Host configuration
+## (Unmanaged) Host configuration
 
 For more information on how to configure and use the agent, please read the [docs](../cmd/agent/README.md).
 
@@ -202,6 +202,59 @@ For more information on how to configure and use the agent, please read the [doc
 
     ```bash
     elemental-agent
+    ```
+
+## (Elemental Toolkit) Host configuration
+
+A bootable ISO image can be build using the [elemental-toolkit](https://github.com/rancher/elemental-toolkit).
+The image contains the `elemental-agent` and an initial configuration to connect. Upon boot, it will auto-install an Elemental system on a machine.  
+
+- In order to use the `elemental` installer, update your registration:  
+
+    ```bash
+    cat << EOF | kubectl apply -f -
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: ElementalRegistration
+    metadata:
+      name: my-registration
+      namespace: default
+    spec:
+      config:
+        cloudConfig:
+          users:
+            - name: root
+              passwd: root
+        elemental:
+          agent:
+            hostname:
+              useExisting: false
+              prefix: "m-"
+            debug: true
+            installer: "elemental"
+            insecureAllowHttp: true
+            workDir: "/oem/elemental/agent"
+          install:
+            debug: true
+            device: "/dev/vda"
+            reboot: true
+          reset:
+            debug: true
+            reboot: true
+    EOF
+    ```
+
+- Generate a valid agent config (depends on `yq`):  
+
+    ```bash
+    ./test/scripts/print_agent_config.sh -n default -r my-registration > iso/config/my-config.yaml
+    ```
+
+- Build the ISO image:  
+
+    ```bash
+    git clone https://github.com/rancher-sandbox/cluster-api-provider-elemental.git
+    cd cluster-api-provider-elemental
+    AGENT_CONFIG_FILE=iso/config/my-config.yaml make build-iso
     ```
 
 ## Trigger a Host reset

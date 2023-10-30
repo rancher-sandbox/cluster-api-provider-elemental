@@ -123,9 +123,9 @@ func (i *ElementalInstaller) createCloudInitTemporaryFiles(conf api.Registration
 	}
 	// Write temporary remote cloud-init config
 	cloudInitPath := fmt.Sprintf("%s/%s", temporaryDir, cloudInitFile)
-	cloudInitBytes, err := unmarshalRawMapToYaml(conf.Config.CloudConfig)
+	cloudInitBytes, err := formatCloudConfig(conf.Config.CloudConfig)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshalling cloud init config: %w", err)
+		return nil, fmt.Errorf("formatting cloud-init config: %w", err)
 	}
 	if err := i.fs.WriteFile(cloudInitPath, cloudInitBytes, os.ModePerm); err != nil {
 		return nil, fmt.Errorf("writing temporary cloud init config: %w", err)
@@ -183,7 +183,7 @@ func (i *ElementalInstaller) TriggerReset() error {
 					Name: "Runs elemental reset and reinstall the system",
 					Commands: []string{
 						"elemental-agent --debug --reset --config /oem/elemental/agent/config.yaml",
-						"systemctl start elemental-agent-install",
+						"systemctl start elemental-agent-install.service",
 					},
 				},
 			},
@@ -259,9 +259,9 @@ func (i *UnmanagedInstaller) Install(conf api.RegistrationResponse, hostnameToSe
 		return fmt.Errorf("writing install file to path '%s': %w", installPath, err)
 	}
 	// Write the cloud-init config
-	cloudInitBytes, err := unmarshalRawMapToYaml(conf.Config.CloudConfig)
+	cloudInitBytes, err := formatCloudConfig(conf.Config.CloudConfig)
 	if err != nil {
-		return fmt.Errorf("unmarshalling cloud-init config: %w", err)
+		return fmt.Errorf("formatting cloud-init config: %w", err)
 	}
 	cloudInitPath := fmt.Sprintf("%s/%s", conf.Config.Elemental.Agent.WorkDir, cloudInitFile)
 	if err := utils.WriteFile(i.fs, api.WriteFile{
@@ -331,27 +331,38 @@ func (i *UnmanagedInstaller) formatResetSentinelFile(workDir string) string {
 	return fmt.Sprintf("%s/%s", workDir, sentinelFileResetNeeded)
 }
 
+func formatCloudConfig(cloudConfig map[string]runtime.RawExtension) ([]byte, error) {
+	cloudInitBytes := []byte("#cloud-config\n")
+	cloudInitContentBytes, err := unmarshalRawMapToYaml(cloudConfig)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshalling cloud init config: %w", err)
+	}
+	cloudInitBytes = append(cloudInitBytes, cloudInitContentBytes...)
+	return cloudInitBytes, nil
+}
+
 func unmarshalRawMapToYaml(input map[string]runtime.RawExtension) ([]byte, error) {
-	bytes := []byte{}
+	yamlData := []byte{}
 	if len(input) == 0 {
 		log.Debug("nothing to decode")
-		return bytes, nil
+		return yamlData, nil
 	}
+
+	jsonObject := map[string]any{}
 	for key, value := range input {
 		var jsonData any
 		if err := json.Unmarshal(value.Raw, &jsonData); err != nil {
 			return nil, fmt.Errorf("unmarshalling '%s' key with '%s' value: %w", key, string(value.Raw), err)
 		}
-
-		yamlData, err := yaml.Marshal(jsonData)
-		if err != nil {
-			return nil, fmt.Errorf("marshalling '%s' key with '%s' value to yaml: %w", key, string(value.Raw), err)
-		}
-
-		bytes = append(bytes, append([]byte(fmt.Sprintf("%s:\n  ", key)), yamlData...)...)
+		jsonObject[key] = jsonData
 	}
 
-	return bytes, nil
+	yamlData, err := yaml.Marshal(jsonObject)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling raw json map to to yaml: %w", err)
+	}
+
+	return yamlData, nil
 }
 
 func unmarshalRaw(input map[string]runtime.RawExtension, output any) error {

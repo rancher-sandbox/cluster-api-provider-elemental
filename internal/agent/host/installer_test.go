@@ -55,8 +55,8 @@ var (
 		HostAnnotations: map[string]string{"test-annotation": "test"},
 		Config: infrastructurev1beta1.Config{
 			CloudConfig: map[string]runtime.RawExtension{
-				"foo": {
-					Raw: []byte(`{"bar":{"foobar":"barfoo"}}`),
+				"users": {
+					Raw: []byte(`[{"name":"root","passwd":"root"}]`),
 				},
 			},
 			Elemental: infrastructurev1beta1.Elemental{

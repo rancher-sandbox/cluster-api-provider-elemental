@@ -9,6 +9,8 @@ IMG = ${IMG_NAME}:${IMG_TAG}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.27.1
 
+AGENT_CONFIG_FILE?="iso/config/example-config.yaml"
+
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -240,10 +242,14 @@ ALL_VERIFY_CHECKS = manifests generate openapi
 
 .PHONY: build-iso
 build-iso: 
+ifeq ($(AGENT_CONFIG_FILE),"iso/config/example-config.yaml")
+	@echo "No AGENT_CONFIG_FILE set, using the default one at ${AGENT_CONFIG_FILE}"
+endif
 	$(CONTAINER_TOOL) build \
 		--build-arg "TAG=${GIT_TAG}" \
 		--build-arg "COMMIT=${GIT_COMMIT}" \
 		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
+		--build-arg "AGENT_CONFIG_FILE=${AGENT_CONFIG_FILE}" \
 		-t elemental-iso:latest -f Dockerfile.iso .
 	$(CONTAINER_TOOL) run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ./iso:/build \
 		--entrypoint /usr/bin/elemental docker.io/library/elemental-iso:latest --debug build-iso --bootloader-in-rootfs -n elemental-dev \
