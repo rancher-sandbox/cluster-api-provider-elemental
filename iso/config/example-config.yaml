@@ -5,6 +5,8 @@ agent:
     useExisting: false
   insecureAllowHttp: true
   installer: elemental
+  postInstall:
+    reboot: true
   reconciliation: 10s
   workDir: /oem/elemental/agent
 registration:

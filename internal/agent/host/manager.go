@@ -11,6 +11,8 @@ import (
 )
 
 type Manager interface {
+	PowerOff() error
+	Reboot() error
 	SetHostname(hostname string) error
 	PickHostname(conf infrastructurev1beta1.Hostname) (string, error)
 	GetCurrentHostname() (string, error)
@@ -26,6 +28,20 @@ var _ Manager = (*manager)(nil)
 
 type manager struct {
 	cmdRunner utils.CommandRunner
+}
+
+func (m *manager) PowerOff() error {
+	if err := m.cmdRunner.RunCommand("poweroff -f"); err != nil {
+		return fmt.Errorf("calling 'poweroff -f': %w", err)
+	}
+	return nil
+}
+
+func (m *manager) Reboot() error {
+	if err := m.cmdRunner.RunCommand("reboot -f"); err != nil {
+		return fmt.Errorf("calling 'reboot -f'': %w", err)
+	}
+	return nil
 }
 
 func (m *manager) SetHostname(hostname string) error {

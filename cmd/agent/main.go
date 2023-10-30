@@ -106,6 +106,7 @@ func newCommand(fs vfs.FS, installerSelector installer.InstallerSelector, hostMa
 				log.Info("Installing Elemental")
 				handleInstall(client, hostManager, installer, conf.Agent.Reconciliation)
 				log.Info("Installation successful")
+				handlePost(hostManager, conf.Agent.PostInstall.PowerOff, conf.Agent.PostInstall.Reboot)
 				return nil
 			}
 
@@ -114,6 +115,7 @@ func newCommand(fs vfs.FS, installerSelector installer.InstallerSelector, hostMa
 				log.Info("Resetting Elemental")
 				handleReset(client, installer, conf.Agent.Reconciliation, currentHostname)
 				log.Info("Reset successful")
+				handlePost(hostManager, conf.Agent.PostReset.PowerOff, conf.Agent.PostReset.Reboot)
 				return nil
 			}
 
@@ -329,4 +331,18 @@ func handleBootstrap(fs vfs.FS, client client.Client, hostname string) error {
 	log.Info("Host successfully patched as bootstrapped")
 
 	return nil
+}
+
+func handlePost(hostManager host.Manager, poweroff bool, reboot bool) {
+	if poweroff {
+		log.Info("Powering off system")
+		if err := hostManager.PowerOff(); err != nil {
+			log.Error(err, "Powering off system")
+		}
+	} else if reboot {
+		log.Info("Rebooting system")
+		if err := hostManager.Reboot(); err != nil {
+			log.Error(err, "Rebooting system")
+		}
+	}
 }

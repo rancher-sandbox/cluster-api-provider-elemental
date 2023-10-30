@@ -85,6 +85,34 @@ func (mr *MockManagerMockRecorder) PickHostname(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PickHostname", reflect.TypeOf((*MockManager)(nil).PickHostname), arg0)
 }
 
+// PowerOff mocks base method.
+func (m *MockManager) PowerOff() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PowerOff")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PowerOff indicates an expected call of PowerOff.
+func (mr *MockManagerMockRecorder) PowerOff() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PowerOff", reflect.TypeOf((*MockManager)(nil).PowerOff))
+}
+
+// Reboot mocks base method.
+func (m *MockManager) Reboot() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Reboot")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Reboot indicates an expected call of Reboot.
+func (mr *MockManagerMockRecorder) Reboot() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reboot", reflect.TypeOf((*MockManager)(nil).Reboot))
+}
+
 // SetHostname mocks base method.
 func (m *MockManager) SetHostname(arg0 string) error {
 	m.ctrl.T.Helper()

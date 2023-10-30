@@ -46,6 +46,14 @@ var (
 			InsecureAllowHTTP:     false,
 			InsecureSkipTLSVerify: false,
 			UseSystemCertPool:     false,
+			PostInstall: infrastructurev1beta1.PostInstall{
+				PowerOff: true,
+				Reboot:   true, // If PowerOff is also true, this will be ignored
+			},
+			PostReset: infrastructurev1beta1.PostReset{
+				PowerOff: false,
+				Reboot:   true,
+			},
 		},
 	}
 
@@ -135,6 +143,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 				GinkgoT().Error("installation patch does not contain true installed flag")
 			}
 		})
+		mHostManager.EXPECT().PowerOff().Return(nil)
 		Expect(cmd.Execute()).ToNot(HaveOccurred())
 	})
 	It("should reset when --reset", func() {
@@ -154,6 +163,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 				GinkgoT().Error("reset patch does not contain true reset flag")
 			}
 		})
+		mHostManager.EXPECT().Reboot().Return(nil)
 		Expect(cmd.Execute()).ToNot(HaveOccurred())
 	})
 })
