@@ -142,7 +142,7 @@ func (i *ElementalInstaller) createCloudInitTemporaryFiles(conf api.Registration
 	hostNameConfig := schema.YipConfig{
 		Name: "Configure host",
 		Stages: map[string][]schema.Stage{
-			"initramfs": {
+			"boot.after": {
 				{
 					Commands: []string{hostNameCommand},
 					Files: []schema.File{

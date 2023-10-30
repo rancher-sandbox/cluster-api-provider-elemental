@@ -1,6 +1,6 @@
 name: Configure host
 stages:
-    initramfs:
+    boot.after:
         - commands:
             - echo just-a-test-hostname > /etc/hostname
           files:
