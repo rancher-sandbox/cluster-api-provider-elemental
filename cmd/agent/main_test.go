@@ -12,7 +12,7 @@ import (
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/host"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/hostname"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/installer"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -74,19 +74,19 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 	var cmd *cobra.Command
 	var mockCtrl *gomock.Controller
 	var mClient *client.MockClient
-	var mInstallerSelector *host.MockInstallerSelector
-	var mInstaller *host.MockInstaller
-	var mHostnameManager *hostname.MockManager
+	var mInstallerSelector *installer.MockInstallerSelector
+	var mInstaller *installer.MockInstaller
+	var mHostManager *host.MockManager
 	BeforeEach(func() {
 		viper.Reset()
 		fs, fsCleanup, err = vfst.NewTestFS(map[string]interface{}{})
 		Expect(err).ToNot(HaveOccurred())
 		mockCtrl = gomock.NewController(GinkgoT())
 		mClient = client.NewMockClient(mockCtrl)
-		mInstallerSelector = host.NewMockInstallerSelector(mockCtrl)
-		mInstaller = host.NewMockInstaller(mockCtrl)
-		mHostnameManager = hostname.NewMockManager(mockCtrl)
-		cmd = newCommand(fs, mInstallerSelector, mHostnameManager, mClient)
+		mInstallerSelector = installer.NewMockInstallerSelector(mockCtrl)
+		mInstaller = installer.NewMockInstaller(mockCtrl)
+		mHostManager = host.NewMockManager(mockCtrl)
+		cmd = newCommand(fs, mInstallerSelector, mHostManager, mClient)
 		DeferCleanup(fsCleanup)
 	})
 	It("should return no error when printing version", func() {
@@ -104,7 +104,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 		const customConfigPath = "/test/etc/elemental/agent/config.yaml"
 		marshalIntoFile(fs, configFixture, customConfigPath)
 		cmd.SetArgs([]string{"--config", customConfigPath})
-		mHostnameManager.EXPECT().GetCurrentHostname().Return(hostResponseFixture.Name, nil)
+		mHostManager.EXPECT().GetCurrentHostname().Return(hostResponseFixture.Name, nil)
 		mClient.EXPECT().Init(fs, configFixture).Return(nil)
 		mInstallerSelector.EXPECT().GetInstaller(fs, customConfigPath, configFixture).Return(mInstaller, nil)
 		triggerResetResponse := hostResponseFixture
@@ -116,11 +116,11 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 	It("should install when --install", func() {
 		marshalIntoFile(fs, configFixture, configPathDefault)
 		cmd.SetArgs([]string{"--install"})
-		mHostnameManager.EXPECT().GetCurrentHostname().Return(hostResponseFixture.Name, nil)
+		mHostManager.EXPECT().GetCurrentHostname().Return(hostResponseFixture.Name, nil)
 		mClient.EXPECT().Init(fs, configFixture).Return(nil)
 		mInstallerSelector.EXPECT().GetInstaller(fs, configPathDefault, configFixture).Return(mInstaller, nil)
 		mClient.EXPECT().GetRegistration().Return(registrationFixture, nil)
-		mHostnameManager.EXPECT().PickHostname(configFixture.Agent.Hostname).Return(hostResponseFixture.Name, nil)
+		mHostManager.EXPECT().PickHostname(configFixture.Agent.Hostname).Return(hostResponseFixture.Name, nil)
 		mClient.EXPECT().CreateHost(api.HostCreateRequest{
 			Name:        hostResponseFixture.Name,
 			Annotations: registrationFixture.HostAnnotations,
@@ -140,7 +140,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 	It("should reset when --reset", func() {
 		marshalIntoFile(fs, configFixture, configPathDefault)
 		cmd.SetArgs([]string{"--reset"})
-		mHostnameManager.EXPECT().GetCurrentHostname().Return(hostResponseFixture.Name, nil)
+		mHostManager.EXPECT().GetCurrentHostname().Return(hostResponseFixture.Name, nil)
 		mClient.EXPECT().Init(fs, configFixture).Return(nil)
 		mInstallerSelector.EXPECT().GetInstaller(fs, configPathDefault, configFixture).Return(mInstaller, nil)
 		mClient.EXPECT().GetRegistration().Return(registrationFixture, nil)

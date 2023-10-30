@@ -9,7 +9,7 @@ import (
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/host"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/hostname"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/installer"
 	log "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
@@ -45,17 +45,17 @@ var (
 
 func main() {
 	fs := vfs.OSFS
-	installerSelector := host.NewInstallerSelector()
-	hostnameManager := hostname.NewManager()
+	installerSelector := installer.NewInstallerSelector()
+	hostManager := host.NewManager()
 	client := client.NewClient()
-	cmd := newCommand(fs, installerSelector, hostnameManager, client)
+	cmd := newCommand(fs, installerSelector, hostManager, client)
 	if err := cmd.Execute(); err != nil {
 		log.Error(err, "running elemental-agent")
 		os.Exit(1)
 	}
 }
 
-func newCommand(fs vfs.FS, installerSelector host.InstallerSelector, hostnameManager hostname.Manager, client client.Client) *cobra.Command {
+func newCommand(fs vfs.FS, installerSelector installer.InstallerSelector, hostManager host.Manager, client client.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "elemental-agent",
 		Short: "Elemental Agent command",
@@ -90,7 +90,7 @@ func newCommand(fs vfs.FS, installerSelector host.InstallerSelector, hostnameMan
 				return fmt.Errorf("initializing Elemental API client: %w", err)
 			}
 			// Get current hostname
-			currentHostname, err := hostnameManager.GetCurrentHostname()
+			currentHostname, err := hostManager.GetCurrentHostname()
 			if err != nil {
 				return fmt.Errorf("getting current hostname: %w", err)
 			}
@@ -104,7 +104,7 @@ func newCommand(fs vfs.FS, installerSelector host.InstallerSelector, hostnameMan
 			// Install
 			if installFlag {
 				log.Info("Installing Elemental")
-				handleInstall(client, hostnameManager, installer, conf.Agent.Reconciliation)
+				handleInstall(client, hostManager, installer, conf.Agent.Reconciliation)
 				log.Info("Installation successful")
 				return nil
 			}
@@ -186,7 +186,7 @@ func getConfig(fs vfs.FS) (config.Config, error) {
 // This could introduce a new --register flag, leaving the --install as optional (for unmanaged OS for example).
 // However, consider that setting the hostname must be part of the registration workflow,
 // so maybe decoupling would not be possible without a state/cache file where to store the hostname-to-be-set.
-func handleInstall(client client.Client, hostnameManager hostname.Manager, installer host.Installer, installationRecoveryPeriod time.Duration) {
+func handleInstall(client client.Client, hostManager host.Manager, installer installer.Installer, installationRecoveryPeriod time.Duration) {
 	alreadyRegistered := false
 	installationError := false
 	var newHostname string
@@ -206,7 +206,7 @@ func handleInstall(client client.Client, hostnameManager hostname.Manager, insta
 		}
 		// Pick the new hostname if not done yet
 		if len(newHostname) == 0 {
-			newHostname, err = hostnameManager.PickHostname(registration.Config.Elemental.Agent.Hostname)
+			newHostname, err = hostManager.PickHostname(registration.Config.Elemental.Agent.Hostname)
 			log.Debugf("Selected hostname: %s", newHostname)
 			if err != nil {
 				log.Error(err, "picking new hostname")
@@ -247,7 +247,7 @@ func handleInstall(client client.Client, hostnameManager hostname.Manager, insta
 	}
 }
 
-func handleReset(client client.Client, installer host.Installer, resetRecoveryPeriod time.Duration, hostname string) {
+func handleReset(client client.Client, installer installer.Installer, resetRecoveryPeriod time.Duration, hostname string) {
 	resetError := false
 	alreadyReset := false
 	for {

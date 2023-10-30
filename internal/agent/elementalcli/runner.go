@@ -19,8 +19,6 @@ type Install struct {
 	SystemURI        string   `json:"systemUri,omitempty" mapstructure:"systemUri"`
 	Debug            bool     `json:"debug,omitempty" mapstructure:"debug"`
 	TTY              string   `json:"tty,omitempty" mapstructure:"tty"`
-	PowerOff         bool     `json:"poweroff,omitempty" mapstructure:"poweroff"`
-	Reboot           bool     `json:"reboot,omitempty" mapstructure:"reboot"`
 	EjectCD          bool     `json:"ejectCd,omitempty" mapstructure:"ejectCd"`
 	DisableBootEntry bool     `json:"disableBootEntry,omitempty" mapstructure:"disableBootEntry"`
 	ConfigDir        string   `json:"configDir,omitempty" mapstructure:"configDir"`
@@ -33,8 +31,6 @@ type Reset struct {
 	ConfigURLs      []string `json:"configUrls,omitempty" mapstructure:"configUrls"`
 	SystemURI       string   `json:"systemUri,omitempty" mapstructure:"systemUri"`
 	Debug           bool     `json:"debug,omitempty" mapstructure:"debug"`
-	PowerOff        bool     `json:"poweroff,omitempty" mapstructure:"poweroff"`
-	Reboot          bool     `json:"reboot,omitempty" mapstructure:"reboot"`
 }
 
 type Runner interface {
@@ -114,8 +110,6 @@ func mapToInstallEnv(conf Install) []string {
 	variables = append(variables, formatEV("ELEMENTAL_INSTALL_DISABLE_BOOT_ENTRY", strconv.FormatBool(conf.DisableBootEntry)))
 	variables = append(variables, formatEV("ELEMENTAL_INSTALL_NO_FORMAT", strconv.FormatBool(conf.NoFormat)))
 	// See GetRunKeyEnvMap() in https://github.com/rancher/elemental-toolkit/blob/main/pkg/constants/constants.go
-	variables = append(variables, formatEV("ELEMENTAL_POWEROFF", strconv.FormatBool(conf.PowerOff)))
-	variables = append(variables, formatEV("ELEMENTAL_REBOOT", strconv.FormatBool(conf.Reboot)))
 	variables = append(variables, formatEV("ELEMENTAL_EJECT_CD", strconv.FormatBool(conf.EjectCD)))
 	return variables
 }
@@ -127,9 +121,6 @@ func mapToResetEnv(conf Reset) []string {
 	variables = append(variables, formatEV("ELEMENTAL_RESET_SYSTEM", conf.SystemURI))
 	variables = append(variables, formatEV("ELEMENTAL_RESET_PERSISTENT", strconv.FormatBool(conf.ResetOEM)))
 	variables = append(variables, formatEV("ELEMENTAL_RESET_OEM", strconv.FormatBool(conf.ResetPersistent)))
-	// See GetRunKeyEnvMap() in https://github.com/rancher/elemental-toolkit/blob/main/pkg/constants/constants.go
-	variables = append(variables, formatEV("ELEMENTAL_POWEROFF", strconv.FormatBool(conf.PowerOff)))
-	variables = append(variables, formatEV("ELEMENTAL_REBOOT", strconv.FormatBool(conf.Reboot)))
 	return variables
 }
 

@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/host"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/identity"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/tls"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
@@ -37,7 +37,7 @@ var _ Client = (*client)(nil)
 type client struct {
 	registrationURI string
 	httpClient      http.Client
-	identity        host.Identity
+	identity        identity.Identity
 }
 
 func NewClient() Client {
@@ -71,7 +71,7 @@ func (c *client) Init(fs vfs.FS, conf config.Config) error {
 	}
 
 	// Initialize Identity
-	identityManager := host.NewDummyManager(fs, conf.Agent.WorkDir)
+	identityManager := identity.NewDummyManager(fs, conf.Agent.WorkDir)
 	identity, err := identityManager.GetOrCreateIdentity()
 	if err != nil {
 		return fmt.Errorf("initializing host identity: %w", err)

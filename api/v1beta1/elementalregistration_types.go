@@ -103,6 +103,24 @@ type Agent struct {
 	InsecureSkipTLSVerify bool `json:"insecureSkipTlsVerify,omitempty" yaml:"insecureSkipTlsVerify,omitempty" mapstructure:"insecureSkipTlsVerify"`
 	// +optional
 	UseSystemCertPool bool `json:"useSystemCertPool,omitempty" yaml:"useSystemCertPool,omitempty" mapstructure:"useSystemCertPool"`
+	// +optional
+	PostInstall PostInstall `json:"postInstall,omitempty" yaml:"postInstall,omitempty" mapstructure:"postInstall"`
+	// +optional
+	PostReset PostReset `json:"postReset,omitempty" yaml:"postReset,omitempty" mapstructure:"postReset"`
+}
+
+type PostInstall struct {
+	// +optional
+	Reboot bool `json:"reboot,omitempty" yaml:"reboot,omitempty" mapstructure:"reboot"`
+	// +optional
+	PowerOff bool `json:"powerOff,omitempty" yaml:"powerOff,omitempty" mapstructure:"powerOff"`
+}
+
+type PostReset struct {
+	// +optional
+	Reboot bool `json:"reboot,omitempty" yaml:"reboot,omitempty" mapstructure:"reboot"`
+	// +optional
+	PowerOff bool `json:"powerOff,omitempty" yaml:"powerOff,omitempty" mapstructure:"powerOff"`
 }
 
 type Hostname struct {
