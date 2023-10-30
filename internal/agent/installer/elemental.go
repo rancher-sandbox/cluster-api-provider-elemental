@@ -130,7 +130,11 @@ func (i *ElementalInstaller) TriggerReset() error {
 					If:   "[ -f /run/cos/recovery_mode ]",
 					Name: "Runs elemental reset and reinstall the system",
 					Commands: []string{
+						"cp /oem/elemental/agent/config.yaml /tmp/elemental-agent-config.yaml",
 						"elemental-agent --debug --reset --config /oem/elemental/agent/config.yaml",
+						"mount /oem",
+						"mkdir -p /oem/elemental/agent",
+						"mv /tmp/elemental-agent-config.yaml /oem/elemental/agent/config.yaml",
 						"systemctl start elemental-agent-install.service",
 					},
 				},

@@ -233,13 +233,14 @@ The image contains the `elemental-agent` and an initial configuration to connect
             installer: "elemental"
             insecureAllowHttp: true
             workDir: "/oem/elemental/agent"
+            postInstall:
+              reboot: true
           install:
             debug: true
             device: "/dev/vda"
-            reboot: true
           reset:
-            debug: true
-            reboot: true
+            resetOem: true
+            resetPersistent: true
     EOF
     ```
 
