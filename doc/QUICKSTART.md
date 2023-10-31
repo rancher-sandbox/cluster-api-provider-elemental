@@ -255,6 +255,7 @@ The image contains the `elemental-agent` and an initial configuration to connect
     ```bash
     git clone https://github.com/rancher-sandbox/cluster-api-provider-elemental.git
     cd cluster-api-provider-elemental
+    ./test/scripts/print_agent_config.sh -n default -r my-registration > iso/config/my-config.yaml
     AGENT_CONFIG_FILE=iso/config/my-config.yaml make build-iso
     ```
 
