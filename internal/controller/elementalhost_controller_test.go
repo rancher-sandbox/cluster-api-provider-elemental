@@ -41,7 +41,6 @@ var _ = Describe("ElementalHost controller", Label("controller", "elemental-host
 	It("should not remove finalizer until reset done", func() {
 		hostToBeReset := host
 		hostToBeReset.ObjectMeta.Name = "test-to-be-reset"
-		hostToBeReset.Labels = map[string]string{v1beta1.LabelElementalHostNeedsReset: "true"}
 		Expect(k8sClient.Create(ctx, &hostToBeReset)).Should(Succeed())
 		// Finalizer should be applied
 		updatedHost := &v1beta1.ElementalHost{}
@@ -68,7 +67,13 @@ var _ = Describe("ElementalHost controller", Label("controller", "elemental-host
 				updatedHost)).Should(Succeed())
 			return updatedHost.GetFinalizers()
 		}).WithTimeout(time.Minute).Should(ContainElement(v1beta1.FinalizerElementalMachine), "ElementalHost should still have finalizer after deletion")
-
+		Eventually(func() string {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      hostToBeReset.Name,
+				Namespace: hostToBeReset.Namespace},
+				updatedHost)).Should(Succeed())
+			return updatedHost.Labels[v1beta1.LabelElementalHostNeedsReset]
+		}).WithTimeout(time.Minute).Should(Equal("true"), "ElementalHost should have needs-reset label")
 		// Patch with reset done label
 		updatedHost.Labels[v1beta1.LabelElementalHostReset] = "true"
 		Expect(k8sClient.Update(ctx, updatedHost)).Should(Succeed())
