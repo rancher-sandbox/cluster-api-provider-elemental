@@ -143,15 +143,16 @@ var _ = Describe("elemental-agent", Label("agent", "cli", "sanity"), func() {
 		Expect(cmd.Execute()).To(HaveOccurred())
 	})
 	It("should load custom config if --config argument", func() {
+		alternateConfig := configFixture
+		alternateConfig.Agent.OSPlugin = "a different plugin"
 		const customConfigPath = "/test/etc/elemental/agent/config.yaml"
-		marshalIntoFile(fs, configFixture, customConfigPath)
+		marshalIntoFile(fs, alternateConfig, customConfigPath)
 		cmd.SetArgs([]string{"--config", customConfigPath})
 		// Let's make it fail to not go further.
-		// Loading the plugin on the expected path is already enough to verify the custom config is in use
-		pluginLoader.EXPECT().Load(configFixture.Agent.OSPlugin).Return(nil, errors.New("test error"))
+		// Loading the plugin on the alternate path is already enough to verify the custom config is in use
+		pluginLoader.EXPECT().Load(alternateConfig.Agent.OSPlugin).Return(nil, errors.New("test error"))
 		Expect(cmd.Execute()).To(HaveOccurred())
 	})
-
 })
 
 var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
