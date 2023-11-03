@@ -154,7 +154,7 @@ runcmd:
 			Registration: registration.Spec.Config.Elemental.Registration,
 			Agent:        registration.Spec.Config.Elemental.Agent,
 		}
-		Expect(eClient.Init(fs, conf)).Should(Succeed())
+		Expect(eClient.Init(fs, []byte{}, conf)).Should(Succeed())
 	})
 	AfterAll(func() {
 		Expect(k8sClient.Delete(ctx, &namespace)).Should(Succeed())
@@ -170,7 +170,7 @@ runcmd:
 			Annotations: request.Annotations,
 			Labels:      request.Labels,
 		}
-		Expect(response).To(Equal(wantResponse))
+		Expect(*response).To(Equal(wantResponse))
 	})
 	It("should patch host with installed label", func() {
 		// Patch the host as Installed

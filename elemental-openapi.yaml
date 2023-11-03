@@ -320,10 +320,10 @@ components:
           type: boolean
         insecureSkipTlsVerify:
           type: boolean
-        installer:
-          type: string
         noSmbios:
           type: boolean
+        osPlugin:
+          type: string
         postInstall:
           $ref: '#/components/schemas/V1Beta1PostInstall'
         postReset:

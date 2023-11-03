@@ -4,7 +4,7 @@ agent:
     prefix: m-
     useExisting: false
   insecureAllowHttp: true
-  installer: elemental
+  osPlugin: /usr/lib/elemental/plugins/elemental.so
   postInstall:
     reboot: true
   reconciliation: 10s

@@ -749,7 +749,7 @@ spec:
                           debug: false
                           hostname:
                             useExisting: false
-                          installer: unmanaged
+                          osPlugin: /usr/lib/elemental/plugins/elemental.so
                           reconciliation: 10000000000
                         properties:
                           debug:
@@ -768,11 +768,11 @@ spec:
                             type: boolean
                           insecureSkipTlsVerify:
                             type: boolean
-                          installer:
-                            default: unmanaged
-                            type: string
                           noSmbios:
                             type: boolean
+                          osPlugin:
+                            default: /usr/lib/elemental/plugins/elemental.so
+                            type: string
                           postInstall:
                             properties:
                               powerOff:

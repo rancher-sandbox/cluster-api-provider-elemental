@@ -28,7 +28,6 @@ package host
 import (
 	reflect "reflect"
 
-	v1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -68,21 +67,6 @@ func (m *MockManager) GetCurrentHostname() (string, error) {
 func (mr *MockManagerMockRecorder) GetCurrentHostname() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCurrentHostname", reflect.TypeOf((*MockManager)(nil).GetCurrentHostname))
-}
-
-// PickHostname mocks base method.
-func (m *MockManager) PickHostname(arg0 v1beta1.Hostname) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PickHostname", arg0)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// PickHostname indicates an expected call of PickHostname.
-func (mr *MockManagerMockRecorder) PickHostname(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PickHostname", reflect.TypeOf((*MockManager)(nil).PickHostname), arg0)
 }
 
 // PowerOff mocks base method.

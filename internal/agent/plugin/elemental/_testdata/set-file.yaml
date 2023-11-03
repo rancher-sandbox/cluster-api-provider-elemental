@@ -1,0 +1,11 @@
+name: Write File
+stages:
+    boot.after:
+        - files:
+            - path: /any/location/should/be.fine
+              permissions: 416
+              owner: 0
+              group: 0
+              content: Just a test file
+              encoding: ""
+              ownerstring: ""

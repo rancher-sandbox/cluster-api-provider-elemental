@@ -6,6 +6,6 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/sbin/elemental-agent --debug --install --config /oem/elemental/agent/config.yaml
+ExecStart=/usr/sbin/elemental-agent --debug --register --install --config /oem/elemental/agent/config.yaml
 Restart=on-failure
 RestartSec=5

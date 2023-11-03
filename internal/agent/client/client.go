@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/identity"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/tls"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
@@ -24,12 +23,12 @@ var (
 )
 
 type Client interface {
-	Init(fs vfs.FS, conf config.Config) error
-	GetRegistration() (api.RegistrationResponse, error)
+	Init(fs vfs.FS, signingKey []byte, conf config.Config) error
+	GetRegistration() (*api.RegistrationResponse, error)
 	CreateHost(host api.HostCreateRequest) error
 	DeleteHost(hostname string) error
-	PatchHost(patch api.HostPatchRequest, hostname string) (api.HostResponse, error)
-	GetBootstrap(hostname string) (api.BootstrapResponse, error)
+	PatchHost(patch api.HostPatchRequest, hostname string) (*api.HostResponse, error)
+	GetBootstrap(hostname string) (*api.BootstrapResponse, error)
 }
 
 var _ Client = (*client)(nil)
@@ -37,15 +36,17 @@ var _ Client = (*client)(nil)
 type client struct {
 	registrationURI string
 	httpClient      http.Client
-	identity        identity.Identity
+	signingKey      []byte
 }
 
 func NewClient() Client {
 	return &client{}
 }
 
-func (c *client) Init(fs vfs.FS, conf config.Config) error {
+func (c *client) Init(fs vfs.FS, signingKey []byte, conf config.Config) error {
 	log.Debug("Initializing Client")
+	c.signingKey = signingKey
+
 	url, err := url.Parse(conf.Registration.URI)
 	if err != nil {
 		return fmt.Errorf("parsing registration URI: %w", err)
@@ -70,45 +71,38 @@ func (c *client) Init(fs vfs.FS, conf config.Config) error {
 		return fmt.Errorf("configuring TLS client: %w", err)
 	}
 
-	// Initialize Identity
-	identityManager := identity.NewDummyManager(fs, conf.Agent.WorkDir)
-	identity, err := identityManager.GetOrCreateIdentity()
-	if err != nil {
-		return fmt.Errorf("initializing host identity: %w", err)
-	}
-
 	c.registrationURI = conf.Registration.URI
 	c.httpClient = http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: tlsConfig,
 		},
 	}
-	c.identity = identity
+
 	return nil
 }
 
-func (c *client) GetRegistration() (api.RegistrationResponse, error) {
+func (c *client) GetRegistration() (*api.RegistrationResponse, error) {
 	log.Debugf("Getting registration: %s", c.registrationURI)
 	response, err := c.httpClient.Get(c.registrationURI)
 	if err != nil {
-		return api.RegistrationResponse{}, fmt.Errorf("getting registration: %w", err)
+		return nil, fmt.Errorf("getting registration: %w", err)
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return api.RegistrationResponse{}, fmt.Errorf("getting registration returned code '%d': %w", response.StatusCode, ErrUnexpectedCode)
+		return nil, fmt.Errorf("getting registration returned code '%d': %w", response.StatusCode, ErrUnexpectedCode)
 	}
 
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
-		return api.RegistrationResponse{}, fmt.Errorf("reading registration response body: %w", err)
+		return nil, fmt.Errorf("reading registration response body: %w", err)
 	}
 
 	registration := api.RegistrationResponse{}
 	if err := json.Unmarshal(responseBody, &registration); err != nil {
-		return api.RegistrationResponse{}, fmt.Errorf("unmarshalling registration response: %w", err)
+		return nil, fmt.Errorf("unmarshalling registration response: %w", err)
 	}
 
-	return registration, nil
+	return &registration, nil
 }
 
 func (c *client) CreateHost(newHost api.HostCreateRequest) error {
@@ -148,61 +142,61 @@ func (c *client) DeleteHost(hostname string) error {
 	return nil
 }
 
-func (c *client) PatchHost(patch api.HostPatchRequest, hostname string) (api.HostResponse, error) {
+func (c *client) PatchHost(patch api.HostPatchRequest, hostname string) (*api.HostResponse, error) {
 	log.Debugf("Patching Host '%s': %+v", hostname, patch)
 	requestBody, err := json.Marshal(patch)
 	if err != nil {
-		return api.HostResponse{}, fmt.Errorf("marshalling patch host request body: %w", err)
+		return nil, fmt.Errorf("marshalling patch host request body: %w", err)
 	}
 
 	request, err := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/hosts/%s", c.registrationURI, hostname), bytes.NewBuffer(requestBody))
 	if err != nil {
-		return api.HostResponse{}, fmt.Errorf("preparing host patch request: %w", err)
+		return nil, fmt.Errorf("preparing host patch request: %w", err)
 	}
 	request.Header.Set("Content-Type", "application/json")
 
 	response, err := c.httpClient.Do(request)
 	if err != nil {
-		return api.HostResponse{}, fmt.Errorf("patching host: %w", err)
+		return nil, fmt.Errorf("patching host: %w", err)
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return api.HostResponse{}, fmt.Errorf("patching host returned code '%d': %w", response.StatusCode, ErrUnexpectedCode)
+		return nil, fmt.Errorf("patching host returned code '%d': %w", response.StatusCode, ErrUnexpectedCode)
 	}
 
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
-		return api.HostResponse{}, fmt.Errorf("reading host response body: %w", err)
+		return nil, fmt.Errorf("reading host response body: %w", err)
 	}
 
 	host := api.HostResponse{}
 	if err := json.Unmarshal(responseBody, &host); err != nil {
-		return api.HostResponse{}, fmt.Errorf("unmarshalling host response: %w", err)
+		return nil, fmt.Errorf("unmarshalling host response: %w", err)
 	}
 
-	return host, nil
+	return &host, nil
 }
 
-func (c *client) GetBootstrap(hostname string) (api.BootstrapResponse, error) {
+func (c *client) GetBootstrap(hostname string) (*api.BootstrapResponse, error) {
 	log.Debugf("Getting bootstrap for host: %s", hostname)
 	response, err := c.httpClient.Get(fmt.Sprintf("%s/hosts/%s/bootstrap", c.registrationURI, hostname))
 	if err != nil {
-		return api.BootstrapResponse{}, fmt.Errorf("getting bootstrap: %w", err)
+		return nil, fmt.Errorf("getting bootstrap: %w", err)
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return api.BootstrapResponse{}, fmt.Errorf("getting bootstrap returned code '%d': %w", response.StatusCode, ErrUnexpectedCode)
+		return nil, fmt.Errorf("getting bootstrap returned code '%d': %w", response.StatusCode, ErrUnexpectedCode)
 	}
 
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
-		return api.BootstrapResponse{}, fmt.Errorf("reading bootstrap response body: %w", err)
+		return nil, fmt.Errorf("reading bootstrap response body: %w", err)
 	}
 
 	bootstrap := api.BootstrapResponse{}
 	if err := json.Unmarshal(responseBody, &bootstrap); err != nil {
-		return api.BootstrapResponse{}, fmt.Errorf("unmarshalling bootstrap response: %w", err)
+		return nil, fmt.Errorf("unmarshalling bootstrap response: %w", err)
 	}
 
-	return bootstrap, nil
+	return &bootstrap, nil
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -8,16 +9,18 @@ import (
 
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/host"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/installer"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/hostname"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/identity"
 	log "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/pkg/agent/osplugin"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/twpayne/go-vfs"
 	"github.com/twpayne/go-vfsafero"
+	"gopkg.in/yaml.v3"
 	"k8s.io/utils/ptr"
 )
 
@@ -28,10 +31,11 @@ const (
 
 // Flags.
 var (
-	versionFlag bool
-	resetFlag   bool
-	installFlag bool
-	debugFlag   bool
+	versionFlag  bool
+	resetFlag    bool
+	installFlag  bool
+	registerFlag bool
+	debugFlag    bool
 )
 
 // Arguments.
@@ -45,17 +49,16 @@ var (
 
 func main() {
 	fs := vfs.OSFS
-	installerSelector := installer.NewSelector()
-	hostManager := host.NewManager()
+	osPluginLoader := osplugin.NewLoader()
 	client := client.NewClient()
-	cmd := newCommand(fs, installerSelector, hostManager, client)
+	cmd := newCommand(fs, osPluginLoader, client)
 	if err := cmd.Execute(); err != nil {
 		log.Error(err, "running elemental-agent")
 		os.Exit(1)
 	}
 }
 
-func newCommand(fs vfs.FS, installerSelector installer.Selector, hostManager host.Manager, client client.Client) *cobra.Command {
+func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, client client.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "elemental-agent",
 		Short: "Elemental Agent command",
@@ -80,42 +83,68 @@ func newCommand(fs vfs.FS, installerSelector installer.Selector, hostManager hos
 				log.EnableDebug()
 				log.Debug("Debug logging enabled")
 			}
-
 			// Initialize WorkDir
 			if err := utils.CreateDirectory(fs, conf.Agent.WorkDir); err != nil {
 				return fmt.Errorf("creating work directory '%s': %w", conf.Agent.WorkDir, err)
 			}
+			// Initialize Plugin
+			log.Infof("Loading Plugin: %s", conf.Agent.OSPlugin)
+			osPlugin, err := pluginLoader.Load(conf.Agent.OSPlugin)
+			if err != nil {
+				return fmt.Errorf("Loading plugin '%s': %w", conf.Agent.OSPlugin, err)
+			}
+			log.Info("Initializing Plugin")
+			if err := osPlugin.Init(osplugin.PluginContext{
+				WorkDir:    conf.Agent.WorkDir,
+				ConfigPath: configPath,
+				Debug:      conf.Agent.Debug || debugFlag,
+			}); err != nil {
+				return fmt.Errorf("Initializing plugin: %w", err)
+			}
+			// Initialize Identity
+			identityManager := identity.NewDummyManager(fs, conf.Agent.WorkDir)
+			signingKey, err := identityManager.LoadSigningKeyOrCreateNew()
+			if err != nil {
+				return fmt.Errorf("initializing identity: %w", err)
+			}
 			// Initialize Elemental API Client
-			if err := client.Init(fs, conf); err != nil {
+			if err := client.Init(fs, signingKey, conf); err != nil {
 				return fmt.Errorf("initializing Elemental API client: %w", err)
 			}
 			// Get current hostname
-			currentHostname, err := hostManager.GetCurrentHostname()
+			hostname, err := osPlugin.GetHostname()
 			if err != nil {
 				return fmt.Errorf("getting current hostname: %w", err)
 			}
-			// Initialize installer
-			log.Info("Initializing Installer")
-			installer, err := installerSelector.GetInstaller(fs, configPath, conf)
-			if err != nil {
-				return fmt.Errorf("initializing installer: %w", err)
+			// Register
+			if registerFlag {
+				log.Info("Registering Elemental Host")
+				var registration *api.RegistrationResponse
+				hostname, registration = handleRegistration(client, osPlugin, conf.Agent.Reconciliation)
+				log.Infof("Successfully registered as '%s'", hostname)
+				if err := handlePostRegistration(osPlugin, hostname, signingKey, registration); err != nil {
+					return fmt.Errorf("handling post registration: %w", err)
+				}
+				// Exit program if --install was not called
+				if !installFlag {
+					return nil
+				}
 			}
-
 			// Install
 			if installFlag {
 				log.Info("Installing Elemental")
-				handleInstall(client, hostManager, installer, conf.Agent.Reconciliation)
+				handleInstall(client, osPlugin, hostname, conf.Agent.Reconciliation)
 				log.Info("Installation successful")
-				handlePost(hostManager, conf.Agent.PostInstall.PowerOff, conf.Agent.PostInstall.Reboot)
+				handlePost(osPlugin, conf.Agent.PostInstall.PowerOff, conf.Agent.PostInstall.Reboot)
 				return nil
 			}
 
 			// Reset
 			if resetFlag {
 				log.Info("Resetting Elemental")
-				handleReset(client, installer, conf.Agent.Reconciliation, currentHostname)
+				handleReset(client, osPlugin, conf.Agent.Reconciliation, hostname)
 				log.Info("Reset successful")
-				handlePost(hostManager, conf.Agent.PostReset.PowerOff, conf.Agent.PostReset.Reboot)
+				handlePost(osPlugin, conf.Agent.PostReset.PowerOff, conf.Agent.PostReset.Reboot)
 				return nil
 			}
 
@@ -124,7 +153,7 @@ func newCommand(fs vfs.FS, installerSelector installer.Selector, hostManager hos
 			for {
 				// Patch the host and receive the patched remote host back
 				log.Debug("Patching host")
-				host, err := client.PatchHost(api.HostPatchRequest{}, currentHostname)
+				host, err := client.PatchHost(api.HostPatchRequest{}, hostname)
 				if err != nil {
 					log.Error(err, "patching ElementalHost during normal reconcile")
 				}
@@ -132,7 +161,7 @@ func newCommand(fs vfs.FS, installerSelector installer.Selector, hostManager hos
 				// Handle bootstrap if needed
 				if host.BootstrapReady && !host.Bootstrapped {
 					log.Info("Applying bootstrap config")
-					if err := handleBootstrap(fs, client, currentHostname); err != nil {
+					if err := handleBootstrap(fs, client, hostname); err != nil {
 						log.Error(err, "handling bootstrap")
 					}
 					log.Info("Bootstrap config applied successfully")
@@ -141,7 +170,7 @@ func newCommand(fs vfs.FS, installerSelector installer.Selector, hostManager hos
 				// Handle Reset Needed
 				if host.NeedsReset {
 					log.Info("Triggering reset")
-					if err := installer.TriggerReset(); err != nil {
+					if err := osPlugin.TriggerReset(); err != nil {
 						log.Error(err, "handling reset needed")
 					} else {
 						// If Reset was triggered successfully, exit the program.
@@ -160,6 +189,7 @@ func newCommand(fs vfs.FS, installerSelector installer.Selector, hostManager hos
 	cmd.PersistentFlags().BoolVar(&versionFlag, "version", false, "print version and exit")
 	cmd.PersistentFlags().BoolVar(&resetFlag, "reset", false, "reset the Elemental installation")
 	cmd.PersistentFlags().BoolVar(&installFlag, "install", false, "install Elemental")
+	cmd.PersistentFlags().BoolVar(&registerFlag, "register", false, "register Elemental host")
 	cmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "enable debug logging")
 	cmd.PersistentFlags().StringVar(&configPath, "config", configPathDefault, "agent config path")
 	return cmd
@@ -184,14 +214,78 @@ func getConfig(fs vfs.FS) (config.Config, error) {
 	return conf, nil
 }
 
-// TODO: Would be wiser to decouple host registration/agent-configuration from installation.
-// This could introduce a new --register flag, leaving the --install as optional (for unmanaged OS for example).
-// However, consider that setting the hostname must be part of the registration workflow,
-// so maybe decoupling would not be possible without a state/cache file where to store the hostname-to-be-set.
-func handleInstall(client client.Client, hostManager host.Manager, installer installer.Installer, installationRecoveryPeriod time.Duration) {
-	alreadyRegistered := false
-	installationError := false
+func handleRegistration(client client.Client, osPlugin osplugin.Plugin, registrationRecoveryPeriod time.Duration) (string, *api.RegistrationResponse) {
+	hostnameFormatter := hostname.NewFormatter(osPlugin)
 	var newHostname string
+	var registration *api.RegistrationResponse
+	var err error
+	registrationError := false
+	for {
+		// Wait for recovery
+		if registrationError {
+			log.Debugf("Waiting '%s' on registration error to recover", registrationRecoveryPeriod)
+			time.Sleep(registrationRecoveryPeriod)
+		}
+		// Fetch remote Registration
+		log.Debug("Fetching remote registration")
+		registration, err = client.GetRegistration()
+		if err != nil {
+			log.Error(err, "getting remote Registration")
+			registrationError = true
+			continue
+		}
+		// Pick a new hostname
+		// There is a tiny chance the random hostname generation will collide with existing ones.
+		// It's safer to generate a new one in case of host creation failure.
+		newHostname, err = hostnameFormatter.FormatHostname(registration.Config.Elemental.Agent.Hostname)
+		log.Debugf("Selected hostname: %s", newHostname)
+		if err != nil {
+			log.Error(err, "picking new hostname")
+			registrationError = true
+			continue
+		}
+		// Register new Elemental Host
+		log.Debugf("Registering new host: %s", newHostname)
+		if err := client.CreateHost(api.HostCreateRequest{
+			Name:        newHostname,
+			Annotations: registration.HostAnnotations,
+			Labels:      registration.HostLabels,
+		}); err != nil {
+			log.Error(err, "registering new ElementalHost")
+			registrationError = true
+			continue
+		}
+		break
+	}
+	return newHostname, registration
+}
+
+func handlePostRegistration(osPlugin osplugin.Plugin, hostnameToSet string, signingKey []byte, registration *api.RegistrationResponse) error {
+	// Persist registered hostname
+	if err := osPlugin.PersistHostname(hostnameToSet); err != nil {
+		return fmt.Errorf("persisting hostname '%s': %w", hostnameToSet, err)
+	}
+	// Persist agent config
+	agentConfig := config.FromAPI(registration)
+	agentConfigBytes, err := yaml.Marshal(agentConfig)
+	if err != nil {
+		return fmt.Errorf("marshalling agent config: %w", err)
+	}
+	if err := osPlugin.PersistFile(agentConfigBytes, configPath, 0640, 0, 0); err != nil {
+		return fmt.Errorf("persisting agent config file '%s': %w", configPath, err)
+	}
+	// Persist identity file
+	privateKeyPath := fmt.Sprintf("%s/%s", agentConfig.Agent.WorkDir, identity.PrivateKeyFile)
+	if err := osPlugin.PersistFile(signingKey, privateKeyPath, 0640, 0, 0); err != nil {
+		return fmt.Errorf("persisting private key file '%s': %w", privateKeyPath, err)
+	}
+	return nil
+}
+
+func handleInstall(client client.Client, osPlugin osplugin.Plugin, hostname string, installationRecoveryPeriod time.Duration) {
+	cloudConfigAlreadyApplied := false
+	alreadyInstalled := false
+	installationError := false
 	for {
 		// Wait for recovery (end user may fix the remote installation instructions meanwhile)
 		if installationError {
@@ -199,48 +293,52 @@ func handleInstall(client client.Client, hostManager host.Manager, installer ins
 			time.Sleep(installationRecoveryPeriod)
 		}
 		// Fetch remote Registration
-		log.Debug("Fetching remote registration")
-		registration, err := client.GetRegistration()
-		if err != nil {
-			log.Error(err, "getting remote Registration")
-			installationError = true
-			continue
-		}
-		// Pick the new hostname if not done yet
-		if len(newHostname) == 0 {
-			newHostname, err = hostManager.PickHostname(registration.Config.Elemental.Agent.Hostname)
-			log.Debugf("Selected hostname: %s", newHostname)
+		var registration *api.RegistrationResponse
+		var err error
+		if !cloudConfigAlreadyApplied || !alreadyInstalled {
+			log.Debug("Fetching remote registration")
+			registration, err = client.GetRegistration()
 			if err != nil {
-				log.Error(err, "picking new hostname")
+				log.Error(err, "getting remote Registration")
 				installationError = true
 				continue
 			}
 		}
-		// Register new Elemental Host
-		if !alreadyRegistered {
-			log.Debugf("Registering new host: %s", newHostname)
-			if err := client.CreateHost(api.HostCreateRequest{
-				Name:        newHostname,
-				Annotations: registration.HostAnnotations,
-				Labels:      registration.HostLabels,
-			}); err != nil {
-				log.Error(err, "registering new ElementalHost")
+		// Apply Cloud Config
+		if !cloudConfigAlreadyApplied {
+			cloudConfigBytes, err := json.Marshal(registration.Config.CloudConfig)
+			if err != nil {
+				log.Error(err, "marshalling cloud config")
 				installationError = true
 				continue
 			}
-			alreadyRegistered = true
+			if err := osPlugin.ApplyCloudInit(cloudConfigBytes); err != nil {
+				log.Error(err, "applying cloud config")
+				installationError = true
+				continue
+			}
+			cloudConfigAlreadyApplied = true
 		}
 		// Install
-		if err := installer.Install(registration, newHostname); err != nil {
-			// TODO: Patch the Elemental Host with installation failure status and reason
-			log.Error(err, "installing Elemental")
-			installationError = true
-			continue
+		if !alreadyInstalled {
+			installBytes, err := json.Marshal(registration.Config.Elemental.Install)
+			if err != nil {
+				log.Error(err, "marshalling install config")
+				installationError = true
+				continue
+			}
+			if err := osPlugin.Install(installBytes); err != nil {
+				// TODO: Patch the Elemental Host with installation failure status and reason
+				log.Error(err, "installing Elemental")
+				installationError = true
+				continue
+			}
+			alreadyInstalled = true
 		}
 		// Report installation success
 		if _, err := client.PatchHost(api.HostPatchRequest{
 			Installed: ptr.To(true),
-		}, newHostname); err != nil {
+		}, hostname); err != nil {
 			log.Error(err, "patching host with installation successful")
 			installationError = true
 			continue
@@ -249,7 +347,7 @@ func handleInstall(client client.Client, hostManager host.Manager, installer ins
 	}
 }
 
-func handleReset(client client.Client, installer installer.Installer, resetRecoveryPeriod time.Duration, hostname string) {
+func handleReset(client client.Client, osPlugin osplugin.Plugin, resetRecoveryPeriod time.Duration, hostname string) {
 	resetError := false
 	alreadyReset := false
 	for {
@@ -258,15 +356,8 @@ func handleReset(client client.Client, installer installer.Installer, resetRecov
 			log.Debugf("Waiting '%s' on reset error for reset instructions to mutate", resetRecoveryPeriod)
 			time.Sleep(resetRecoveryPeriod)
 		}
-		// Fetch remote Registration
-		log.Debug("Fetching remote registration")
-		registration, err := client.GetRegistration()
-		if err != nil {
-			log.Error(err, "getting remote Registration")
-			resetError = true
-			continue
-		}
 		// Mark ElementalHost for deletion
+		// Repeat in case of failures. May be exploited server side to track repeated attempts.
 		log.Debugf("Marking ElementalHost for deletion: %s", hostname)
 		if err := client.DeleteHost(hostname); err != nil {
 			log.Error(err, "marking host for deletion")
@@ -275,10 +366,24 @@ func handleReset(client client.Client, installer installer.Installer, resetRecov
 		}
 		// Reset
 		if !alreadyReset {
+			// Fetch remote Registration
+			log.Debug("Fetching remote registration")
+			registration, err := client.GetRegistration()
+			if err != nil {
+				log.Error(err, "getting remote Registration")
+				resetError = true
+				continue
+			}
 			log.Debug("Resetting...")
-			if err := installer.Reset(registration); err != nil {
+			resetBytes, err := json.Marshal(registration.Config.Elemental.Reset)
+			if err != nil {
+				log.Error(err, "marshalling reset config")
+				resetError = true
+				continue
+			}
+			if err := osPlugin.Reset(resetBytes); err != nil {
 				// TODO: Patch the Elemental Host with reset failure status and reason
-				log.Error(err, "resetting Elemental: %w")
+				log.Error(err, "resetting Elemental")
 				resetError = true
 				continue
 			}
@@ -333,15 +438,15 @@ func handleBootstrap(fs vfs.FS, client client.Client, hostname string) error {
 	return nil
 }
 
-func handlePost(hostManager host.Manager, poweroff bool, reboot bool) {
+func handlePost(osPlugin osplugin.Plugin, poweroff bool, reboot bool) {
 	if poweroff {
 		log.Info("Powering off system")
-		if err := hostManager.PowerOff(); err != nil {
+		if err := osPlugin.PowerOff(); err != nil {
 			log.Error(err, "Powering off system")
 		}
 	} else if reboot {
 		log.Info("Rebooting system")
-		if err := hostManager.Reboot(); err != nil {
+		if err := osPlugin.Reboot(); err != nil {
 			log.Error(err, "Rebooting system")
 		}
 	}

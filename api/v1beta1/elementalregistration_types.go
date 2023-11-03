@@ -92,8 +92,8 @@ type Agent struct {
 	// +optional
 	Debug bool `json:"debug,omitempty" yaml:"debug,omitempty" mapstructure:"debug"`
 	// +optional
-	// +kubebuilder:default:="unmanaged"
-	Installer string `json:"installer,omitempty" yaml:"installer,omitempty" mapstructure:"installer"`
+	// +kubebuilder:default:="/usr/lib/elemental/plugins/elemental.so"
+	OSPlugin string `json:"osPlugin,omitempty" yaml:"osPlugin,omitempty" mapstructure:"osPlugin"`
 	// +optional
 	// +kubebuilder:default:=10000000000
 	Reconciliation time.Duration `json:"reconciliation,omitempty" yaml:"reconciliation,omitempty" mapstructure:"reconciliation"`
@@ -143,6 +143,6 @@ type Elemental struct {
 	// +optional
 	Registration Registration `json:"registration,omitempty" yaml:"registration,omitempty"`
 	// +optional
-	// +kubebuilder:default:={"debug":false,"reconciliation":10000000000,"hostname":{"useExisting":false},"installer":"unmanaged"}
+	// +kubebuilder:default:={"debug":false,"reconciliation":10000000000,"hostname":{"useExisting":false},"osPlugin":"/usr/lib/elemental/plugins/elemental.so"}
 	Agent Agent `json:"agent,omitempty" yaml:"agent,omitempty"`
 }
