@@ -182,7 +182,9 @@
 ## (Elemental Toolkit) Host configuration
 
 A bootable ISO image can be build using the [elemental-toolkit](https://github.com/rancher/elemental-toolkit).
-The image contains the `elemental-agent` and an initial configuration to connect. Upon boot, it will auto-install an Elemental system on a machine.  
+The image contains the `elemental-agent` and an initial configuration to connect. Upon boot, it will auto-install an Elemental system on a machine on the configured device: `/dev/vda`.
+
+You can configure a different device, editing the `ElementalRegistration` created above.  
 
 - Clone this repository:
 
