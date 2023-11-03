@@ -46,12 +46,25 @@ metadata:
   namespace: default
 spec:
   config:
+    cloudConfig:
+      users:
+        - name: root
+          passwd: root
     elemental:
       agent:
         hostname:
           useExisting: false
           prefix: "m-"
         debug: true
-        installer: "unmanaged"
+        osPlugin: "/usr/lib/elemental/plugins/elemental.so"
         insecureAllowHttp: true
+        workDir: "/oem/elemental/agent"
+        postInstall:
+          reboot: true
+      install:
+        debug: true
+        device: "/dev/vda"
+      reset:
+        resetOem: true
+        resetPersistent: true
 EOF

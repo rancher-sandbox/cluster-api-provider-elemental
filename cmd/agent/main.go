@@ -156,6 +156,7 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, client client.Client) *
 				host, err := client.PatchHost(api.HostPatchRequest{}, hostname)
 				if err != nil {
 					log.Error(err, "patching ElementalHost during normal reconcile")
+					continue
 				}
 
 				// Handle bootstrap if needed

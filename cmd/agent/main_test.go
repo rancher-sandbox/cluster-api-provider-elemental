@@ -192,19 +192,21 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 		Expect(workDir.IsDir()).Should(BeTrue())
 	})
 	When("operating normally", func() {
-		// It("should use custom config if --config argument", func() {
-		// 	// const customConfigPath = "/test/etc/elemental/agent/config.yaml"
-		// 	// marshalIntoFile(fs, configFixture, customConfigPath)
-		// 	// cmd.SetArgs([]string{"--config", customConfigPath})
-		// 	// mHostManager.EXPECT().GetCurrentHostname().Return(hostResponseFixture.Name, nil)
-		// 	// mClient.EXPECT().Init(fs, configFixture).Return(nil)
-		// 	// mInstallerSelector.EXPECT().GetInstaller(fs, customConfigPath, configFixture).Return(mInstaller, nil)
-		// 	// triggerResetResponse := hostResponseFixture
-		// 	// triggerResetResponse.NeedsReset = true
-		// 	// mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(triggerResetResponse, nil)
-		// 	// mInstaller.EXPECT().TriggerReset().Return(nil)
-		// 	// Expect(cmd.Execute()).ToNot(HaveOccurred())
-		// })
+		It("should trigger reset", func() {
+			triggerResetResponse := hostResponseFixture
+			triggerResetResponse.NeedsReset = true
+			cmd.SetArgs([]string{"--debug"})
+			gomock.InOrder(
+				// Make first patch fail, expect to patch again
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, errors.New("patch host test fail")),
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(triggerResetResponse, nil),
+				// Make first reset attempt fail, expect to try again
+				plugin.EXPECT().TriggerReset().Return(errors.New("trigger reset test fail")),
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(triggerResetResponse, nil),
+				plugin.EXPECT().TriggerReset().Return(nil),
+			)
+			Expect(cmd.Execute()).ToNot(HaveOccurred())
+		})
 	})
 	When("--register", func() {
 		wantCreateHostRequest := api.HostCreateRequest{
