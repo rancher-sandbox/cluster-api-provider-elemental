@@ -213,6 +213,8 @@ You can configure a different device, editing the `ElementalRegistration` create
     AGENT_CONFIG_FILE=iso/config/my-config.yaml make build-iso
     ```
 
+- A new bootable iso should be available: `iso/elemental-dev.iso`.
+
 ## Trigger a Host reset
 
 A Host can receive a trigger reset instruction on the following scenarios:
