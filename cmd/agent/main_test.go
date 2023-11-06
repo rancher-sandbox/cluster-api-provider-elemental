@@ -15,6 +15,7 @@ import (
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/identity"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/pkg/agent/osplugin"
 	"github.com/spf13/cobra"
@@ -114,6 +115,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli", "sanity"), func() {
 	var mockCtrl *gomock.Controller
 	var mClient *client.MockClient
 	var pluginLoader *osplugin.MockLoader
+	var cmdRunner *utils.MockCommandRunner
 	BeforeEach(func() {
 		viper.Reset()
 		fs, fsCleanup, err = vfst.NewTestFS(map[string]interface{}{})
@@ -121,7 +123,8 @@ var _ = Describe("elemental-agent", Label("agent", "cli", "sanity"), func() {
 		mockCtrl = gomock.NewController(GinkgoT())
 		mClient = client.NewMockClient(mockCtrl)
 		pluginLoader = osplugin.NewMockLoader(mockCtrl)
-		cmd = newCommand(fs, pluginLoader, mClient)
+		cmdRunner = utils.NewMockCommandRunner(mockCtrl)
+		cmd = newCommand(fs, pluginLoader, cmdRunner, mClient)
 		DeferCleanup(fsCleanup)
 	})
 	It("should return no error when printing version", func() {
@@ -162,6 +165,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 	var cmd *cobra.Command
 	var mockCtrl *gomock.Controller
 	var mClient *client.MockClient
+	var cmdRunner *utils.MockCommandRunner
 	var pluginLoader *osplugin.MockLoader
 	var plugin *osplugin.MockPlugin
 	BeforeEach(func() {
@@ -183,7 +187,8 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 			mClient.EXPECT().Init(fs, gomock.Any(), configFixture).Return(nil),
 			plugin.EXPECT().GetHostname().Return(hostResponseFixture.Name, nil),
 		)
-		cmd = newCommand(fs, pluginLoader, mClient)
+		cmdRunner = utils.NewMockCommandRunner(mockCtrl)
+		cmd = newCommand(fs, pluginLoader, cmdRunner, mClient)
 		DeferCleanup(fsCleanup)
 	})
 	AfterEach(func() {
@@ -193,17 +198,89 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 		Expect(workDir.IsDir()).Should(BeTrue())
 	})
 	When("operating normally", func() {
+		triggerResetResponse := *hostResponseFixture
+		triggerResetResponse.NeedsReset = true
+
+		triggerBootstrapResponse := *hostResponseFixture
+		triggerBootstrapResponse.BootstrapReady = true
+
+		bootstrapResponse := api.BootstrapResponse{
+			Files: []api.WriteFile{
+				{
+					Path:        "/foo",
+					Owner:       "foo:foo",
+					Permissions: "0640",
+					Content:     "foo/n",
+				},
+				{
+					Path:        "/bar",
+					Owner:       "bar:bar",
+					Permissions: "0640",
+					Content:     "bar/n",
+				},
+			},
+			Commands: []string{"foo", "bar"},
+		}
 		It("should trigger reset", func() {
-			triggerResetResponse := hostResponseFixture
-			triggerResetResponse.NeedsReset = true
 			cmd.SetArgs([]string{"--debug"})
 			gomock.InOrder(
 				// Make first patch fail, expect to patch again
 				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, errors.New("patch host test fail")),
-				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(triggerResetResponse, nil),
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&triggerResetResponse, nil),
 				// Make first reset attempt fail, expect to try again
 				plugin.EXPECT().TriggerReset().Return(errors.New("trigger reset test fail")),
-				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(triggerResetResponse, nil),
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&triggerResetResponse, nil),
+				plugin.EXPECT().TriggerReset().Return(nil),
+			)
+			Expect(cmd.Execute()).ToNot(HaveOccurred())
+		})
+		It("should bootstrap", func() {
+			cmd.SetArgs([]string{"--debug"})
+			gomock.InOrder(
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&triggerBootstrapResponse, nil),
+				// Make first get bootstrap fail, expect to try again
+				mClient.EXPECT().GetBootstrap(hostResponseFixture.Name).Return(nil, errors.New("get bootstrap test fail")),
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&triggerBootstrapResponse, nil),
+				mClient.EXPECT().GetBootstrap(hostResponseFixture.Name).Return(&bootstrapResponse, nil),
+				// Verify commands are executed
+				cmdRunner.EXPECT().RunCommand("foo").Return(nil),
+				cmdRunner.EXPECT().RunCommand("bar").Return(nil),
+				// Expect bootstrapped patch
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(hostResponseFixture, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+					if patch.Bootstrapped == nil {
+						GinkgoT().Error("bootstrapped patch does not contain bootstrapped flag")
+					}
+					if !*patch.Bootstrapped {
+						GinkgoT().Error("bootstrapped patch does not contain true bootstrapped flag")
+					}
+				}),
+				// Trigger reset just to exit the program (and the test)
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&triggerResetResponse, nil),
+				plugin.EXPECT().TriggerReset().Return(nil),
+			)
+			Expect(cmd.Execute()).ToNot(HaveOccurred())
+			// Verify bootstrap files are created
+			Expect(fs.ReadFile("/foo")).Should(Equal([]byte("foo/n")))
+			Expect(fs.ReadFile("/bar")).Should(Equal([]byte("bar/n")))
+		})
+		It("should not bootstrap twice", func() {
+			cmd.SetArgs([]string{"--debug"})
+			// Mark the system as bootstrapped. This path is part of the CAPI contract: https://cluster-api.sigs.k8s.io/developer/providers/bootstrap.html#sentinel-file
+			Expect(vfs.MkdirAll(fs, "/run/cluster-api", os.ModePerm)).Should(Succeed())
+			Expect(fs.WriteFile("/run/cluster-api/bootstrap-success.complete", []byte("anything"), os.ModePerm)).Should(Succeed())
+			gomock.InOrder(
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&triggerBootstrapResponse, nil),
+				// Expect bootstrapped patch
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(hostResponseFixture, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+					if patch.Bootstrapped == nil {
+						GinkgoT().Error("bootstrapped patch does not contain bootstrapped flag")
+					}
+					if !*patch.Bootstrapped {
+						GinkgoT().Error("bootstrapped patch does not contain true bootstrapped flag")
+					}
+				}),
+				// Trigger reset just to exit the program (and the test)
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&triggerResetResponse, nil),
 				plugin.EXPECT().TriggerReset().Return(nil),
 			)
 			Expect(cmd.Execute()).ToNot(HaveOccurred())

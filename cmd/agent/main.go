@@ -51,14 +51,15 @@ func main() {
 	fs := vfs.OSFS
 	osPluginLoader := osplugin.NewLoader()
 	client := client.NewClient()
-	cmd := newCommand(fs, osPluginLoader, client)
+	commandRunner := utils.NewCommandRunner()
+	cmd := newCommand(fs, osPluginLoader, commandRunner, client)
 	if err := cmd.Execute(); err != nil {
 		log.Error(err, "running elemental-agent")
 		os.Exit(1)
 	}
 }
 
-func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, client client.Client) *cobra.Command {
+func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, commandRunner utils.CommandRunner, client client.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "elemental-agent",
 		Short: "Elemental Agent command",
@@ -156,14 +157,19 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, client client.Client) *
 				host, err := client.PatchHost(api.HostPatchRequest{}, hostname)
 				if err != nil {
 					log.Error(err, "patching ElementalHost during normal reconcile")
+					log.Debugf("Waiting %s...", conf.Agent.Reconciliation.String())
+					time.Sleep(conf.Agent.Reconciliation)
 					continue
 				}
 
 				// Handle bootstrap if needed
 				if host.BootstrapReady && !host.Bootstrapped {
 					log.Info("Applying bootstrap config")
-					if err := handleBootstrap(fs, client, hostname); err != nil {
+					if err := handleBootstrap(commandRunner, fs, client, hostname); err != nil {
 						log.Error(err, "handling bootstrap")
+						log.Debugf("Waiting %s...", conf.Agent.Reconciliation.String())
+						time.Sleep(conf.Agent.Reconciliation)
+						continue
 					}
 					log.Info("Bootstrap config applied successfully")
 				}
@@ -403,11 +409,10 @@ func handleReset(client client.Client, osPlugin osplugin.Plugin, resetRecoveryPe
 	}
 }
 
-func handleBootstrap(fs vfs.FS, client client.Client, hostname string) error {
+func handleBootstrap(cmdRunner utils.CommandRunner, fs vfs.FS, client client.Client, hostname string) error {
 	// Avoid applying bootstrap multiple times
 	// See contract: https://cluster-api.sigs.k8s.io/developer/providers/bootstrap.html#sentinel-file
 	_, err := fs.Stat(bootstrapSentinelFile)
-	cmdRunner := utils.NewCommandRunner()
 	if os.IsNotExist(err) {
 		log.Debug("Fetching bootstrap config")
 		bootstrap, err := client.GetBootstrap(hostname)
