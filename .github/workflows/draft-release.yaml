@@ -22,7 +22,7 @@ jobs:
           go-version-file: go.mod
       # Install cross compiler
       - name: Install build dependencies
-        run: apt install -y gcc-aarch64-linux-gnu
+        run: sudo apt install -y gcc-aarch64-linux-gnu
       # Build Agent binaries
       - name: Build agent binaries
         run: make build-agent-all
