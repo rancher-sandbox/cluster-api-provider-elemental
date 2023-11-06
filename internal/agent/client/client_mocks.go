@@ -86,10 +86,10 @@ func (mr *MockClientMockRecorder) DeleteHost(arg0 any) *gomock.Call {
 }
 
 // GetBootstrap mocks base method.
-func (m *MockClient) GetBootstrap(arg0 string) (api.BootstrapResponse, error) {
+func (m *MockClient) GetBootstrap(arg0 string) (*api.BootstrapResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetBootstrap", arg0)
-	ret0, _ := ret[0].(api.BootstrapResponse)
+	ret0, _ := ret[0].(*api.BootstrapResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -101,10 +101,10 @@ func (mr *MockClientMockRecorder) GetBootstrap(arg0 any) *gomock.Call {
 }
 
 // GetRegistration mocks base method.
-func (m *MockClient) GetRegistration() (api.RegistrationResponse, error) {
+func (m *MockClient) GetRegistration() (*api.RegistrationResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRegistration")
-	ret0, _ := ret[0].(api.RegistrationResponse)
+	ret0, _ := ret[0].(*api.RegistrationResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -116,24 +116,24 @@ func (mr *MockClientMockRecorder) GetRegistration() *gomock.Call {
 }
 
 // Init mocks base method.
-func (m *MockClient) Init(arg0 vfs.FS, arg1 config.Config) error {
+func (m *MockClient) Init(arg0 vfs.FS, arg1 []byte, arg2 config.Config) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Init", arg0, arg1)
+	ret := m.ctrl.Call(m, "Init", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Init indicates an expected call of Init.
-func (mr *MockClientMockRecorder) Init(arg0, arg1 any) *gomock.Call {
+func (mr *MockClientMockRecorder) Init(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockClient)(nil).Init), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockClient)(nil).Init), arg0, arg1, arg2)
 }
 
 // PatchHost mocks base method.
-func (m *MockClient) PatchHost(arg0 api.HostPatchRequest, arg1 string) (api.HostResponse, error) {
+func (m *MockClient) PatchHost(arg0 api.HostPatchRequest, arg1 string) (*api.HostResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PatchHost", arg0, arg1)
-	ret0, _ := ret[0].(api.HostResponse)
+	ret0, _ := ret[0].(*api.HostResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

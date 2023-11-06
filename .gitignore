@@ -24,3 +24,9 @@ Dockerfile.cross
 *.swp
 *.swo
 *~
+
+
+# Dev images
+iso/**.iso
+iso/**.sha256
+iso/config/my-config.yaml

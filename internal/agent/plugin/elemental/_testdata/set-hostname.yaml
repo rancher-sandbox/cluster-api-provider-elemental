@@ -1,0 +1,5 @@
+name: Configure host
+stages:
+    boot.after:
+        - commands:
+            - echo just a test hostname to set > /etc/hostname

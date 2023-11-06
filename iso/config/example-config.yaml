@@ -1,0 +1,13 @@
+agent:
+  debug: true
+  hostname:
+    prefix: m-
+    useExisting: false
+  insecureAllowHttp: true
+  osPlugin: /usr/lib/elemental/plugins/elemental.so
+  postInstall:
+    reboot: true
+  reconciliation: 10s
+  workDir: /oem/elemental/agent
+registration:
+  uri: http://192.168.122.10:30009/elemental/v1/namespaces/default/registrations/my-registration

@@ -210,10 +210,14 @@ var _ = Describe("ElementalMachine controller", Label("controller", "elemental-m
 	})
 	It("should remove association if host is deleted", func() {
 		// Mark the host as reset to remove finalized and enable deletion
-		hostPatch := alreadyAssociatedHost
-		hostPatch.Labels[v1beta1.LabelElementalHostReset] = "true"
-		patchObject(ctx, k8sClient, &alreadyAssociatedHost, &hostPatch)
-		Expect(k8sClient.Delete(ctx, &alreadyAssociatedHost)).Should(Succeed())
+		updatedHost := &v1beta1.ElementalHost{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{
+			Name:      alreadyAssociatedHost.Name,
+			Namespace: alreadyAssociatedHost.Namespace,
+		}, updatedHost)).Should(Succeed())
+		updatedHost.Labels[v1beta1.LabelElementalHostReset] = "true"
+		Expect(k8sClient.Update(ctx, updatedHost)).Should(Succeed())
+		Expect(k8sClient.Delete(ctx, updatedHost)).Should(Succeed())
 
 		updatedMachine := &v1beta1.ElementalMachine{}
 		Eventually(func() *string {
@@ -237,6 +241,8 @@ var _ = Describe("ElementalMachine controller", Label("controller", "elemental-m
 				updatedMachine)).Should(Succeed())
 			return updatedMachine.Status.Ready
 		}).WithTimeout(time.Minute).Should(BeFalse())
+		// Remove this machine as no longer needed for further tests
+		Expect(k8sClient.Delete(ctx, &alreadyAssociatedMachine)).Should(Succeed())
 	})
 	It("should trigger host reset upon deletion", func() {
 		Expect(k8sClient.Delete(ctx, &elementalMachine)).Should(Succeed())

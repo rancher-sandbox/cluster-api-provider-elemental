@@ -83,7 +83,7 @@
     cat << EOF > $HOME/.cluster-api/clusterctl.yaml
     providers:
     - name: "elemental"
-      url: "https://github.com/rancher-sandbox/cluster-api-provider-elemental/releases/v0.0.2/infrastructure-components.yaml"
+      url: "https://github.com/rancher-sandbox/cluster-api-provider-elemental/releases/v0.1.0/infrastructure-components.yaml"
       type: "InfrastructureProvider"
     - name: "k3s"
       url: "https://github.com/cluster-api-provider-k3s/cluster-api-k3s/releases/v0.1.8/bootstrap-components.yaml"
@@ -97,7 +97,7 @@
 1. Install CAPI Core provider, the k3s Control Plane and Bootstrap providers, and the Elemental Infrastructure provider:  
 
     ```bash
-    clusterctl init --bootstrap k3s:v0.1.8 --control-plane k3s:v0.1.8 --infrastructure elemental:v0.0.2
+    clusterctl init --bootstrap k3s:v0.1.8 --control-plane k3s:v0.1.8 --infrastructure elemental:v0.1.0
     ```
 
 1. Expose the Elemental API server:  
@@ -132,7 +132,7 @@
 
     ```bash
     CONTROL_PLANE_ENDPOINT_IP=192.168.122.100 clusterctl generate cluster \
-    --infrastructure elemental:v0.0.2 \
+    --infrastructure elemental:v0.1.0 \
     --flavor k3s-single-node \
     --kubernetes-version v1.28.2 \
     elemental-cluster-k3s > $HOME/elemental-cluster-k3s.yaml
@@ -155,54 +155,65 @@
       namespace: default
     spec:
       config:
+        cloudConfig:
+          users:
+            - name: root
+              passwd: root
         elemental:
           agent:
             hostname:
               useExisting: false
               prefix: "m-"
             debug: true
-            installer: "unmanaged"
+            osPlugin: "/usr/lib/elemental/plugins/elemental.so"
             insecureAllowHttp: true
+            workDir: "/oem/elemental/agent"
+            postInstall:
+              reboot: true
+          install:
+            debug: true
+            device: "/dev/vda"
+          reset:
+            resetOem: true
+            resetPersistent: true
     EOF
     ```
 
-## Elemental Host configuration
+## (Elemental Toolkit) Host configuration
 
-For more information on how to configure and use the agent, please read the [docs](../cmd/agent/README.md).
+A bootable ISO image can be build using the [elemental-toolkit](https://github.com/rancher/elemental-toolkit).
+The image contains the `elemental-agent` and an initial configuration to connect. Upon boot, it will auto-install an Elemental system on a machine on the configured device: `/dev/vda`.
 
-1. Install the agent:  
+You can configure a different device, editing the `ElementalRegistration` created above.  
 
-    ```bash
-    curl -L https://github.com/rancher-sandbox/cluster-api-provider-elemental/releases/download/v0.0.2/elemental_agent_linux_amd64 -o elemental-agent
-    install -o root -g root -m 0755 elemental-agent /usr/local/sbin/elemental-agent
-    ```
-
-1. Generate the initial agent config file:  
+- Clone this repository:
 
     ```bash
-    mkdir -p /etc/elemental/agent
-
-    cat << EOF > /etc/elemental/agent/config.yaml
-    agent:
-      debug: true
-      insecureAllowHttp: true
-      reconciliation: 10s
-    registration:
-      uri: http://192.168.122.10:30009/elemental/v1/namespaces/default/registrations/my-registration
-    EOF
+    git clone https://github.com/rancher-sandbox/cluster-api-provider-elemental.git
+    cd cluster-api-provider-elemental
     ```
 
-1. Install Elemental:
+- (Optionally) Generate a valid agent config (depends on `yq`):  
 
     ```bash
-    elemental-agent --install
+    ./test/scripts/print_agent_config.sh -n default -r my-registration > iso/config/my-config.yaml
     ```
 
-1. Run the agent:
+- Build the ISO image:
+
+    This depends on `make` and `docker`:
 
     ```bash
-    elemental-agent
+    make build-iso
     ```
+
+    Optionally, a custom agent config can be injected in the image:  
+
+    ```bash
+    AGENT_CONFIG_FILE=iso/config/my-config.yaml make build-iso
+    ```
+
+- A new bootable iso should be available: `iso/elemental-dev.iso`.
 
 ## Trigger a Host reset
 
@@ -225,22 +236,3 @@ A Host can receive a trigger reset instruction on the following scenarios:
     ```bash
     kubectl delete cluster my-cluster
     ```
-
-Whenever one of the reset conditions triggers, the `elemental-agent` using an `unmanaged` installer will create a `needs.reset` sentinel file in the configured `workDir`.  
-
-## Resetting a Host
-
-Using the `unmanaged` installer, the host administrator needs to delete the `needs.reset` sentinel file before being able to reset the host.  
-The `k3s` components also need to be deleted.  
-
-**Note**: If using the `hostname.useExisting: true` agent option in combination with prefixes, you should reset the machine hostname to its original value **after** calling `elemental-agent --reset`.  
-
-  ```bash
-  k3s-uninstall.sh
-  
-  rm /var/lib/elemental/agent/needs.reset
-
-  elemental-agent --reset
-
-  hostnamectl set-hostname my-bare-metal-host
-  ```

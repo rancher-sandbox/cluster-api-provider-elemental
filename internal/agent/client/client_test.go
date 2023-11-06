@@ -39,6 +39,7 @@ wcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K
 -----END CERTIFICATE-----`,
 		},
 	}
+	signingKey := []byte{}
 
 	BeforeEach(func() {
 		client = NewClient()
@@ -47,32 +48,32 @@ wcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K
 		DeferCleanup(fsCleanup)
 	})
 	It("should succeed on valid config", func() {
-		Expect(client.Init(fs, conf)).Should(Succeed())
+		Expect(client.Init(fs, signingKey, conf)).Should(Succeed())
 	})
 	It("should fail on http insecure protocol", func() {
 		httpURIConf := conf
 		httpURIConf.Registration.URI = "http://localhost:9090/just/for/testing"
-		Expect(client.Init(fs, httpURIConf)).Should(MatchError(ErrInvalidScheme))
+		Expect(client.Init(fs, signingKey, httpURIConf)).Should(MatchError(ErrInvalidScheme))
 		// Allow insecure http
 		httpURIConf.Agent.InsecureAllowHTTP = true
-		Expect(client.Init(fs, httpURIConf)).Should(Succeed())
+		Expect(client.Init(fs, signingKey, httpURIConf)).Should(Succeed())
 	})
 	It("should fail on badly formatted CACert", func() {
 		badCACertConf := conf
 		badCACertConf.Registration.CACert = "not a parsable cert"
-		Expect(client.Init(fs, badCACertConf)).ShouldNot(Succeed())
+		Expect(client.Init(fs, signingKey, badCACertConf)).ShouldNot(Succeed())
 	})
 	It("should fail on badly formatted URI", func() {
 		badURIConf := conf
 		badURIConf.Registration.URI = "not a parsable URL"
-		Expect(client.Init(fs, badURIConf)).ShouldNot(Succeed())
+		Expect(client.Init(fs, signingKey, badURIConf)).ShouldNot(Succeed())
 	})
 	It("should fail on unknown protocol", func() {
 		unknownProtocolConf := conf
 		unknownProtocolConf.Registration.URI = "unknown://localhost:9090/just/for/testing"
-		Expect(client.Init(fs, unknownProtocolConf)).Should(MatchError(ErrInvalidScheme))
+		Expect(client.Init(fs, signingKey, unknownProtocolConf)).Should(MatchError(ErrInvalidScheme))
 		// Verify behavior when http allowed
 		unknownProtocolConf.Agent.InsecureAllowHTTP = true
-		Expect(client.Init(fs, unknownProtocolConf)).Should(MatchError(ErrInvalidScheme))
+		Expect(client.Init(fs, signingKey, unknownProtocolConf)).Should(MatchError(ErrInvalidScheme))
 	})
 })

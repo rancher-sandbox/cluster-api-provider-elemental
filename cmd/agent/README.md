@@ -2,16 +2,17 @@
 
 ## Usage
 
-1. On a clean host, install Elemental first:  
+1. On a clean host, register and install Elemental:
 
     ```bash
-    elemental-agent --install
+    elemental-agent --register --install
     ```
 
-    When using the `unmanaged` installer, the agent will fetch the remote `ElementalRegistration` to override the local config.  
-    Also a call to `hostnamectl` will be triggered to set the hostname according to `ElementalRegistration` config.  
-    Finally, a new `ElementalHost` will be created using the selected hostname as unique identifier.  
-    It is *not* possible to run `elemental --install` twice on the same machine, before `elemental --reset` has been called.  
+    The `--register` argument will pick a new hostname and register a new `ElementalHost` using the Elemental API.  
+    Upon successful registration, the remote `ElementalRegistration` is used to update and override the agent config.  
+
+    If `--install` argument is also included (can be used standalone), the agent will then install the machine and flag the `ElementalHost` as **installed**.  
+    Any **installed** host is considered ready to be bootstrapped by the Elemental CAPI provider.  
 
 1. Operating normally:  
 
@@ -19,18 +20,20 @@
     elemental-agent
     ```
 
-    During normal operation, the agent may receive instructions from the Elemental API to reset this host.  
-    When using the `unmanaged` installer, a `reset.needed` sentinel file will be created in the configured work directory (`/var/lib/elemental/agent` by default).  
-    The agent will then terminate.  
+    During normal operation, the agent will periodically patch the remote `ElementalHost` with current host information.  
+    Upon successful patching, the agent may receive instructions from the Elemental API to bootstrap the machine.  
+    Eventually, the agent will receive instructions to trigger a reset of this machine.  
 
 1. Resetting the host:  
-
-    If using the `unmanaged` installer, the `reset.needed` sentinel file must be deleted before reset.  
-    This guarantees the host administrator reset the machine correctly. For example by uninstalling and stopping running services (for example `k3s`), removing configuration files, etc.
 
     ```bash
     elemental-agent --reset
     ```
+
+    When `--reset` is invoked, the agent will trigger the remote `ElementalHost` deletion using the Elemental API.  
+    After that the agent will reset the system, and upon successful reset, the remote `ElementalHost` will be patched as **reset**.  
+    The Elemental CAPI Provider will delete any `ElementalHost` that was up for deletion, only when also marked as **reset**.  
+    This gives a way to track hosts that are supposed to reset, but fail to do it successfully.  
 
 ## Config
 
@@ -61,12 +64,20 @@ agent:
   hostname:
     useExisting: false
     prefix: ""
+  # Post Install behavior (when running --install)
+  postInstall:
+    powerOff: false
+    reboot: false
+  # Post Reset behavior (when running --reset)
+  postReset:
+    powerOff: false
+    reboot: false
   # Add SMBIOS labels (not implemented yet)
   noSmbios: false
   # Enable agent debug logs
   debug: false
-  # Which OS installer to use. "unmanaged" or "elemental"
-  installer: "unmanaged"
+  # Which OS plugin to use
+  osPlugin: "/usr/lib/elemental/plugins/elemental.so"
   # The period used by the agent to sync with the Elemental API
   reconciliation: 1m
   # Allow 'http' scheme
@@ -76,3 +87,36 @@ agent:
   # Use the system's cert pool for TLS verification
   useSystemCertPool: false
 ```
+
+## Plugins
+
+A [Plugin](../../pkg/agent/osplugin/plugin.go) interface is defined to enable OS management customization.  
+The `elemental-agent` is expected to always be packaged with the [elemental.so](../../internal/agent/plugin/elemental/elemental.go) and [dummy.so](../../internal/agent/plugin/dummy/dummy.go) plugins in the `/usr/lib/elemental/plugins` directory.  
+
+To build the plugins:  
+
+```bash
+CGO_ENABLED=1 go build -buildmode=plugin -o elemental.so internal/agent/plugin/elemental/elemental.go
+CGO_ENABLED=1 go build -buildmode=plugin -o dummy.so internal/agent/plugin/dummy/dummy.go
+```
+
+### Elemental Plugin
+
+The Elemental plugin leverages the [elemental-toolkit](https://rancher.github.io/elemental-toolkit/) to offer a fully managed OS experience.  
+This plugin supports automated workflows to install, operate, and reset any underlying host.  
+If you want to try it out, just follow the [quickstart](../../doc/QUICKSTART.md) and build your own iso.
+
+### Dummy Plugin
+
+The Dummy plugin is a very simple plugin, as the name suggests, that can be exploited to automate OS management by external means.  
+For example, instead of installing a system when the agent is called with the `--install` argument, this plugin will output the install information from [ElementalRegistration's](../../api/v1beta1/elementalregistration_types.go) `spec.config.elemental.install` into an `install.yaml` file in the agent work directory.  
+No further action is taken by the plugin, once the file is created the system will be considered **installed** and ready to be bootstrapped.  
+An administrator can implement logic around this expected file, for example leveraging [Systemd's Path Units](https://www.freedesktop.org/software/systemd/man/latest/systemd.path.html).  
+
+When a reset is triggered, the plugin will create a `needs.reset` file in the agent work directory.  
+When this file is created, some logic can take place to prepare the machine for reset, delete the `needs.reset` file and start the agent with the `--reset` argument to mark the host as reset.  
+In this stage some host services may also be stopped or uninstalled, for example `k3s`.  
+
+Similarly to the installation, a `reset.yaml` in the agent work directory will be created when the agent is called with the `--reset` argument.  
+A host is considered successfully **reset** after the file is created.  
+The reset will fail if the `needs.reset` file exists. This highlight that the host was not prepared for reset first.  

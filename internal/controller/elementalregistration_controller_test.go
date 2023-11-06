@@ -120,7 +120,6 @@ wcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K
 -----END CERTIFICATE-----`,
 					},
 					Agent: v1beta1.Agent{
-						WorkDir:           "/var/lib/elemental/agent",
 						Debug:             true,
 						InsecureAllowHTTP: true,
 					},
@@ -157,11 +156,6 @@ wcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K
 		expected := api.RegistrationResponse{
 			Config: v1beta1.Config{
 				Elemental: v1beta1.Elemental{
-					Reset: v1beta1.Reset{
-						ResetPersistent: true,
-						ResetOEM:        true,
-						Reboot:          true,
-					},
 					Registration: v1beta1.Registration{
 						URI:    "http://localhost:9191/elemental/v1/namespaces/registration-test-client/registrations/test-client",
 						CACert: "-----BEGIN CERTIFICATE-----\nMIIBvDCCAWOgAwIBAgIBADAKBggqhkjOPQQDAjBGMRwwGgYDVQQKExNkeW5hbWlj\nbGlzdGVuZXItb3JnMSYwJAYDVQQDDB1keW5hbWljbGlzdGVuZXItY2FAMTY5NzEy\nNjgwNTAeFw0yMzEwMTIxNjA2NDVaFw0zMzEwMDkxNjA2NDVaMEYxHDAaBgNVBAoT\nE2R5bmFtaWNsaXN0ZW5lci1vcmcxJjAkBgNVBAMMHWR5bmFtaWNsaXN0ZW5lci1j\nYUAxNjk3MTI2ODA1MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE9KvZXqQ7+hN/\n4T0LVsFogfENa7UeSI3egvhg54qA6kI4ROQj0sObkbuBbepgGEcaOw8eJW0+M4o3\n+SnprKYPkqNCMEAwDgYDVR0PAQH/BAQDAgKkMA8GA1UdEwEB/wQFMAMBAf8wHQYD\nVR0OBBYEFD8W3gE6pK1EjnBM/kPaQF3Uqkc1MAoGCCqGSM49BAMCA0cAMEQCIDxz\nwcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K\n+ETPIs22tcmXyYOG0WY7KQ==\n-----END CERTIFICATE-----",
@@ -169,18 +163,18 @@ wcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K
 					Agent: v1beta1.Agent{
 						WorkDir:           "/var/lib/elemental/agent",
 						Debug:             true,
-						Installer:         "unmanaged",
+						OSPlugin:          "/usr/lib/elemental/plugins/elemental.so",
 						Reconciliation:    10000000000,
 						InsecureAllowHTTP: true,
 					},
 				},
 			},
 		}
-		Expect(client.Init(fs, conf)).Should(Succeed())
+		Expect(client.Init(fs, []byte{}, conf)).Should(Succeed())
 		// Test API client by fetching the Registration
 		registrationResponse, err := client.GetRegistration()
 		Expect(err).ToNot(HaveOccurred())
-		Expect(registrationResponse).To(Equal(expected))
+		Expect(*registrationResponse).To(Equal(expected))
 	})
 	It("should return error if namespace or registration not found", func() {
 		client := client.NewClient()
@@ -189,14 +183,14 @@ wcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K
 			Registration: v1beta1.Registration{URI: wrongNamespaceURI},
 			Agent:        registration.Spec.Config.Elemental.Agent,
 		}
-		Expect(client.Init(fs, conf)).Should(Succeed())
+		Expect(client.Init(fs, []byte{}, conf)).Should(Succeed())
 		// Expect err on wrong namespace
 		_, err := client.GetRegistration()
 		Expect(err).To(HaveOccurred())
 
 		wrongRegistrationURI := fmt.Sprintf("%s%s%s/namespaces/%s/registrations/%s", serverURL, api.Prefix, api.PrefixV1, namespace.Name, "does-not-exist")
 		conf.Registration.URI = wrongRegistrationURI
-		Expect(client.Init(fs, conf)).Should(Succeed())
+		Expect(client.Init(fs, []byte{}, conf)).Should(Succeed())
 		// Expect err on wrong registration name
 		_, err = client.GetRegistration()
 		Expect(err).To(HaveOccurred())

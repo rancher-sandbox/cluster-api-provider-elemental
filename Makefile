@@ -9,6 +9,8 @@ IMG = ${IMG_NAME}:${IMG_TAG}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.27.1
 
+AGENT_CONFIG_FILE?="iso/config/example-config.yaml"
+
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -27,6 +29,7 @@ CONTAINER_TOOL ?= docker
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
+CROSS_COMPILER ?= aarch64-linux-gnu-gcc 
 LDFLAGS := -w -s
 LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.Version=${GIT_TAG}"
 LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.Commit=${GIT_COMMIT}"
@@ -71,6 +74,9 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+
+.PHONY: generate-mocks
+generate-mocks:  
 	./test/scripts/generate_mocks.sh
 
 .PHONY: openapi
@@ -86,23 +92,36 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: test
-test: manifests generate fmt vet envtest $(GINKGO) ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GINKGO) -v -r --trace --race --covermode=atomic --coverprofile=coverage.out --coverpkg=github.com/rancher-sandbox/cluster-api-provider-elemental/... ./internal/... ./cmd/...
+test: manifests generate fmt vet envtest generate-mocks $(GINKGO) ## Run tests.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GINKGO) -v -r --trace --race --covermode=atomic --coverprofile=coverage.out --coverpkg=github.com/rancher-sandbox/cluster-api-provider-elemental/... ./internal/... ./cmd/... ./pkg/...
 
 ##@ Build
-
 .PHONY: build-agent
 build-agent: manifests generate fmt vet ## Build manager binary for local architecture.
-	CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o bin/elemental_agent cmd/agent/main.go
+	CGO_ENABLED=1 go build -ldflags '$(LDFLAGS)' -o bin/elemental_agent cmd/agent/main.go
 
+# This does depend on cross compilation library, for example: cross-aarch64-gcc13
 .PHONY: build-agent-all
 build-agent-all: manifests generate fmt vet ## Build manager binary for all architectures.
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags '$(LDFLAGS)' -o bin/elemental_agent_linux_amd64 cmd/agent/main.go
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags '$(LDFLAGS)' -o bin/elemental_agent_linux_arm64 cmd/agent/main.go
+	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags '$(LDFLAGS)' -o bin/elemental_agent_linux_amd64 cmd/agent/main.go
+	CC=$(CROSS_COMPILER) CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -ldflags '$(LDFLAGS)' -o bin/elemental_agent_linux_arm64 cmd/agent/main.go
 
 .PHONY: build-manager
 build-manager: manifests generate fmt vet ## Build manager binary.
 	go build -ldflags '$(LDFLAGS)' -o bin/manager cmd/manager/main.go
+
+.PHONY: build-plugins
+build-plugins: generate fmt vet
+	CGO_ENABLED=1 go build -buildmode=plugin -o bin/elemental.so internal/agent/plugin/elemental/elemental.go
+	CGO_ENABLED=1 go build -buildmode=plugin -o bin/dummy.so internal/agent/plugin/dummy/dummy.go
+
+# This does depend on cross compilation library, for example: cross-aarch64-gcc13
+.PHONY: build-plugins-all
+build-plugins-all: generate fmt vet
+	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -buildmode=plugin -o bin/elemental_amd64.so internal/agent/plugin/elemental/elemental.go
+	CC=$(CROSS_COMPILER) CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -buildmode=plugin -o bin/elemental_arm64.so internal/agent/plugin/elemental/elemental.go
+	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -buildmode=plugin -o bin/dummy_amd64.so internal/agent/plugin/dummy/dummy.go
+	CC=$(CROSS_COMPILER) CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -buildmode=plugin -o bin/dummy_arm64.so internal/agent/plugin/dummy/dummy.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
@@ -118,14 +137,6 @@ docker-build: test ## Build docker image with the manager.
 		--build-arg "COMMIT=${GIT_COMMIT}" \
 		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
 		-t ${IMG} .
-
-.PHONY: docker-build-agent
-docker-build-agent: test ## Build docker image with the manager.
-	$(CONTAINER_TOOL) build \
-		--build-arg "TAG=${GIT_TAG}" \
-		--build-arg "COMMIT=${GIT_COMMIT}" \
-		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
-		-t agent:latest -f Dockerfile.agent .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
@@ -213,7 +224,7 @@ kind-load: docker-build
 	kind load docker-image ${IMG} --name elemental-capi-management
 
 .PHONY: generate-infra-yaml
-generate-infra-yaml:kustomize # Generate infrastructure-components.yaml for the provider
+generate-infra-yaml:kustomize manifests # Generate infrastructure-components.yaml for the provider
 	$(KUSTOMIZE) build config/default > infrastructure-elemental/v0.0.0/infrastructure-components.yaml
 	sed -i "s/IMAGE_TAG/${IMG_TAG}/g" infrastructure-elemental/v0.0.0/infrastructure-components.yaml
 
@@ -237,6 +248,21 @@ lint: ## See: https://golangci-lint.run/usage/linters/
 		-E wrapcheck 
 
 ALL_VERIFY_CHECKS = manifests generate openapi
+
+.PHONY: build-iso
+build-iso: 
+ifeq ($(AGENT_CONFIG_FILE),"iso/config/example-config.yaml")
+	@echo "No AGENT_CONFIG_FILE set, using the default one at ${AGENT_CONFIG_FILE}"
+endif
+	$(CONTAINER_TOOL) build \
+		--build-arg "TAG=${GIT_TAG}" \
+		--build-arg "COMMIT=${GIT_COMMIT}" \
+		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
+		--build-arg "AGENT_CONFIG_FILE=${AGENT_CONFIG_FILE}" \
+		-t elemental-iso:latest -f Dockerfile.iso .
+	$(CONTAINER_TOOL) run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ./iso:/iso \
+		--entrypoint /usr/bin/elemental docker.io/library/elemental-iso:latest --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
+		--local --squash-no-compression -o /iso docker.io/library/elemental-iso:latest
 
 .PHONY: verify
 verify: $(addprefix verify-,$(ALL_VERIFY_CHECKS))

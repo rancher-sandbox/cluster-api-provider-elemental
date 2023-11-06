@@ -137,10 +137,11 @@ func (r *ElementalHostReconciler) reconcileDelete(ctx context.Context, host *inf
 	}
 
 	if value, found := host.Labels[infrastructurev1beta1.LabelElementalHostNeedsReset]; !found || value != "true" {
-		logger.Info("ElementalHost does not need reset. Marking as reset done")
-		host.Labels[infrastructurev1beta1.LabelElementalHostReset] = "true"
+		logger.Info("Triggering reset for to-be-deleted ElementalHost")
+		host.Labels[infrastructurev1beta1.LabelElementalHostNeedsReset] = "true"
 		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
 	}
 
+	logger.Info("Waiting for host to be reset")
 	return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
 }

@@ -749,7 +749,7 @@ spec:
                           debug: false
                           hostname:
                             useExisting: false
-                          installer: unmanaged
+                          osPlugin: /usr/lib/elemental/plugins/elemental.so
                           reconciliation: 10000000000
                         properties:
                           debug:
@@ -768,11 +768,25 @@ spec:
                             type: boolean
                           insecureSkipTlsVerify:
                             type: boolean
-                          installer:
-                            default: unmanaged
-                            type: string
                           noSmbios:
                             type: boolean
+                          osPlugin:
+                            default: /usr/lib/elemental/plugins/elemental.so
+                            type: string
+                          postInstall:
+                            properties:
+                              powerOff:
+                                type: boolean
+                              reboot:
+                                type: boolean
+                            type: object
+                          postReset:
+                            properties:
+                              powerOff:
+                                type: boolean
+                              reboot:
+                                type: boolean
+                            type: object
                           reconciliation:
                             default: 10000000000
                             description: A Duration represents the elapsed time between
@@ -788,40 +802,7 @@ spec:
                             type: string
                         type: object
                       install:
-                        default:
-                          debug: false
-                          device: /dev/sda
-                          reboot: true
-                        properties:
-                          configDir:
-                            type: string
-                          configUrls:
-                            items:
-                              type: string
-                            type: array
-                          debug:
-                            type: boolean
-                          device:
-                            type: string
-                          disableBootEntry:
-                            type: boolean
-                          ejectCd:
-                            type: boolean
-                          firmware:
-                            type: string
-                          iso:
-                            type: string
-                          noFormat:
-                            type: boolean
-                          poweroff:
-                            type: boolean
-                          reboot:
-                            type: boolean
-                          systemUri:
-                            type: string
-                          tty:
-                            type: string
-                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       registration:
                         properties:
                           caCert:
@@ -830,35 +811,7 @@ spec:
                             type: string
                         type: object
                       reset:
-                        default:
-                          debug: false
-                          enabled: false
-                          reboot: true
-                          resetOem: true
-                          resetPersistent: true
-                        properties:
-                          configUrls:
-                            items:
-                              type: string
-                            type: array
-                          debug:
-                            type: boolean
-                          enabled:
-                            type: boolean
-                          poweroff:
-                            type: boolean
-                          reboot:
-                            default: true
-                            type: boolean
-                          resetOem:
-                            default: true
-                            type: boolean
-                          resetPersistent:
-                            default: true
-                            type: boolean
-                          systemUri:
-                            type: string
-                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
                     type: object
                 type: object
               hostAnnotations:

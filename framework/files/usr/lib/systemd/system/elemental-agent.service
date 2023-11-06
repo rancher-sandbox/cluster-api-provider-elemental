@@ -1,0 +1,11 @@
+[Unit]
+Description=Elemental Agent
+Documentation=https://github.com/rancher-sandbox/cluster-api-provider-elemental
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/elemental-agent --debug --config /oem/elemental/agent/config.yaml
+Restart=on-failure
+RestartSec=5
