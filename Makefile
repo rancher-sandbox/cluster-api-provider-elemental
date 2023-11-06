@@ -260,9 +260,9 @@ endif
 		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
 		--build-arg "AGENT_CONFIG_FILE=${AGENT_CONFIG_FILE}" \
 		-t elemental-iso:latest -f Dockerfile.iso .
-	$(CONTAINER_TOOL) run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ./iso:/build \
+	$(CONTAINER_TOOL) run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ./iso:/iso \
 		--entrypoint /usr/bin/elemental docker.io/library/elemental-iso:latest --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
-		--local --squash-no-compression -o /build docker.io/library/elemental-iso:latest
+		--local --squash-no-compression -o /iso docker.io/library/elemental-iso:latest
 
 .PHONY: verify
 verify: $(addprefix verify-,$(ALL_VERIFY_CHECKS))
