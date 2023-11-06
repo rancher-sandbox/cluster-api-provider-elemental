@@ -21,9 +21,9 @@ import (
 const (
 	cloudConfigDir       = "/oem"
 	hostnameInitPath     = "/oem/set-hostname.yaml"
-	identityInitPath     = "/oem/set-private.yaml"
+	identityInitPath     = "/oem/set-private-key.yaml"
 	cloudConfigInitPath  = "/oem/set-cloud-config.yaml"
-	agentConfigInitPath  = "/oem/set-config.yaml"
+	agentConfigInitPath  = "/oem/set-config-yaml.yaml"
 	agentConfigTempPath  = "/tmp/elemental-agent-config.yaml"
 	resetCloudConfigPath = "/oem/reset-cloud-config.yaml"
 	liveModeFile         = "/run/cos/live_mode"
