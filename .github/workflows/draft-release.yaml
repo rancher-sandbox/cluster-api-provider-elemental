@@ -27,7 +27,7 @@ jobs:
       - name: Build agent binaries
         run: make build-agent-all
       # Build Plugins binaries
-      - name: Build agent binaries
+      - name: Build plugin binaries
         run: make build-plugins-all
       # Build and publish container image
       - name: Log in to the Container registry
@@ -51,4 +51,4 @@ jobs:
         with:
           draft: true
           generateReleaseNotes: true
-          artifacts: "bin/elemental_agent_linux_*, /bin/*.so, infrastructure-elemental/v0.0.0/*.yaml"
+          artifacts: "bin/elemental_agent_linux_*, bin/*.so, infrastructure-elemental/v0.0.0/*.yaml"
