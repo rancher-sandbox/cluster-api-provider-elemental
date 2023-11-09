@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/google/uuid"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils"
 	"github.com/twpayne/go-vfs"
@@ -15,46 +14,46 @@ const (
 )
 
 type Manager interface {
-	LoadSigningKeyOrCreateNew() ([]byte, error)
+	LoadSigningKeyOrCreateNew() (Identity, error)
 }
 
-var _ Manager = (*DummyManager)(nil)
+var _ Manager = (*manager)(nil)
 
-type DummyManager struct {
+type manager struct {
 	workDir string
 	fs      vfs.FS
 }
 
-func NewDummyManager(fs vfs.FS, workDir string) Manager {
-	return &DummyManager{
+func NewManager(fs vfs.FS, workDir string) Manager {
+	return &manager{
 		workDir: workDir,
 		fs:      fs,
 	}
 }
 
-func (m *DummyManager) LoadSigningKeyOrCreateNew() ([]byte, error) {
+func (m *manager) LoadSigningKeyOrCreateNew() (Identity, error) {
+	identity := &ed25519Identity{}
+
 	path := fmt.Sprintf("%s/%s", m.workDir, PrivateKeyFile)
-	log.Debugf("Loading dummy key: %s", path)
+	log.Debugf("Loading identity from file: %s", path)
 	_, err := m.fs.Stat(path)
 	if os.IsNotExist(err) {
-		log.Debug("Dummy key does not exist, creating a new one")
-		key, err := m.generateNewKey()
+		log.Debug("Identity file does not exist, creating a new one")
+		identity, err := NewED25519Identity()
 		if err != nil {
-			return nil, fmt.Errorf("generating new key: %w", err)
+			return nil, fmt.Errorf("creating new Ed25519 identity: %w", err)
 		}
-		return key, nil
+		return identity, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("getting '%s' file info: %w", path, err)
 	}
 	key, err := utils.ReadFile(m.fs, path)
 	if err != nil {
-		return nil, fmt.Errorf("loading '%s': %w", path, err)
+		return nil, fmt.Errorf("reading '%s': %w", path, err)
 	}
-	return key, nil
-}
-
-func (m *DummyManager) generateNewKey() ([]byte, error) {
-	uuid, err := uuid.NewRandom()
-	if err != nil {
-		return nil, fmt.Errorf("generating new random UUID: %w", err)
+	if err := identity.Unmarshal(key); err != nil {
+		return nil, fmt.Errorf("unmarshalling private key: %w", err)
 	}
-	return []byte(uuid.String()), nil
+	return identity, nil
 }

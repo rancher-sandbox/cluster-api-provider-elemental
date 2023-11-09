@@ -10,6 +10,7 @@ import (
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/identity"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/twpayne/go-vfs"
 	"github.com/twpayne/go-vfs/vfst"
@@ -131,6 +132,8 @@ wcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K
 	var fs vfs.FS
 	var err error
 	var fsCleanup func()
+	var eClient client.Client
+	var id identity.Identity
 	BeforeAll(func() {
 		Expect(k8sClient.Create(ctx, &namespace)).Should(Succeed())
 	})
@@ -140,6 +143,11 @@ wcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K
 		fs, fsCleanup, err = vfst.NewTestFS(map[string]interface{}{})
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(fsCleanup)
+		idManager := identity.NewManager(fs, registration.Spec.Config.Elemental.Agent.WorkDir)
+		id, err = idManager.LoadSigningKeyOrCreateNew()
+		Expect(err).ToNot(HaveOccurred())
+		eClient = client.NewClient("v0.0.0-test")
+		Expect(err).ToNot(HaveOccurred())
 	})
 	AfterEach(func() {
 		Expect(k8sClient.Delete(ctx, &registration)).Should(Succeed())
@@ -148,7 +156,6 @@ wcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K
 		Expect(k8sClient.Delete(ctx, &namespace)).Should(Succeed())
 	})
 	It("should return expected Registration Response", func() {
-		client := client.NewClient()
 		conf := config.Config{
 			Registration: registration.Spec.Config.Elemental.Registration,
 			Agent:        registration.Spec.Config.Elemental.Agent,
@@ -170,29 +177,28 @@ wcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K
 				},
 			},
 		}
-		Expect(client.Init(fs, []byte{}, conf)).Should(Succeed())
+		Expect(eClient.Init(fs, id, conf)).Should(Succeed())
 		// Test API client by fetching the Registration
-		registrationResponse, err := client.GetRegistration()
+		registrationResponse, err := eClient.GetRegistration()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(*registrationResponse).To(Equal(expected))
 	})
 	It("should return error if namespace or registration not found", func() {
-		client := client.NewClient()
 		wrongNamespaceURI := fmt.Sprintf("%s%s%s/namespaces/%s/registrations/%s", serverURL, api.Prefix, api.PrefixV1, "does-not-exist", registration.Name)
 		conf := config.Config{
 			Registration: v1beta1.Registration{URI: wrongNamespaceURI},
 			Agent:        registration.Spec.Config.Elemental.Agent,
 		}
-		Expect(client.Init(fs, []byte{}, conf)).Should(Succeed())
+		Expect(eClient.Init(fs, id, conf)).Should(Succeed())
 		// Expect err on wrong namespace
-		_, err := client.GetRegistration()
+		_, err := eClient.GetRegistration()
 		Expect(err).To(HaveOccurred())
 
 		wrongRegistrationURI := fmt.Sprintf("%s%s%s/namespaces/%s/registrations/%s", serverURL, api.Prefix, api.PrefixV1, namespace.Name, "does-not-exist")
 		conf.Registration.URI = wrongRegistrationURI
-		Expect(client.Init(fs, []byte{}, conf)).Should(Succeed())
+		Expect(eClient.Init(fs, id, conf)).Should(Succeed())
 		// Expect err on wrong registration name
-		_, err = client.GetRegistration()
+		_, err = eClient.GetRegistration()
 		Expect(err).To(HaveOccurred())
 	})
 })

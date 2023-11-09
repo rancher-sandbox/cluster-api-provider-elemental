@@ -9,8 +9,11 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/identity"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/tls"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
@@ -23,9 +26,9 @@ var (
 )
 
 type Client interface {
-	Init(fs vfs.FS, signingKey []byte, conf config.Config) error
+	Init(vfs.FS, identity.Identity, config.Config) error
 	GetRegistration() (*api.RegistrationResponse, error)
-	CreateHost(host api.HostCreateRequest) error
+	CreateHost(api.HostCreateRequest) error
 	DeleteHost(hostname string) error
 	PatchHost(patch api.HostPatchRequest, hostname string) (*api.HostResponse, error)
 	GetBootstrap(hostname string) (*api.BootstrapResponse, error)
@@ -34,18 +37,22 @@ type Client interface {
 var _ Client = (*client)(nil)
 
 type client struct {
+	userAgent       string
 	registrationURI string
 	httpClient      http.Client
-	signingKey      []byte
+	identity        identity.Identity
 }
 
-func NewClient() Client {
-	return &client{}
+func NewClient(version string) Client {
+	userAgent := fmt.Sprintf("elemental-agent/%s", version)
+	return &client{
+		userAgent: userAgent,
+	}
 }
 
-func (c *client) Init(fs vfs.FS, signingKey []byte, conf config.Config) error {
+func (c *client) Init(fs vfs.FS, identity identity.Identity, conf config.Config) error {
 	log.Debug("Initializing Client")
-	c.signingKey = signingKey
+	c.identity = identity
 
 	url, err := url.Parse(conf.Registration.URI)
 	if err != nil {
@@ -83,7 +90,11 @@ func (c *client) Init(fs vfs.FS, signingKey []byte, conf config.Config) error {
 
 func (c *client) GetRegistration() (*api.RegistrationResponse, error) {
 	log.Debugf("Getting registration: %s", c.registrationURI)
-	response, err := c.httpClient.Get(c.registrationURI)
+	request, err := c.newRequest(http.MethodGet, c.registrationURI, nil)
+	if err != nil {
+		return nil, fmt.Errorf("preparing GET registration request: %w", err)
+	}
+	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("getting registration: %w", err)
 	}
@@ -112,7 +123,13 @@ func (c *client) CreateHost(newHost api.HostCreateRequest) error {
 		return fmt.Errorf("marshalling new host request body: %w", err)
 	}
 
-	response, err := c.httpClient.Post(fmt.Sprintf("%s/hosts", c.registrationURI), "application/json", bytes.NewBuffer(requestBody))
+	url := fmt.Sprintf("%s/hosts", c.registrationURI)
+	request, err := c.newAuthenticatedRequest(newHost.Name, http.MethodPost, url, bytes.NewBuffer(requestBody))
+	if err != nil {
+		return fmt.Errorf("preparing POST host request: %w", err)
+	}
+	request.Header.Add("Content-Type", "application/json")
+	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return fmt.Errorf("creating new host: %w", err)
 	}
@@ -126,10 +143,12 @@ func (c *client) CreateHost(newHost api.HostCreateRequest) error {
 
 func (c *client) DeleteHost(hostname string) error {
 	log.Debugf("Marking host for deletion: %s", hostname)
-	request, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/hosts/%s", c.registrationURI, hostname), nil)
+	url := fmt.Sprintf("%s/hosts/%s", c.registrationURI, hostname)
+	request, err := c.newAuthenticatedRequest(hostname, http.MethodDelete, url, nil)
 	if err != nil {
-		return fmt.Errorf("preparing host delete request: %w", err)
+		return fmt.Errorf("preparing DELETE host request: %w", err)
 	}
+
 	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return fmt.Errorf("deleting host: %w", err)
@@ -149,11 +168,12 @@ func (c *client) PatchHost(patch api.HostPatchRequest, hostname string) (*api.Ho
 		return nil, fmt.Errorf("marshalling patch host request body: %w", err)
 	}
 
-	request, err := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/hosts/%s", c.registrationURI, hostname), bytes.NewBuffer(requestBody))
+	url := fmt.Sprintf("%s/hosts/%s", c.registrationURI, hostname)
+	request, err := c.newAuthenticatedRequest(hostname, http.MethodPatch, url, bytes.NewBuffer(requestBody))
 	if err != nil {
-		return nil, fmt.Errorf("preparing host patch request: %w", err)
+		return nil, fmt.Errorf("preparing PATCH host request: %w", err)
 	}
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Add("Content-Type", "application/json")
 
 	response, err := c.httpClient.Do(request)
 	if err != nil {
@@ -179,7 +199,12 @@ func (c *client) PatchHost(patch api.HostPatchRequest, hostname string) (*api.Ho
 
 func (c *client) GetBootstrap(hostname string) (*api.BootstrapResponse, error) {
 	log.Debugf("Getting bootstrap for host: %s", hostname)
-	response, err := c.httpClient.Get(fmt.Sprintf("%s/hosts/%s/bootstrap", c.registrationURI, hostname))
+	url := fmt.Sprintf("%s/hosts/%s/bootstrap", c.registrationURI, hostname)
+	request, err := c.newAuthenticatedRequest(hostname, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("preparing get bootstrap request: %w", err)
+	}
+	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("getting bootstrap: %w", err)
 	}
@@ -199,4 +224,54 @@ func (c *client) GetBootstrap(hostname string) (*api.BootstrapResponse, error) {
 	}
 
 	return &bootstrap, nil
+}
+
+func (c *client) newRequest(method string, url string, body io.Reader) (*http.Request, error) {
+	request, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, fmt.Errorf("preparing request: %w", err)
+	}
+	c.setUserAgentHeader(&request.Header)
+	return request, nil
+}
+
+func (c *client) newAuthenticatedRequest(forHostname string, method string, url string, body io.Reader) (*http.Request, error) {
+	request, err := c.newRequest(method, url, body)
+	if err != nil {
+		return nil, fmt.Errorf("creating new request: %w", err)
+	}
+	if err := c.setAuthHeader(&request.Header, forHostname); err != nil {
+		return nil, fmt.Errorf("setting Authorization header: %w", err)
+	}
+	return request, nil
+}
+
+func (c *client) setUserAgentHeader(header *http.Header) {
+	header.Add("User-Agent", c.userAgent)
+}
+
+func (c *client) setAuthHeader(header *http.Header, hostname string) error {
+	token, err := c.newToken(hostname)
+	if err != nil {
+		return fmt.Errorf("generating new token: %w", err)
+	}
+	header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+	return nil
+}
+
+func (c *client) newToken(hostname string) (string, error) {
+	now := time.Now()
+	claims := jwt.RegisteredClaims{
+		IssuedAt:  jwt.NewNumericDate(now),
+		NotBefore: jwt.NewNumericDate(now),
+		ExpiresAt: jwt.NewNumericDate(now.Add(1 * time.Minute)),
+		Issuer:    c.userAgent,
+		Subject:   hostname,
+		Audience:  []string{c.registrationURI},
+	}
+	token, err := c.identity.Sign(claims)
+	if err != nil {
+		return "", fmt.Errorf("signing JWT claims: %w", err)
+	}
+	return token, nil
 }

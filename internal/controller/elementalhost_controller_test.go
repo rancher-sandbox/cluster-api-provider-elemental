@@ -10,6 +10,7 @@ import (
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/identity"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/twpayne/go-vfs"
 	"github.com/twpayne/go-vfs/vfst"
@@ -149,12 +150,18 @@ runcmd:
 		Expect(k8sClient.Create(ctx, &namespace)).Should(Succeed())
 		Expect(k8sClient.Create(ctx, &registration)).Should(Succeed())
 		Expect(k8sClient.Create(ctx, &bootstrapSecret)).Should(Succeed())
-		eClient = client.NewClient()
+		eClient = client.NewClient("v0.0.0-test")
 		conf := config.Config{
 			Registration: registration.Spec.Config.Elemental.Registration,
 			Agent:        registration.Spec.Config.Elemental.Agent,
 		}
-		Expect(eClient.Init(fs, []byte{}, conf)).Should(Succeed())
+		idManager := identity.NewManager(fs, registration.Spec.Config.Elemental.Agent.WorkDir)
+		id, err := idManager.LoadSigningKeyOrCreateNew()
+		Expect(err).ToNot(HaveOccurred())
+		pubKey, err := id.MarshalPublic()
+		Expect(err).ToNot(HaveOccurred())
+		request.PubKey = string(pubKey)
+		Expect(eClient.Init(fs, id, conf)).Should(Succeed())
 	})
 	AfterAll(func() {
 		Expect(k8sClient.Delete(ctx, &namespace)).Should(Succeed())

@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/go-logr/logr v1.2.4
 	github.com/go-logr/zapr v1.2.4
+	github.com/golang-jwt/jwt/v5 v5.1.0
 	github.com/google/uuid v1.3.1
 	github.com/gorilla/mux v1.8.0
 	github.com/onsi/ginkgo/v2 v2.13.0
@@ -17,6 +18,8 @@ require (
 	github.com/twpayne/go-vfsafero v1.0.0
 	go.uber.org/mock v0.3.0
 	go.uber.org/zap v1.26.0
+	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
+	gopkg.in/yaml.v1 v1.0.0-20140924161607-9f9df34309c0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.28.2
 	k8s.io/apimachinery v0.28.2
@@ -50,9 +53,7 @@ require (
 	github.com/swaggest/jsonschema-go v0.3.62 // indirect
 	github.com/swaggest/refl v1.3.0 // indirect
 	github.com/swaggest/usecase v1.2.1 // indirect
-	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
-	gopkg.in/yaml.v1 v1.0.0-20140924161607-9f9df34309c0 // indirect
 )
 
 require (

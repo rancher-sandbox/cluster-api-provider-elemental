@@ -29,6 +29,7 @@ import (
 	reflect "reflect"
 
 	config "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
+	identity "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/identity"
 	api "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	vfs "github.com/twpayne/go-vfs"
 	gomock "go.uber.org/mock/gomock"
@@ -116,7 +117,7 @@ func (mr *MockClientMockRecorder) GetRegistration() *gomock.Call {
 }
 
 // Init mocks base method.
-func (m *MockClient) Init(arg0 vfs.FS, arg1 []byte, arg2 config.Config) error {
+func (m *MockClient) Init(arg0 vfs.FS, arg1 identity.Identity, arg2 config.Config) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Init", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)

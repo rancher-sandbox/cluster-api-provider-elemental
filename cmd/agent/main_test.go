@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -294,9 +295,12 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 		}
 		wantAgentConfig := config.FromAPI(registrationFixture)
 		wantAgentConfigBytes, err := yaml.Marshal(wantAgentConfig)
+		Expect(err).ToNot(HaveOccurred())
 		wantIdentityFilePath := fmt.Sprintf("%s/%s", registrationFixture.Config.Elemental.Agent.WorkDir, identity.PrivateKeyFile)
 		It("should register and exit", func() {
-			Expect(err).ToNot(HaveOccurred())
+			_, pubKeyPem := initializeIdentity(fs)
+			wantRequest := wantCreateHostRequest
+			wantRequest.PubKey = pubKeyPem
 			cmd.SetArgs([]string{"--register"})
 			gomock.InOrder(
 				// First get registration call fails. Should repeat to recover.
@@ -304,11 +308,11 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 				mClient.EXPECT().GetRegistration().Return(registrationFixture, nil),
 				plugin.EXPECT().GetHostname().Return("host", nil),
 				// Let's make the first create host call fail. Expect to recover.
-				mClient.EXPECT().CreateHost(wantCreateHostRequest).Return(errors.New("test creat host fail")),
+				mClient.EXPECT().CreateHost(wantRequest).Return(errors.New("test creat host fail")),
 				mClient.EXPECT().GetRegistration().Return(registrationFixture, nil),
 				// Expect a new hostname to be formatted due to creation failure.
 				plugin.EXPECT().GetHostname().Return("host", nil),
-				mClient.EXPECT().CreateHost(wantCreateHostRequest).Return(nil),
+				mClient.EXPECT().CreateHost(wantRequest).Return(nil),
 				// Post --register
 				plugin.EXPECT().PersistHostname(hostResponseFixture.Name).Return(nil),
 				plugin.EXPECT().PersistFile(wantAgentConfigBytes, configPathDefault, uint32(0640), 0, 0).Return(nil),
@@ -317,12 +321,15 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 			Expect(cmd.Execute()).ToNot(HaveOccurred())
 		})
 		It("should register and try to install if --install also passed", func() {
+			_, pubKeyPem := initializeIdentity(fs)
+			wantRequest := wantCreateHostRequest
+			wantRequest.PubKey = pubKeyPem
 			cmd.SetArgs([]string{"--register", "--install"})
 			gomock.InOrder(
 				// --register
 				mClient.EXPECT().GetRegistration().Return(registrationFixture, nil),
 				plugin.EXPECT().GetHostname().Return("host", nil),
-				mClient.EXPECT().CreateHost(wantCreateHostRequest).Return(nil),
+				mClient.EXPECT().CreateHost(wantRequest).Return(nil),
 				// Post --register
 				plugin.EXPECT().PersistHostname(hostResponseFixture.Name).Return(nil),
 				plugin.EXPECT().PersistFile(wantAgentConfigBytes, configPathDefault, uint32(0640), 0, 0).Return(nil),
@@ -411,6 +418,21 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 		})
 	})
 })
+
+func initializeIdentity(fs vfs.FS) (identity.Identity, string) {
+	id, err := identity.NewED25519Identity()
+	Expect(err).ToNot(HaveOccurred())
+	// Initialize private key on filesystem
+	keyPath := fmt.Sprintf("%s/%s", registrationFixture.Config.Elemental.Agent.WorkDir, identity.PrivateKeyFile)
+	idPem, err := id.Marshal()
+	Expect(err).ToNot(HaveOccurred())
+	Expect(vfs.MkdirAll(fs, filepath.Dir(keyPath), os.ModePerm)).Should(Succeed())
+	Expect(fs.WriteFile(keyPath, idPem, os.ModePerm)).Should(Succeed())
+	Expect(err).ToNot(HaveOccurred())
+	pubKeyPem, err := id.MarshalPublic()
+	Expect(err).ToNot(HaveOccurred())
+	return id, string(pubKeyPem)
+}
 
 func marshalIntoFile(fs vfs.FS, input any, filePath string) {
 	bytes := marshalToBytes(input)

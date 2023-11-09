@@ -31,6 +31,9 @@ type ElementalHostSpec struct {
 	// using this host.
 	// +optional
 	MachineRef *corev1.ObjectReference `json:"machineRef,omitempty"`
+	// PubKey is the host public key to verify when authenticating
+	// Elemental API requests for this host.
+	PubKey string `json:"pubKey,omitempty"`
 }
 
 // ElementalHostStatus defines the observed state of ElementalHost.

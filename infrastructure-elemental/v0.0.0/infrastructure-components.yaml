@@ -333,6 +333,10 @@ spec:
                     type: string
                 type: object
                 x-kubernetes-map-type: atomic
+              pubKey:
+                description: PubKey is the host public key to verify when authenticating
+                  Elemental API requests for this host.
+                type: string
             type: object
           status:
             description: ElementalHostStatus defines the observed state of ElementalHost.
