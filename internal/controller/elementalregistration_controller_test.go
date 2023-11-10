@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/identity"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
 	"github.com/twpayne/go-vfs"
 	"github.com/twpayne/go-vfs/vfst"
 	corev1 "k8s.io/api/core/v1"
@@ -88,6 +89,107 @@ var _ = Describe("ElementalRegistration controller", Label("controller", "elemen
 		Expect(updatedRegistration.Spec.Config.Elemental.Registration.URI).
 			To(Equal(registrationWithURI.Spec.Config.Elemental.Registration.URI))
 	})
+	It("should create non-expirable registration token by default", func() {
+		// Initial Registration has empty token.
+		// This is the normal state.
+		updatedRegistration := &v1beta1.ElementalRegistration{}
+		// Wait for the controller to create a new token.
+		Eventually(func() bool {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      registration.Name,
+				Namespace: registration.Namespace},
+				updatedRegistration)).Should(Succeed())
+			return len(updatedRegistration.Spec.Config.Elemental.Registration.Token) != 0
+		}).WithTimeout(time.Minute).Should(BeTrue(), "registration token should be created")
+
+		token := updatedRegistration.Spec.Config.Elemental.Registration.Token
+		expectedClaims := &jwt.RegisteredClaims{
+			Subject:  registration.Spec.Config.Elemental.Registration.URI,
+			Audience: []string{registration.Spec.Config.Elemental.Registration.URI},
+		}
+		parser := jwt.Parser{}
+		parsedToken, _, err := parser.ParseUnverified(token, expectedClaims)
+		Expect(err).ToNot(HaveOccurred())
+		expirationTime, err := parsedToken.Claims.GetExpirationTime()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(expirationTime).Should(BeNil(), "registration token should not expire")
+	})
+	It("should not override already created token", func() {
+		registrationWithToken := registration
+		registrationWithToken.Name = registration.Name + "-with-token"
+		registrationWithToken.Spec.Config.Elemental.Registration.Token = "just a test token"
+		Expect(k8sClient.Create(ctx, &registrationWithToken)).Should(Succeed())
+		// Let's trigger a patch just to ensure the controller will be triggered.
+		patchHelper, err := patch.NewHelper(&registrationWithToken, k8sClient)
+		Expect(err).ToNot(HaveOccurred())
+		registrationWithToken.Spec.Config.Elemental.Registration.CACert = "just to trigger the controller"
+		Expect(patchHelper.Patch(ctx, &registrationWithToken)).Should(Succeed())
+		updatedRegistration := &v1beta1.ElementalRegistration{}
+		Eventually(func() string {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      registrationWithToken.Name,
+				Namespace: registrationWithToken.Namespace},
+				updatedRegistration)).Should(Succeed())
+			return updatedRegistration.Spec.Config.Elemental.Registration.CACert
+		}).WithTimeout(time.Minute).Should(Equal(registrationWithToken.Spec.Config.Elemental.Registration.CACert))
+		// Verify the initial token did not change
+		Expect(updatedRegistration.Spec.Config.Elemental.Registration.Token).
+			To(Equal(registrationWithToken.Spec.Config.Elemental.Registration.Token))
+	})
+	It("should generate new token after token is deleted", func() {
+		// Initial Registration has empty token.
+		// This is the normal state.
+		updatedRegistration := &v1beta1.ElementalRegistration{}
+		// Wait for the controller to create a new token.
+		Eventually(func() bool {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      registration.Name,
+				Namespace: registration.Namespace},
+				updatedRegistration)).Should(Succeed())
+			return len(updatedRegistration.Spec.Config.Elemental.Registration.Token) != 0
+		}).WithTimeout(time.Minute).Should(BeTrue(), "registration token should be created")
+		// Delete the token
+		patchHelper, err := patch.NewHelper(updatedRegistration, k8sClient)
+		Expect(err).ToNot(HaveOccurred())
+		updatedRegistration.Spec.Config.Elemental.Registration.Token = ""
+		Expect(patchHelper.Patch(ctx, updatedRegistration)).Should(Succeed())
+		// Ensure token is re-created
+		Eventually(func() bool {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      registration.Name,
+				Namespace: registration.Namespace},
+				updatedRegistration)).Should(Succeed())
+			return len(updatedRegistration.Spec.Config.Elemental.Registration.Token) != 0
+		}).WithTimeout(time.Minute).Should(BeTrue(), "registration token should be created")
+	})
+	It("should generate an already expired token if duration is negative", func() {
+		registrationWithExpiredToken := registration
+		registrationWithExpiredToken.Name = registration.Name + "-with-expired-token"
+		registrationWithExpiredToken.Spec.Config.Elemental.Registration.TokenDuration = -1
+		Expect(k8sClient.Create(ctx, &registrationWithExpiredToken)).Should(Succeed())
+		updatedRegistration := &v1beta1.ElementalRegistration{}
+		// Wait for the controller to create a new token.
+		Eventually(func() bool {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      registrationWithExpiredToken.Name,
+				Namespace: registrationWithExpiredToken.Namespace},
+				updatedRegistration)).Should(Succeed())
+			return len(updatedRegistration.Spec.Config.Elemental.Registration.Token) != 0
+		}).WithTimeout(time.Minute).Should(BeTrue(), "registration token should be created")
+
+		token := updatedRegistration.Spec.Config.Elemental.Registration.Token
+		expectedClaims := &jwt.RegisteredClaims{
+			Subject:  registration.Spec.Config.Elemental.Registration.URI,
+			Audience: []string{registration.Spec.Config.Elemental.Registration.URI},
+		}
+		parser := jwt.Parser{}
+		parsedToken, _, err := parser.ParseUnverified(token, expectedClaims)
+		Expect(err).ToNot(HaveOccurred())
+		expirationTime, err := parsedToken.Claims.GetExpirationTime()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(expirationTime).ShouldNot(BeNil(), "epiration time should be set")
+		Expect(expirationTime.Before(time.Now())).Should(BeTrue(), "registration token should be expired")
+	})
 })
 
 var _ = Describe("Elemental API Registration controller", Label("api", "elemental-registration"), Ordered, func() {
@@ -134,12 +236,25 @@ wcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K
 	var fsCleanup func()
 	var eClient client.Client
 	var id identity.Identity
+	var registrationToken string
 	BeforeAll(func() {
 		Expect(k8sClient.Create(ctx, &namespace)).Should(Succeed())
 	})
 	BeforeEach(func() {
 		registrationToCreate := registration
 		Expect(k8sClient.Create(ctx, &registrationToCreate)).Should(Succeed())
+		updatedRegistration := &v1beta1.ElementalRegistration{}
+		Eventually(func() bool {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      registration.Name,
+				Namespace: registration.Namespace},
+				updatedRegistration)).Should(Succeed())
+			if len(updatedRegistration.Spec.Config.Elemental.Registration.Token) == 0 {
+				return false
+			}
+			return true
+		}).WithTimeout(time.Minute).Should(BeTrue(), "missing registration token")
+		registrationToken = updatedRegistration.Spec.Config.Elemental.Registration.Token
 		fs, fsCleanup, err = vfst.NewTestFS(map[string]interface{}{})
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(fsCleanup)
@@ -166,6 +281,7 @@ wcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K
 					Registration: v1beta1.Registration{
 						URI:    "http://localhost:9191/elemental/v1/namespaces/registration-test-client/registrations/test-client",
 						CACert: "-----BEGIN CERTIFICATE-----\nMIIBvDCCAWOgAwIBAgIBADAKBggqhkjOPQQDAjBGMRwwGgYDVQQKExNkeW5hbWlj\nbGlzdGVuZXItb3JnMSYwJAYDVQQDDB1keW5hbWljbGlzdGVuZXItY2FAMTY5NzEy\nNjgwNTAeFw0yMzEwMTIxNjA2NDVaFw0zMzEwMDkxNjA2NDVaMEYxHDAaBgNVBAoT\nE2R5bmFtaWNsaXN0ZW5lci1vcmcxJjAkBgNVBAMMHWR5bmFtaWNsaXN0ZW5lci1j\nYUAxNjk3MTI2ODA1MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE9KvZXqQ7+hN/\n4T0LVsFogfENa7UeSI3egvhg54qA6kI4ROQj0sObkbuBbepgGEcaOw8eJW0+M4o3\n+SnprKYPkqNCMEAwDgYDVR0PAQH/BAQDAgKkMA8GA1UdEwEB/wQFMAMBAf8wHQYD\nVR0OBBYEFD8W3gE6pK1EjnBM/kPaQF3Uqkc1MAoGCCqGSM49BAMCA0cAMEQCIDxz\nwcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K\n+ETPIs22tcmXyYOG0WY7KQ==\n-----END CERTIFICATE-----",
+						Token:  registrationToken,
 					},
 					Agent: v1beta1.Agent{
 						WorkDir:           "/var/lib/elemental/agent",
@@ -179,7 +295,7 @@ wcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K
 		}
 		Expect(eClient.Init(fs, id, conf)).Should(Succeed())
 		// Test API client by fetching the Registration
-		registrationResponse, err := eClient.GetRegistration()
+		registrationResponse, err := eClient.GetRegistration(registrationToken)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(*registrationResponse).To(Equal(expected))
 	})
@@ -191,14 +307,14 @@ wcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K
 		}
 		Expect(eClient.Init(fs, id, conf)).Should(Succeed())
 		// Expect err on wrong namespace
-		_, err := eClient.GetRegistration()
+		_, err := eClient.GetRegistration(registrationToken)
 		Expect(err).To(HaveOccurred())
 
 		wrongRegistrationURI := fmt.Sprintf("%s%s%s/namespaces/%s/registrations/%s", serverURL, api.Prefix, api.PrefixV1, namespace.Name, "does-not-exist")
 		conf.Registration.URI = wrongRegistrationURI
 		Expect(eClient.Init(fs, id, conf)).Should(Succeed())
 		// Expect err on wrong registration name
-		_, err = eClient.GetRegistration()
+		_, err = eClient.GetRegistration(registrationToken)
 		Expect(err).To(HaveOccurred())
 	})
 })

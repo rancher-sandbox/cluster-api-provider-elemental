@@ -34,7 +34,7 @@ func NewPatchElementalHostHandler(logger logr.Logger, k8sClient client.Client) *
 	return &PatchElementalHostHandler{
 		logger:    logger,
 		k8sClient: k8sClient,
-		auth:      NewAuthenticator(),
+		auth:      NewAuthenticator(k8sClient, logger),
 	}
 }
 
@@ -92,19 +92,13 @@ func (h *PatchElementalHostHandler) ServeHTTP(response http.ResponseWriter, requ
 	}
 
 	// Authenticate Request
-	if err := h.auth.ValidateHostRequest(request, host, registration); err != nil {
-		if errors.Is(err, ErrUnauthorized) {
-			logger.Info("Unauthorized request: %s", err.Error())
-			response.WriteHeader(http.StatusUnauthorized)
-			WriteResponse(logger, response, fmt.Sprintf("Unauthorized: %s", err.Error()))
+	if err := h.auth.ValidateHostRequest(request, response, host, registration); err != nil {
+		if errors.Is(err, ErrUnauthorized) || errors.Is(err, ErrForbidden) {
+			logger.Info("Host request denied", "reason", err.Error())
 			return
 		}
-		if errors.Is(err, ErrForbidden) {
-			logger.Info("Forbidden request: %s", err.Error())
-			response.WriteHeader(http.StatusForbidden)
-			WriteResponse(logger, response, fmt.Sprintf("Forbidden: %s", err.Error()))
-			return
-		}
+		logger.Error(err, "Could not authenticate request")
+		return
 	}
 
 	// Unmarshal PATCH request body
@@ -185,7 +179,7 @@ func NewPostElementalHostHandler(logger logr.Logger, k8sClient client.Client) *P
 	return &PostElementalHostHandler{
 		logger:    logger,
 		k8sClient: k8sClient,
-		auth:      NewAuthenticator(),
+		auth:      NewAuthenticator(k8sClient, logger),
 	}
 }
 
@@ -265,19 +259,22 @@ func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, reque
 	logger = logger.WithValues(log.KeyElementalHost, newHost.Name)
 
 	// Authenticate Request
-	if err := h.auth.ValidateHostRequest(request, &newHost, registration); err != nil {
-		if errors.Is(err, ErrUnauthorized) {
-			logger.Info("Unauthorized request", "error", err.Error())
-			response.WriteHeader(http.StatusUnauthorized)
-			WriteResponse(logger, response, fmt.Sprintf("Unauthorized: %s", err.Error()))
+	if err := h.auth.ValidateHostRequest(request, response, &newHost, registration); err != nil {
+		if errors.Is(err, ErrUnauthorized) || errors.Is(err, ErrForbidden) {
+			logger.Info("Host request denied", "reason", err.Error())
 			return
 		}
-		if errors.Is(err, ErrForbidden) {
-			logger.Info("Forbidden request", "error", err.Error())
-			response.WriteHeader(http.StatusForbidden)
-			WriteResponse(logger, response, fmt.Sprintf("Forbidden: %s", err.Error()))
+		logger.Error(err, "Could not authenticate host request")
+		return
+	}
+	// Authenticate Registration token
+	if err := h.auth.ValidateRegistrationRequest(request, response, registration); err != nil {
+		if errors.Is(err, ErrUnauthorized) || errors.Is(err, ErrForbidden) {
+			logger.Info("Registration request denied", "reason", err.Error())
 			return
 		}
+		logger.Error(err, "Could not authenticate registration request")
+		return
 	}
 
 	// Create new Host
@@ -313,7 +310,7 @@ func NewDeleteElementalHostHandler(logger logr.Logger, k8sClient client.Client) 
 	return &DeleteElementalHostHandler{
 		logger:    logger,
 		k8sClient: k8sClient,
-		auth:      NewAuthenticator(),
+		auth:      NewAuthenticator(k8sClient, logger),
 	}
 }
 
@@ -372,19 +369,13 @@ func (h *DeleteElementalHostHandler) ServeHTTP(response http.ResponseWriter, req
 	}
 
 	// Authenticate Request
-	if err := h.auth.ValidateHostRequest(request, host, registration); err != nil {
-		if errors.Is(err, ErrUnauthorized) {
-			logger.Info("Unauthorized request", "error", err.Error())
-			response.WriteHeader(http.StatusUnauthorized)
-			WriteResponse(logger, response, fmt.Sprintf("Unauthorized: %s", err.Error()))
+	if err := h.auth.ValidateHostRequest(request, response, host, registration); err != nil {
+		if errors.Is(err, ErrUnauthorized) || errors.Is(err, ErrForbidden) {
+			logger.Info("Host request denied", "reason", err.Error())
 			return
 		}
-		if errors.Is(err, ErrForbidden) {
-			logger.Info("Forbidden request", "error", err.Error())
-			response.WriteHeader(http.StatusForbidden)
-			WriteResponse(logger, response, fmt.Sprintf("Forbidden: %s", err.Error()))
-			return
-		}
+		logger.Error(err, "Could not authenticate host request")
+		return
 	}
 
 	if !host.GetDeletionTimestamp().IsZero() {
@@ -417,7 +408,7 @@ func NewGetElementalHostBootstrapHandler(logger logr.Logger, k8sClient client.Cl
 	return &GetElementalHostBootstrapHandler{
 		logger:    logger,
 		k8sClient: k8sClient,
-		auth:      NewAuthenticator(),
+		auth:      NewAuthenticator(k8sClient, logger),
 	}
 }
 
@@ -474,19 +465,13 @@ func (h *GetElementalHostBootstrapHandler) ServeHTTP(response http.ResponseWrite
 	}
 
 	// Authenticate Request
-	if err := h.auth.ValidateHostRequest(request, host, registration); err != nil {
-		if errors.Is(err, ErrUnauthorized) {
-			logger.Info("Unauthorized request", "error", err.Error())
-			response.WriteHeader(http.StatusUnauthorized)
-			WriteResponse(logger, response, fmt.Sprintf("Unauthorized: %s", err.Error()))
+	if err := h.auth.ValidateHostRequest(request, response, host, registration); err != nil {
+		if errors.Is(err, ErrUnauthorized) || errors.Is(err, ErrForbidden) {
+			logger.Info("Host request denied", "reason", err.Error())
 			return
 		}
-		if errors.Is(err, ErrForbidden) {
-			logger.Info("Forbidden request", "error", err.Error())
-			response.WriteHeader(http.StatusForbidden)
-			WriteResponse(logger, response, fmt.Sprintf("Forbidden: %s", err.Error()))
-			return
-		}
+		logger.Error(err, "Could not authenticate host request")
+		return
 	}
 
 	// Check if there is any Bootstrap secret associated to this host

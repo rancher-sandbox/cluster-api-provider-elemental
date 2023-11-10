@@ -13,10 +13,10 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/identity"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/tls"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
 	"github.com/twpayne/go-vfs"
 )
 
@@ -27,8 +27,8 @@ var (
 
 type Client interface {
 	Init(vfs.FS, identity.Identity, config.Config) error
-	GetRegistration() (*api.RegistrationResponse, error)
-	CreateHost(api.HostCreateRequest) error
+	GetRegistration(token string) (*api.RegistrationResponse, error)
+	CreateHost(newHost api.HostCreateRequest, registrationToken string) error
 	DeleteHost(hostname string) error
 	PatchHost(patch api.HostPatchRequest, hostname string) (*api.HostResponse, error)
 	GetBootstrap(hostname string) (*api.BootstrapResponse, error)
@@ -88,12 +88,13 @@ func (c *client) Init(fs vfs.FS, identity identity.Identity, conf config.Config)
 	return nil
 }
 
-func (c *client) GetRegistration() (*api.RegistrationResponse, error) {
+func (c *client) GetRegistration(registrationToken string) (*api.RegistrationResponse, error) {
 	log.Debugf("Getting registration: %s", c.registrationURI)
 	request, err := c.newRequest(http.MethodGet, c.registrationURI, nil)
 	if err != nil {
 		return nil, fmt.Errorf("preparing GET registration request: %w", err)
 	}
+	c.addRegistrationHeader(&request.Header, registrationToken)
 	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("getting registration: %w", err)
@@ -116,7 +117,7 @@ func (c *client) GetRegistration() (*api.RegistrationResponse, error) {
 	return &registration, nil
 }
 
-func (c *client) CreateHost(newHost api.HostCreateRequest) error {
+func (c *client) CreateHost(newHost api.HostCreateRequest, registrationToken string) error {
 	log.Debugf("Creating new host: %s", newHost.Name)
 	requestBody, err := json.Marshal(newHost)
 	if err != nil {
@@ -129,6 +130,7 @@ func (c *client) CreateHost(newHost api.HostCreateRequest) error {
 		return fmt.Errorf("preparing POST host request: %w", err)
 	}
 	request.Header.Add("Content-Type", "application/json")
+	c.addRegistrationHeader(&request.Header, registrationToken)
 	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return fmt.Errorf("creating new host: %w", err)
@@ -231,7 +233,7 @@ func (c *client) newRequest(method string, url string, body io.Reader) (*http.Re
 	if err != nil {
 		return nil, fmt.Errorf("preparing request: %w", err)
 	}
-	c.setUserAgentHeader(&request.Header)
+	c.addUserAgentHeader(&request.Header)
 	return request, nil
 }
 
@@ -240,17 +242,21 @@ func (c *client) newAuthenticatedRequest(forHostname string, method string, url 
 	if err != nil {
 		return nil, fmt.Errorf("creating new request: %w", err)
 	}
-	if err := c.setAuthHeader(&request.Header, forHostname); err != nil {
+	if err := c.addAuthHeader(&request.Header, forHostname); err != nil {
 		return nil, fmt.Errorf("setting Authorization header: %w", err)
 	}
 	return request, nil
 }
 
-func (c *client) setUserAgentHeader(header *http.Header) {
+func (c *client) addRegistrationHeader(header *http.Header, registrationToken string) {
+	header.Add("Registration-Authorization", fmt.Sprintf("Bearer %s", registrationToken))
+}
+
+func (c *client) addUserAgentHeader(header *http.Header) {
 	header.Add("User-Agent", c.userAgent)
 }
 
-func (c *client) setAuthHeader(header *http.Header, hostname string) error {
+func (c *client) addAuthHeader(header *http.Header, hostname string) error {
 	token, err := c.newToken(hostname)
 	if err != nil {
 		return fmt.Errorf("generating new token: %w", err)

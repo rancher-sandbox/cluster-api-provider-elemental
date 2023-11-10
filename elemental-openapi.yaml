@@ -336,6 +336,7 @@ components:
       type: object
     RuntimeRawExtension:
       type: object
+    TimeDuration: {}
     V1Beta1Agent:
       properties:
         debug:
@@ -355,7 +356,7 @@ components:
         postReset:
           $ref: '#/components/schemas/V1Beta1PostReset'
         reconciliation:
-          type: integer
+          $ref: '#/components/schemas/TimeDuration'
         useSystemCertPool:
           type: boolean
         workDir:
@@ -410,6 +411,10 @@ components:
       properties:
         caCert:
           type: string
+        token:
+          type: string
+        tokenDuration:
+          type: integer
         uri:
           type: string
       type: object

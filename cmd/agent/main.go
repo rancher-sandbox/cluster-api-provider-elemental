@@ -10,10 +10,10 @@ import (
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/hostname"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/identity"
 	log "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/pkg/agent/osplugin"
 	"github.com/spf13/cobra"
@@ -125,7 +125,7 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, commandRunner utils.Com
 					return fmt.Errorf("marshalling host public key: %w", err)
 				}
 				var registration *api.RegistrationResponse
-				hostname, registration = handleRegistration(client, osPlugin, pubKey, conf.Agent.Reconciliation)
+				hostname, registration = handleRegistration(client, osPlugin, pubKey, conf.Registration.Token, conf.Agent.Reconciliation)
 				log.Infof("Successfully registered as '%s'", hostname)
 				if err := handlePostRegistration(osPlugin, hostname, identity, registration); err != nil {
 					return fmt.Errorf("handling post registration: %w", err)
@@ -138,7 +138,7 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, commandRunner utils.Com
 			// Install
 			if installFlag {
 				log.Info("Installing Elemental")
-				handleInstall(client, osPlugin, hostname, conf.Agent.Reconciliation)
+				handleInstall(client, osPlugin, hostname, conf.Registration.Token, conf.Agent.Reconciliation)
 				log.Info("Installation successful")
 				handlePost(osPlugin, conf.Agent.PostInstall.PowerOff, conf.Agent.PostInstall.Reboot)
 				return nil
@@ -147,7 +147,7 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, commandRunner utils.Com
 			// Reset
 			if resetFlag {
 				log.Info("Resetting Elemental")
-				handleReset(client, osPlugin, conf.Agent.Reconciliation, hostname)
+				handleReset(client, osPlugin, hostname, conf.Registration.Token, conf.Agent.Reconciliation)
 				log.Info("Reset successful")
 				handlePost(osPlugin, conf.Agent.PostReset.PowerOff, conf.Agent.PostReset.Reboot)
 				return nil
@@ -225,7 +225,7 @@ func getConfig(fs vfs.FS) (config.Config, error) {
 	return conf, nil
 }
 
-func handleRegistration(client client.Client, osPlugin osplugin.Plugin, pubKey []byte, registrationRecoveryPeriod time.Duration) (string, *api.RegistrationResponse) {
+func handleRegistration(client client.Client, osPlugin osplugin.Plugin, pubKey []byte, registrationToken string, registrationRecoveryPeriod time.Duration) (string, *api.RegistrationResponse) {
 	hostnameFormatter := hostname.NewFormatter(osPlugin)
 	var newHostname string
 	var registration *api.RegistrationResponse
@@ -239,7 +239,7 @@ func handleRegistration(client client.Client, osPlugin osplugin.Plugin, pubKey [
 		}
 		// Fetch remote Registration
 		log.Debug("Fetching remote registration")
-		registration, err = client.GetRegistration()
+		registration, err = client.GetRegistration(registrationToken)
 		if err != nil {
 			log.Error(err, "getting remote Registration")
 			registrationError = true
@@ -262,7 +262,7 @@ func handleRegistration(client client.Client, osPlugin osplugin.Plugin, pubKey [
 			Annotations: registration.HostAnnotations,
 			Labels:      registration.HostLabels,
 			PubKey:      string(pubKey),
-		}); err != nil {
+		}, registrationToken); err != nil {
 			log.Error(err, "registering new ElementalHost")
 			registrationError = true
 			continue
@@ -298,7 +298,7 @@ func handlePostRegistration(osPlugin osplugin.Plugin, hostnameToSet string, id i
 	return nil
 }
 
-func handleInstall(client client.Client, osPlugin osplugin.Plugin, hostname string, installationRecoveryPeriod time.Duration) {
+func handleInstall(client client.Client, osPlugin osplugin.Plugin, hostname string, registrationToken string, installationRecoveryPeriod time.Duration) {
 	cloudConfigAlreadyApplied := false
 	alreadyInstalled := false
 	installationError := false
@@ -313,7 +313,7 @@ func handleInstall(client client.Client, osPlugin osplugin.Plugin, hostname stri
 		var err error
 		if !cloudConfigAlreadyApplied || !alreadyInstalled {
 			log.Debug("Fetching remote registration")
-			registration, err = client.GetRegistration()
+			registration, err = client.GetRegistration(registrationToken)
 			if err != nil {
 				log.Error(err, "getting remote Registration")
 				installationError = true
@@ -363,7 +363,7 @@ func handleInstall(client client.Client, osPlugin osplugin.Plugin, hostname stri
 	}
 }
 
-func handleReset(client client.Client, osPlugin osplugin.Plugin, resetRecoveryPeriod time.Duration, hostname string) {
+func handleReset(client client.Client, osPlugin osplugin.Plugin, hostname string, registrationToken string, resetRecoveryPeriod time.Duration) {
 	resetError := false
 	alreadyReset := false
 	for {
@@ -384,7 +384,7 @@ func handleReset(client client.Client, osPlugin osplugin.Plugin, resetRecoveryPe
 		if !alreadyReset {
 			// Fetch remote Registration
 			log.Debug("Fetching remote registration")
-			registration, err := client.GetRegistration()
+			registration, err := client.GetRegistration(registrationToken)
 			if err != nil {
 				log.Error(err, "getting remote Registration")
 				resetError = true

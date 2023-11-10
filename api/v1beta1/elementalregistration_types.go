@@ -19,6 +19,7 @@ package v1beta1
 import (
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -34,6 +35,8 @@ type ElementalRegistrationSpec struct {
 	// Config points to Elemental machine configuration.
 	// +optional
 	Config Config `json:"config,omitempty"`
+	// PrivateKeyRef is a reference to a secret containing the private key used to generate registration tokens
+	PrivateKeyRef *corev1.ObjectReference `json:"privateKeyRef,omitempty"`
 }
 
 // ElementalRegistrationStatus defines the observed state of ElementalRegistration.
@@ -78,6 +81,10 @@ type Registration struct {
 	URI string `json:"uri,omitempty" yaml:"uri,omitempty" mapstructure:"uri"`
 	// +optional
 	CACert string `json:"caCert,omitempty" yaml:"caCert,omitempty" mapstructure:"caCert"`
+	// +optional
+	TokenDuration time.Duration `json:"tokenDuration,omitempty" yaml:"tokenDuration,omitempty" mapstructure:"tokenDuration"`
+	// +optional
+	Token string `json:"token,omitempty" yaml:"token,omitempty" mapstructure:"token"`
 }
 
 type Agent struct {

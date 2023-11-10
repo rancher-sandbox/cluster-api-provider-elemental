@@ -10,8 +10,8 @@ import (
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/identity"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
 	"github.com/twpayne/go-vfs"
 	"github.com/twpayne/go-vfs/vfst"
 	corev1 "k8s.io/api/core/v1"
@@ -143,12 +143,25 @@ runcmd:
 	var err error
 	var fsCleanup func()
 	var eClient client.Client
+	var registrationToken string
 	BeforeAll(func() {
 		fs, fsCleanup, err = vfst.NewTestFS(map[string]interface{}{})
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(fsCleanup)
 		Expect(k8sClient.Create(ctx, &namespace)).Should(Succeed())
 		Expect(k8sClient.Create(ctx, &registration)).Should(Succeed())
+		updatedRegistration := &v1beta1.ElementalRegistration{}
+		Eventually(func() bool {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      registration.Name,
+				Namespace: registration.Namespace},
+				updatedRegistration)).Should(Succeed())
+			if len(updatedRegistration.Spec.Config.Elemental.Registration.Token) == 0 {
+				return false
+			}
+			return true
+		}).WithTimeout(time.Minute).Should(BeTrue(), "missing registration token")
+		registrationToken = updatedRegistration.Spec.Config.Elemental.Registration.Token
 		Expect(k8sClient.Create(ctx, &bootstrapSecret)).Should(Succeed())
 		eClient = client.NewClient("v0.0.0-test")
 		conf := config.Config{
@@ -168,7 +181,7 @@ runcmd:
 	})
 	It("should create new host", func() {
 		// Create the new host
-		Expect(eClient.CreateHost(request)).Should(Succeed())
+		Expect(eClient.CreateHost(request, registrationToken)).Should(Succeed())
 		// Issue an empty patch to get a host response
 		response, err := eClient.PatchHost(api.HostPatchRequest{}, request.Name)
 		Expect(err).ToNot(HaveOccurred())

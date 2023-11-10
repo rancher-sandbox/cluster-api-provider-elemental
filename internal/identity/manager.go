@@ -32,7 +32,7 @@ func NewManager(fs vfs.FS, workDir string) Manager {
 }
 
 func (m *manager) LoadSigningKeyOrCreateNew() (Identity, error) {
-	identity := &ed25519Identity{}
+	identity := &Ed25519Identity{}
 
 	path := fmt.Sprintf("%s/%s", m.workDir, PrivateKeyFile)
 	log.Debugf("Loading identity from file: %s", path)

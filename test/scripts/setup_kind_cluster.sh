@@ -22,7 +22,6 @@ nodes:
   - containerPort: 30009
     hostPort: 30009
     protocol: TCP
-    EOF
 EOF
 
 clusterctl init --infrastructure "-"

@@ -15,9 +15,9 @@ var (
 	ErrPEMDecoding = errors.New("no PEM data found")
 )
 
-var _ Identity = (*ed25519Identity)(nil)
+var _ Identity = (*Ed25519Identity)(nil)
 
-type ed25519Identity struct {
+type Ed25519Identity struct {
 	privateKey ed25519.PrivateKey
 }
 
@@ -26,10 +26,10 @@ func NewED25519Identity() (Identity, error) {
 	if err != nil {
 		return nil, fmt.Errorf("generating new key: %w", err)
 	}
-	return &ed25519Identity{privateKey: privKey}, nil
+	return &Ed25519Identity{privateKey: privKey}, nil
 }
 
-func (i *ed25519Identity) MarshalPublic() ([]byte, error) {
+func (i *Ed25519Identity) MarshalPublic() ([]byte, error) {
 	x509key, err := x509.MarshalPKIXPublicKey(i.privateKey.Public())
 	if err != nil {
 		return nil, fmt.Errorf("marshalling public key: %w", err)
@@ -41,7 +41,7 @@ func (i *ed25519Identity) MarshalPublic() ([]byte, error) {
 	return keyPem, nil
 }
 
-func (i *ed25519Identity) Sign(claims jwt.Claims) (string, error) {
+func (i *Ed25519Identity) Sign(claims jwt.Claims) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodEdDSA, claims)
 	signed, err := token.SignedString(i.privateKey)
 	if err != nil {
@@ -50,7 +50,7 @@ func (i *ed25519Identity) Sign(claims jwt.Claims) (string, error) {
 	return signed, nil
 }
 
-func (i *ed25519Identity) Marshal() ([]byte, error) {
+func (i *Ed25519Identity) Marshal() ([]byte, error) {
 	x509Key, err := x509.MarshalPKCS8PrivateKey(i.privateKey)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling key: %w", err)
@@ -62,7 +62,7 @@ func (i *ed25519Identity) Marshal() ([]byte, error) {
 	return keyPem, nil
 }
 
-func (i *ed25519Identity) Unmarshal(key []byte) error {
+func (i *Ed25519Identity) Unmarshal(key []byte) error {
 	parsedKey, err := jwt.ParseEdPrivateKeyFromPEM(key)
 	if err != nil {
 		return fmt.Errorf("parsing Ed25519 private key: %w", err)
