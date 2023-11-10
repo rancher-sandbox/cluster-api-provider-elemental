@@ -83,6 +83,20 @@ paths:
               schema:
                 type: string
           description: ElementalHost request is badly formatted
+        "401":
+          content:
+            text/html:
+              schema:
+                type: string
+          description: If the 'Authorization' or 'Registration-Authorization' headers
+            do not contain Bearer tokens
+        "403":
+          content:
+            text/html:
+              schema:
+                type: string
+          description: If the 'Authorization' or 'Registration-Authorization' tokens
+            are not valid
         "404":
           content:
             text/html:
@@ -129,6 +143,18 @@ paths:
       responses:
         "202":
           description: ElementalHost correctly deleted.
+        "401":
+          content:
+            text/html:
+              schema:
+                type: string
+          description: If the 'Authorization' header does not contain a Bearer token
+        "403":
+          content:
+            text/html:
+              schema:
+                type: string
+          description: If the 'Authorization' token is not valid
         "404":
           content:
             text/html:
@@ -182,6 +208,18 @@ paths:
               schema:
                 type: string
           description: If the ElementalHostPatch request is badly formatted
+        "401":
+          content:
+            text/html:
+              schema:
+                type: string
+          description: If the 'Authorization' header does not contain a Bearer token
+        "403":
+          content:
+            text/html:
+              schema:
+                type: string
+          description: If the 'Authorization' token is not valid
         "404":
           content:
             text/html:
@@ -225,6 +263,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiBootstrapResponse'
           description: Returns the ElementalHost bootstrap instructions
+        "401":
+          content:
+            text/html:
+              schema:
+                type: string
+          description: If the 'Authorization' header does not contain a Bearer token
+        "403":
+          content:
+            text/html:
+              schema:
+                type: string
+          description: If the 'Authorization' token is not valid
         "404":
           content:
             text/html:

@@ -67,15 +67,11 @@ func (a *authenticator) ValidateHostRequest(request *http.Request, response http
 		case "EdDSA":
 			pubKey, err := jwt.ParseEdPublicKeyFromPEM([]byte(host.Spec.PubKey))
 			if err != nil {
-				err := fmt.Errorf("parsing host Public Key: %w", err)
-				a.writeResponse(response, err)
-				return nil, err
+				return nil, fmt.Errorf("parsing host Public Key: %w", err)
 			}
 			return pubKey, nil
 		default:
-			err := fmt.Errorf("JWT is using unsupported '%s' signing algorithm: %w", signingAlg, ErrUnauthorized)
-			a.writeResponse(response, err)
-			return nil, err
+			return nil, fmt.Errorf("JWT is using unsupported '%s' signing algorithm: %w", signingAlg, ErrUnauthorized)
 		}
 	})
 	if err != nil {
@@ -90,11 +86,15 @@ func (a *authenticator) ValidateRegistrationRequest(request *http.Request, respo
 	// Verify token was passed correctly
 	authValue := request.Header.Get("Registration-Authorization")
 	if len(authValue) == 0 {
-		return fmt.Errorf("missing 'Registration-Authorization' header: %w", ErrUnauthorized)
+		err := fmt.Errorf("missing 'Registration-Authorization' header: %w", ErrUnauthorized)
+		a.writeResponse(response, err)
+		return err
 	}
 	token, found := strings.CutPrefix(authValue, "Bearer ")
 	if !found {
-		return fmt.Errorf("not a 'Bearer' token: %w", ErrUnauthorized)
+		err := fmt.Errorf("not a 'Bearer' token: %w", ErrUnauthorized)
+		a.writeResponse(response, err)
+		return err
 	}
 
 	// Fetch registration secret and read the private key
@@ -103,19 +103,25 @@ func (a *authenticator) ValidateRegistrationRequest(request *http.Request, respo
 		Name:      registration.Name,
 		Namespace: registration.Namespace,
 	}, registrationSecret); err != nil {
-		return fmt.Errorf("getting registration secret: %w", ErrMissingRegistrationSecret)
+		err := fmt.Errorf("getting registration secret: %w", ErrMissingRegistrationSecret)
+		a.writeResponse(response, err)
+		return err
 	}
 	privKeyPem, found := registrationSecret.Data["privKey"]
 	if !found {
+		a.writeResponse(response, ErrNoSigningKey)
 		return ErrNoSigningKey
 	}
 	parsedKey, err := jwt.ParseEdPrivateKeyFromPEM(privKeyPem)
 	if err != nil {
-		return fmt.Errorf("parsing ed25519 key: %w", err)
+		err := fmt.Errorf("parsing ed25519 key: %w", err)
+		a.writeResponse(response, err)
+		return err
 	}
 	var privKey ed25519.PrivateKey
 	var ok bool
 	if privKey, ok = parsedKey.(ed25519.PrivateKey); !ok {
+		a.writeResponse(response, jwt.ErrNotEdPrivateKey)
 		return jwt.ErrNotEdPrivateKey
 	}
 	// Validate and Verify JWT
@@ -133,7 +139,9 @@ func (a *authenticator) ValidateRegistrationRequest(request *http.Request, respo
 		}
 	})
 	if err != nil {
-		return fmt.Errorf("validating JWT token: %w: %w", err, ErrForbidden)
+		err := fmt.Errorf("validating JWT token: %w: %w", err, ErrForbidden)
+		a.writeResponse(response, err)
+		return err
 	}
 	return nil
 }

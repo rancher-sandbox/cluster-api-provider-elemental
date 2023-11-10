@@ -47,6 +47,8 @@ func (h *PatchElementalHostHandler) SetupOpenAPIOperation(oc openapi.OperationCo
 	oc.AddRespStructure(HostResponse{}, WithDecoration("Returns the patched ElementalHost", "application/json", http.StatusOK))
 	oc.AddRespStructure(nil, WithDecoration("If the ElementalRegistration or the ElementalHost are not found", "text/html", http.StatusNotFound))
 	oc.AddRespStructure(nil, WithDecoration("If the ElementalHostPatch request is badly formatted", "text/html", http.StatusBadRequest))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Authorization' header does not contain a Bearer token", "text/html", http.StatusUnauthorized))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Authorization' token is not valid", "text/html", http.StatusForbidden))
 	oc.AddRespStructure(nil, WithDecoration("", "text/html", http.StatusInternalServerError))
 
 	return nil
@@ -193,6 +195,8 @@ func (h *PostElementalHostHandler) SetupOpenAPIOperation(oc openapi.OperationCon
 	oc.AddRespStructure(nil, WithDecoration("ElementalHost with same name within this ElementalRegistration already exists", "text/html", http.StatusConflict))
 	oc.AddRespStructure(nil, WithDecoration("ElementalRegistration not found", "text/html", http.StatusNotFound))
 	oc.AddRespStructure(nil, WithDecoration("ElementalHost request is badly formatted", "text/html", http.StatusBadRequest))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Authorization' or 'Registration-Authorization' headers do not contain Bearer tokens", "text/html", http.StatusUnauthorized))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Authorization' or 'Registration-Authorization' tokens are not valid", "text/html", http.StatusForbidden))
 	oc.AddRespStructure(nil, WithDecoration("", "text/html", http.StatusInternalServerError))
 
 	return nil
@@ -322,6 +326,8 @@ func (h *DeleteElementalHostHandler) SetupOpenAPIOperation(oc openapi.OperationC
 
 	oc.AddRespStructure(nil, WithDecoration("ElementalHost correctly deleted.", "", http.StatusAccepted))
 	oc.AddRespStructure(nil, WithDecoration("ElementalHost not found", "text/html", http.StatusNotFound))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Authorization' header does not contain a Bearer token", "text/html", http.StatusUnauthorized))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Authorization' token is not valid", "text/html", http.StatusForbidden))
 	oc.AddRespStructure(nil, WithDecoration("", "text/html", http.StatusInternalServerError))
 
 	return nil
@@ -420,6 +426,8 @@ func (h *GetElementalHostBootstrapHandler) SetupOpenAPIOperation(oc openapi.Oper
 
 	oc.AddRespStructure(BootstrapResponse{}, WithDecoration("Returns the ElementalHost bootstrap instructions", "application/json", http.StatusOK))
 	oc.AddRespStructure(nil, WithDecoration("If the ElementalRegistration or ElementalHost are not found, or if there are no bootstrap instructions yet", "text/html", http.StatusNotFound))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Authorization' header does not contain a Bearer token", "text/html", http.StatusUnauthorized))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Authorization' token is not valid", "text/html", http.StatusForbidden))
 	oc.AddRespStructure(nil, WithDecoration("", "text/html", http.StatusInternalServerError))
 
 	return nil
