@@ -24,7 +24,7 @@ nodes:
     protocol: TCP
 EOF
 
-clusterctl init --infrastructure "-"
+clusterctl init --bootstrap k3s:v0.1.8 --control-plane k3s:v0.1.8 --infrastructure "-"
 
 make generate-infra-yaml
 kubectl apply -f infrastructure-elemental/v0.0.0/infrastructure-components.yaml
