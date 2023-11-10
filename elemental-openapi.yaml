@@ -33,6 +33,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiRegistrationResponse'
           description: Returns the ElementalRegistration
+        "401":
+          content:
+            text/html:
+              schema:
+                type: string
+          description: If the 'Registration-Authorization' header does not contain
+            a Bearer token
+        "403":
+          content:
+            text/html:
+              schema:
+                type: string
+          description: If the 'Registration-Authorization' token is not valid
         "404":
           content:
             text/html:

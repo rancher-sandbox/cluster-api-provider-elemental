@@ -42,6 +42,8 @@ func (h *GetElementalRegistrationHandler) SetupOpenAPIOperation(oc openapi.Opera
 
 	oc.AddRespStructure(RegistrationResponse{}, WithDecoration("Returns the ElementalRegistration", "application/json", http.StatusOK))
 	oc.AddRespStructure(nil, WithDecoration("If the ElementalRegistration is not found", "text/html", http.StatusNotFound))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Registration-Authorization' header does not contain a Bearer token", "text/html", http.StatusUnauthorized))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Registration-Authorization' token is not valid", "text/html", http.StatusForbidden))
 	oc.AddRespStructure(nil, WithDecoration("", "text/html", http.StatusInternalServerError))
 
 	return nil
