@@ -156,10 +156,7 @@ runcmd:
 				Name:      registration.Name,
 				Namespace: registration.Namespace},
 				updatedRegistration)).Should(Succeed())
-			if len(updatedRegistration.Spec.Config.Elemental.Registration.Token) == 0 {
-				return false
-			}
-			return true
+			return len(updatedRegistration.Spec.Config.Elemental.Registration.Token) != 0
 		}).WithTimeout(time.Minute).Should(BeTrue(), "missing registration token")
 		registrationToken = updatedRegistration.Spec.Config.Elemental.Registration.Token
 		Expect(k8sClient.Create(ctx, &bootstrapSecret)).Should(Succeed())

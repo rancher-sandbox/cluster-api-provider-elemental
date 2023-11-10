@@ -249,10 +249,7 @@ wcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K
 				Name:      registration.Name,
 				Namespace: registration.Namespace},
 				updatedRegistration)).Should(Succeed())
-			if len(updatedRegistration.Spec.Config.Elemental.Registration.Token) == 0 {
-				return false
-			}
-			return true
+			return len(updatedRegistration.Spec.Config.Elemental.Registration.Token) != 0
 		}).WithTimeout(time.Minute).Should(BeTrue(), "missing registration token")
 		registrationToken = updatedRegistration.Spec.Config.Elemental.Registration.Token
 		fs, fsCleanup, err = vfst.NewTestFS(map[string]interface{}{})

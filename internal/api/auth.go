@@ -159,5 +159,4 @@ func (a *authenticator) writeResponse(response http.ResponseWriter, err error) {
 	}
 	response.WriteHeader(http.StatusInternalServerError)
 	WriteResponse(a.logger, response, fmt.Sprintf("Could not authenticate request: %s", err.Error()))
-	return
 }
