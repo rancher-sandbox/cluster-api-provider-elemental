@@ -57,6 +57,8 @@ registration:
     WhfJrSPzvfWPO73w0MFMBRXZ74Tc24SN6QPBin5LaAIhAM9hidFQ71SZQnPY3Y1I
     JZPkAoVeIOoFDgXvl9MkHBuk
     -----END CERTIFICATE-----
+  # A valid JWT token to use during registration
+  token: eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJFbGVtZW50YWxSZWdpc3RyYXRpb25SZWNvbmNpbGVyIiwic3ViIjoiaHR0cDovLzE5Mi4xNjguMTIyLjEwOjMwMDA5L2VsZW1lbnRhbC92MS9uYW1lc3BhY2VzL2RlZmF1bHQvcmVnaXN0cmF0aW9ucy9teS1yZWdpc3RyYXRpb24iLCJhdWQiOlsiaHR0cDovLzE5Mi4xNjguMTIyLjEwOjMwMDA5L2VsZW1lbnRhbC92MS9uYW1lc3BhY2VzL2RlZmF1bHQvcmVnaXN0cmF0aW9ucy9teS1yZWdpc3RyYXRpb24iXSwibmJmIjoxNjk5ODY0NzIwLCJpYXQiOjE2OTk4NjQ3MjB9.YQsYZoaZ3tGV6z5aXo1e9LmGdA-wQOtmmpi4yAAfXcqh6_S6iIjgblXqw6koQJCzhBMy2-APPQL0ANEBcAljBQ
 agent:
   # Work directory
   workDir: /var/lib/elemental/agent
@@ -77,7 +79,7 @@ agent:
   # Enable agent debug logs
   debug: false
   # Which OS plugin to use
-  osPlugin: "/usr/lib/elemental/plugins/elemental.so"
+  osPlugin: /usr/lib/elemental/plugins/elemental.so
   # The period used by the agent to sync with the Elemental API
   reconciliation: 1m
   # Allow 'http' scheme
