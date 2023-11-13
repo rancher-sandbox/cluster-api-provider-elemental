@@ -193,21 +193,18 @@ You can configure a different device, editing the `ElementalRegistration` create
     cd cluster-api-provider-elemental
     ```
 
-- (Optionally) Generate a valid agent config (depends on `yq`):  
+- Generate a valid agent config (depends on `kubectl` and `yq`):  
 
     ```bash
     ./test/scripts/print_agent_config.sh -n default -r my-registration > iso/config/my-config.yaml
     ```
 
+  Note that the agent config should contain a valid registration `token`.  
+  By default this is a JWT formatted token with no expiration.  
+
 - Build the ISO image:
 
     This depends on `make` and `docker`:
-
-    ```bash
-    make build-iso
-    ```
-
-    Optionally, a custom agent config can be injected in the image:  
 
     ```bash
     AGENT_CONFIG_FILE=iso/config/my-config.yaml make build-iso
