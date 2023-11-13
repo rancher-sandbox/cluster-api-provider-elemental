@@ -10,10 +10,10 @@ import (
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/hostname"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/identity"
 	log "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/pkg/agent/osplugin"
 	"github.com/spf13/cobra"
@@ -50,7 +50,7 @@ var (
 func main() {
 	fs := vfs.OSFS
 	osPluginLoader := osplugin.NewLoader()
-	client := client.NewClient()
+	client := client.NewClient(version.Version)
 	commandRunner := utils.NewCommandRunner()
 	cmd := newCommand(fs, osPluginLoader, commandRunner, client)
 	if err := cmd.Execute(); err != nil {
@@ -103,13 +103,13 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, commandRunner utils.Com
 				return fmt.Errorf("Initializing plugin: %w", err)
 			}
 			// Initialize Identity
-			identityManager := identity.NewDummyManager(fs, conf.Agent.WorkDir)
-			signingKey, err := identityManager.LoadSigningKeyOrCreateNew()
+			identityManager := identity.NewManager(fs, conf.Agent.WorkDir)
+			identity, err := identityManager.LoadSigningKeyOrCreateNew()
 			if err != nil {
 				return fmt.Errorf("initializing identity: %w", err)
 			}
 			// Initialize Elemental API Client
-			if err := client.Init(fs, signingKey, conf); err != nil {
+			if err := client.Init(fs, identity, conf); err != nil {
 				return fmt.Errorf("initializing Elemental API client: %w", err)
 			}
 			// Get current hostname
@@ -120,10 +120,14 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, commandRunner utils.Com
 			// Register
 			if registerFlag {
 				log.Info("Registering Elemental Host")
+				pubKey, err := identity.MarshalPublic()
+				if err != nil {
+					return fmt.Errorf("marshalling host public key: %w", err)
+				}
 				var registration *api.RegistrationResponse
-				hostname, registration = handleRegistration(client, osPlugin, conf.Agent.Reconciliation)
+				hostname, registration = handleRegistration(client, osPlugin, pubKey, conf.Registration.Token, conf.Agent.Reconciliation)
 				log.Infof("Successfully registered as '%s'", hostname)
-				if err := handlePostRegistration(osPlugin, hostname, signingKey, registration); err != nil {
+				if err := handlePostRegistration(osPlugin, hostname, identity, registration); err != nil {
 					return fmt.Errorf("handling post registration: %w", err)
 				}
 				// Exit program if --install was not called
@@ -134,7 +138,7 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, commandRunner utils.Com
 			// Install
 			if installFlag {
 				log.Info("Installing Elemental")
-				handleInstall(client, osPlugin, hostname, conf.Agent.Reconciliation)
+				handleInstall(client, osPlugin, hostname, conf.Registration.Token, conf.Agent.Reconciliation)
 				log.Info("Installation successful")
 				handlePost(osPlugin, conf.Agent.PostInstall.PowerOff, conf.Agent.PostInstall.Reboot)
 				return nil
@@ -143,7 +147,7 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, commandRunner utils.Com
 			// Reset
 			if resetFlag {
 				log.Info("Resetting Elemental")
-				handleReset(client, osPlugin, conf.Agent.Reconciliation, hostname)
+				handleReset(client, osPlugin, hostname, conf.Registration.Token, conf.Agent.Reconciliation)
 				log.Info("Reset successful")
 				handlePost(osPlugin, conf.Agent.PostReset.PowerOff, conf.Agent.PostReset.Reboot)
 				return nil
@@ -221,7 +225,7 @@ func getConfig(fs vfs.FS) (config.Config, error) {
 	return conf, nil
 }
 
-func handleRegistration(client client.Client, osPlugin osplugin.Plugin, registrationRecoveryPeriod time.Duration) (string, *api.RegistrationResponse) {
+func handleRegistration(client client.Client, osPlugin osplugin.Plugin, pubKey []byte, registrationToken string, registrationRecoveryPeriod time.Duration) (string, *api.RegistrationResponse) {
 	hostnameFormatter := hostname.NewFormatter(osPlugin)
 	var newHostname string
 	var registration *api.RegistrationResponse
@@ -235,7 +239,7 @@ func handleRegistration(client client.Client, osPlugin osplugin.Plugin, registra
 		}
 		// Fetch remote Registration
 		log.Debug("Fetching remote registration")
-		registration, err = client.GetRegistration()
+		registration, err = client.GetRegistration(registrationToken)
 		if err != nil {
 			log.Error(err, "getting remote Registration")
 			registrationError = true
@@ -257,7 +261,8 @@ func handleRegistration(client client.Client, osPlugin osplugin.Plugin, registra
 			Name:        newHostname,
 			Annotations: registration.HostAnnotations,
 			Labels:      registration.HostLabels,
-		}); err != nil {
+			PubKey:      string(pubKey),
+		}, registrationToken); err != nil {
 			log.Error(err, "registering new ElementalHost")
 			registrationError = true
 			continue
@@ -267,7 +272,7 @@ func handleRegistration(client client.Client, osPlugin osplugin.Plugin, registra
 	return newHostname, registration
 }
 
-func handlePostRegistration(osPlugin osplugin.Plugin, hostnameToSet string, signingKey []byte, registration *api.RegistrationResponse) error {
+func handlePostRegistration(osPlugin osplugin.Plugin, hostnameToSet string, id identity.Identity, registration *api.RegistrationResponse) error {
 	// Persist registered hostname
 	if err := osPlugin.PersistHostname(hostnameToSet); err != nil {
 		return fmt.Errorf("persisting hostname '%s': %w", hostnameToSet, err)
@@ -282,14 +287,18 @@ func handlePostRegistration(osPlugin osplugin.Plugin, hostnameToSet string, sign
 		return fmt.Errorf("persisting agent config file '%s': %w", configPath, err)
 	}
 	// Persist identity file
+	identityBytes, err := id.Marshal()
+	if err != nil {
+		return fmt.Errorf("marshalling identity: %w", err)
+	}
 	privateKeyPath := fmt.Sprintf("%s/%s", agentConfig.Agent.WorkDir, identity.PrivateKeyFile)
-	if err := osPlugin.PersistFile(signingKey, privateKeyPath, 0640, 0, 0); err != nil {
+	if err := osPlugin.PersistFile(identityBytes, privateKeyPath, 0640, 0, 0); err != nil {
 		return fmt.Errorf("persisting private key file '%s': %w", privateKeyPath, err)
 	}
 	return nil
 }
 
-func handleInstall(client client.Client, osPlugin osplugin.Plugin, hostname string, installationRecoveryPeriod time.Duration) {
+func handleInstall(client client.Client, osPlugin osplugin.Plugin, hostname string, registrationToken string, installationRecoveryPeriod time.Duration) {
 	cloudConfigAlreadyApplied := false
 	alreadyInstalled := false
 	installationError := false
@@ -304,7 +313,7 @@ func handleInstall(client client.Client, osPlugin osplugin.Plugin, hostname stri
 		var err error
 		if !cloudConfigAlreadyApplied || !alreadyInstalled {
 			log.Debug("Fetching remote registration")
-			registration, err = client.GetRegistration()
+			registration, err = client.GetRegistration(registrationToken)
 			if err != nil {
 				log.Error(err, "getting remote Registration")
 				installationError = true
@@ -354,7 +363,7 @@ func handleInstall(client client.Client, osPlugin osplugin.Plugin, hostname stri
 	}
 }
 
-func handleReset(client client.Client, osPlugin osplugin.Plugin, resetRecoveryPeriod time.Duration, hostname string) {
+func handleReset(client client.Client, osPlugin osplugin.Plugin, hostname string, registrationToken string, resetRecoveryPeriod time.Duration) {
 	resetError := false
 	alreadyReset := false
 	for {
@@ -375,7 +384,7 @@ func handleReset(client client.Client, osPlugin osplugin.Plugin, resetRecoveryPe
 		if !alreadyReset {
 			// Fetch remote Registration
 			log.Debug("Fetching remote registration")
-			registration, err := client.GetRegistration()
+			registration, err := client.GetRegistration(registrationToken)
 			if err != nil {
 				log.Error(err, "getting remote Registration")
 				resetError = true

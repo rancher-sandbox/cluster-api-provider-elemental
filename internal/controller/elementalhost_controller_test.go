@@ -11,6 +11,7 @@ import (
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
 	"github.com/twpayne/go-vfs"
 	"github.com/twpayne/go-vfs/vfst"
 	corev1 "k8s.io/api/core/v1"
@@ -142,26 +143,42 @@ runcmd:
 	var err error
 	var fsCleanup func()
 	var eClient client.Client
+	var registrationToken string
 	BeforeAll(func() {
 		fs, fsCleanup, err = vfst.NewTestFS(map[string]interface{}{})
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(fsCleanup)
 		Expect(k8sClient.Create(ctx, &namespace)).Should(Succeed())
 		Expect(k8sClient.Create(ctx, &registration)).Should(Succeed())
+		updatedRegistration := &v1beta1.ElementalRegistration{}
+		Eventually(func() bool {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      registration.Name,
+				Namespace: registration.Namespace},
+				updatedRegistration)).Should(Succeed())
+			return len(updatedRegistration.Spec.Config.Elemental.Registration.Token) != 0
+		}).WithTimeout(time.Minute).Should(BeTrue(), "missing registration token")
+		registrationToken = updatedRegistration.Spec.Config.Elemental.Registration.Token
 		Expect(k8sClient.Create(ctx, &bootstrapSecret)).Should(Succeed())
-		eClient = client.NewClient()
+		eClient = client.NewClient("v0.0.0-test")
 		conf := config.Config{
 			Registration: registration.Spec.Config.Elemental.Registration,
 			Agent:        registration.Spec.Config.Elemental.Agent,
 		}
-		Expect(eClient.Init(fs, []byte{}, conf)).Should(Succeed())
+		idManager := identity.NewManager(fs, registration.Spec.Config.Elemental.Agent.WorkDir)
+		id, err := idManager.LoadSigningKeyOrCreateNew()
+		Expect(err).ToNot(HaveOccurred())
+		pubKey, err := id.MarshalPublic()
+		Expect(err).ToNot(HaveOccurred())
+		request.PubKey = string(pubKey)
+		Expect(eClient.Init(fs, id, conf)).Should(Succeed())
 	})
 	AfterAll(func() {
 		Expect(k8sClient.Delete(ctx, &namespace)).Should(Succeed())
 	})
 	It("should create new host", func() {
 		// Create the new host
-		Expect(eClient.CreateHost(request)).Should(Succeed())
+		Expect(eClient.CreateHost(request, registrationToken)).Should(Succeed())
 		// Issue an empty patch to get a host response
 		response, err := eClient.PatchHost(api.HostPatchRequest{}, request.Name)
 		Expect(err).ToNot(HaveOccurred())

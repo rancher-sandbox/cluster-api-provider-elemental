@@ -48,6 +48,13 @@ You can use it with any OpenAPI compliant tool, for example the online [Swagger 
 
 This API is consumed by the `elemental-agent` and is meant for **Internal** use only.  
 
+### Authentication & Authorization
+
+The Elemental API uses two different authorization header.  
+The `Registration-Authorization` should contain a valid JWT formatted `Bearer` token when fetching registration information or registering a new host.  
+When registering a new host and modifying a host resource, the `Authorization` header should also contain a valid JWT formatted `Bearer` token that identifies the host.  
+For more information, you can find more details in the [documentation](doc/AUTH.md).  
+
 ## Rancher Integration
 
 [Rancher Turtles](https://docs.rancher-turtles.com/) is an extension to Rancher that brings increased integration with Cluster API.  

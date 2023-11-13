@@ -30,6 +30,7 @@ import (
 
 	config "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
 	api "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
+	identity "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
 	vfs "github.com/twpayne/go-vfs"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -58,17 +59,17 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // CreateHost mocks base method.
-func (m *MockClient) CreateHost(arg0 api.HostCreateRequest) error {
+func (m *MockClient) CreateHost(arg0 api.HostCreateRequest, arg1 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateHost", arg0)
+	ret := m.ctrl.Call(m, "CreateHost", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateHost indicates an expected call of CreateHost.
-func (mr *MockClientMockRecorder) CreateHost(arg0 any) *gomock.Call {
+func (mr *MockClientMockRecorder) CreateHost(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateHost", reflect.TypeOf((*MockClient)(nil).CreateHost), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateHost", reflect.TypeOf((*MockClient)(nil).CreateHost), arg0, arg1)
 }
 
 // DeleteHost mocks base method.
@@ -101,22 +102,22 @@ func (mr *MockClientMockRecorder) GetBootstrap(arg0 any) *gomock.Call {
 }
 
 // GetRegistration mocks base method.
-func (m *MockClient) GetRegistration() (*api.RegistrationResponse, error) {
+func (m *MockClient) GetRegistration(arg0 string) (*api.RegistrationResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRegistration")
+	ret := m.ctrl.Call(m, "GetRegistration", arg0)
 	ret0, _ := ret[0].(*api.RegistrationResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetRegistration indicates an expected call of GetRegistration.
-func (mr *MockClientMockRecorder) GetRegistration() *gomock.Call {
+func (mr *MockClientMockRecorder) GetRegistration(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRegistration", reflect.TypeOf((*MockClient)(nil).GetRegistration))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRegistration", reflect.TypeOf((*MockClient)(nil).GetRegistration), arg0)
 }
 
 // Init mocks base method.
-func (m *MockClient) Init(arg0 vfs.FS, arg1 []byte, arg2 config.Config) error {
+func (m *MockClient) Init(arg0 vfs.FS, arg1 identity.Identity, arg2 config.Config) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Init", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)

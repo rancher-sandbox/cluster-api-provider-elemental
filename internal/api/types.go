@@ -11,12 +11,16 @@ import (
 )
 
 type HostCreateRequest struct {
+	Auth    string `header:"Authorization"`
+	RegAuth string `header:"Registration-Authorization"`
+
 	Namespace        string `path:"namespace"`
 	RegistrationName string `path:"registrationName"`
 
 	Name        string            `json:"name,omitempty"`
 	Annotations map[string]string `json:"annotations,omitempty"`
 	Labels      map[string]string `json:"labels,omitempty"`
+	PubKey      string            `json:"pubKey,omitempty"`
 }
 
 func (h *HostCreateRequest) toElementalHost(namespace string) infrastructurev1beta1.ElementalHost {
@@ -27,16 +31,23 @@ func (h *HostCreateRequest) toElementalHost(namespace string) infrastructurev1be
 			Labels:      h.Labels,
 			Annotations: h.Annotations,
 		},
+		Spec: infrastructurev1beta1.ElementalHostSpec{
+			PubKey: h.PubKey,
+		},
 	}
 }
 
 type HostDeleteRequest struct {
+	Auth string `header:"Authorization"`
+
 	Namespace        string `path:"namespace"`
 	RegistrationName string `path:"registrationName"`
 	HostName         string `path:"hostName"`
 }
 
 type HostPatchRequest struct {
+	Auth string `header:"Authorization"`
+
 	Namespace        string `path:"namespace"`
 	RegistrationName string `path:"registrationName"`
 	HostName         string `path:"hostName"`
@@ -100,6 +111,8 @@ func (h *HostResponse) fromElementalHost(elementalHost infrastructurev1beta1.Ele
 }
 
 type RegistrationGetRequest struct {
+	RegAuth string `header:"Registration-Authorization"`
+
 	Namespace        string `path:"namespace"`
 	RegistrationName string `path:"registrationName"`
 }
@@ -123,6 +136,8 @@ func (r *RegistrationResponse) fromElementalRegistration(elementalRegistration i
 }
 
 type BootstrapGetRequest struct {
+	Auth string `header:"Authorization"`
+
 	Namespace        string `path:"namespace"`
 	RegistrationName string `path:"registrationName"`
 	HostName         string `path:"hostName"`

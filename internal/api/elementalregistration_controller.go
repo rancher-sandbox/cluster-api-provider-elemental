@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"net/http"
@@ -22,12 +23,14 @@ var _ http.Handler = (*GetElementalRegistrationHandler)(nil)
 type GetElementalRegistrationHandler struct {
 	logger    logr.Logger
 	k8sClient client.Client
+	auth      Authenticator
 }
 
 func NewGetElementalRegistrationHandler(logger logr.Logger, k8sClient client.Client) *GetElementalRegistrationHandler {
 	return &GetElementalRegistrationHandler{
 		logger:    logger,
 		k8sClient: k8sClient,
+		auth:      NewAuthenticator(k8sClient, logger),
 	}
 }
 
@@ -39,6 +42,8 @@ func (h *GetElementalRegistrationHandler) SetupOpenAPIOperation(oc openapi.Opera
 
 	oc.AddRespStructure(RegistrationResponse{}, WithDecoration("Returns the ElementalRegistration", "application/json", http.StatusOK))
 	oc.AddRespStructure(nil, WithDecoration("If the ElementalRegistration is not found", "text/html", http.StatusNotFound))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Registration-Authorization' header does not contain a Bearer token", "text/html", http.StatusUnauthorized))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Registration-Authorization' token is not valid", "text/html", http.StatusForbidden))
 	oc.AddRespStructure(nil, WithDecoration("", "text/html", http.StatusInternalServerError))
 
 	return nil
@@ -64,6 +69,16 @@ func (h *GetElementalRegistrationHandler) ServeHTTP(response http.ResponseWriter
 			response.WriteHeader(http.StatusInternalServerError)
 			WriteResponse(logger, response, fmt.Sprintf("Could not fetch ElementalRegistration '%s'", registrationName))
 		}
+		return
+	}
+
+	// Authenticate Registration token
+	if err := h.auth.ValidateRegistrationRequest(request, response, registration); err != nil {
+		if errors.Is(err, ErrUnauthorized) || errors.Is(err, ErrForbidden) {
+			logger.Info("Registration request denied", "reason", err.Error())
+			return
+		}
+		logger.Error(err, "Could not authenticate registration request")
 		return
 	}
 

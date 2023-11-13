@@ -83,7 +83,7 @@
     cat << EOF > $HOME/.cluster-api/clusterctl.yaml
     providers:
     - name: "elemental"
-      url: "https://github.com/rancher-sandbox/cluster-api-provider-elemental/releases/v0.1.0/infrastructure-components.yaml"
+      url: "https://github.com/rancher-sandbox/cluster-api-provider-elemental/releases/v0.2.0/infrastructure-components.yaml"
       type: "InfrastructureProvider"
     - name: "k3s"
       url: "https://github.com/cluster-api-provider-k3s/cluster-api-k3s/releases/v0.1.8/bootstrap-components.yaml"
@@ -97,7 +97,7 @@
 1. Install CAPI Core provider, the k3s Control Plane and Bootstrap providers, and the Elemental Infrastructure provider:  
 
     ```bash
-    clusterctl init --bootstrap k3s:v0.1.8 --control-plane k3s:v0.1.8 --infrastructure elemental:v0.1.0
+    clusterctl init --bootstrap k3s:v0.1.8 --control-plane k3s:v0.1.8 --infrastructure elemental:v0.2.0
     ```
 
 1. Expose the Elemental API server:  
@@ -132,7 +132,7 @@
 
     ```bash
     CONTROL_PLANE_ENDPOINT_IP=192.168.122.100 clusterctl generate cluster \
-    --infrastructure elemental:v0.1.0 \
+    --infrastructure elemental:v0.2.0 \
     --flavor k3s-single-node \
     --kubernetes-version v1.28.2 \
     elemental-cluster-k3s > $HOME/elemental-cluster-k3s.yaml
@@ -193,21 +193,18 @@ You can configure a different device, editing the `ElementalRegistration` create
     cd cluster-api-provider-elemental
     ```
 
-- (Optionally) Generate a valid agent config (depends on `yq`):  
+- Generate a valid agent config (depends on `kubectl` and `yq`):  
 
     ```bash
     ./test/scripts/print_agent_config.sh -n default -r my-registration > iso/config/my-config.yaml
     ```
 
+  Note that the agent config should contain a valid registration `token`.  
+  By default this is a JWT formatted token with no expiration.  
+
 - Build the ISO image:
 
     This depends on `make` and `docker`:
-
-    ```bash
-    make build-iso
-    ```
-
-    Optionally, a custom agent config can be injected in the image:  
 
     ```bash
     AGENT_CONFIG_FILE=iso/config/my-config.yaml make build-iso

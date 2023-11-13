@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"net/http"
@@ -26,12 +27,14 @@ var _ http.Handler = (*PatchElementalHostHandler)(nil)
 type PatchElementalHostHandler struct {
 	logger    logr.Logger
 	k8sClient client.Client
+	auth      Authenticator
 }
 
 func NewPatchElementalHostHandler(logger logr.Logger, k8sClient client.Client) *PatchElementalHostHandler {
 	return &PatchElementalHostHandler{
 		logger:    logger,
 		k8sClient: k8sClient,
+		auth:      NewAuthenticator(k8sClient, logger),
 	}
 }
 
@@ -44,6 +47,8 @@ func (h *PatchElementalHostHandler) SetupOpenAPIOperation(oc openapi.OperationCo
 	oc.AddRespStructure(HostResponse{}, WithDecoration("Returns the patched ElementalHost", "application/json", http.StatusOK))
 	oc.AddRespStructure(nil, WithDecoration("If the ElementalRegistration or the ElementalHost are not found", "text/html", http.StatusNotFound))
 	oc.AddRespStructure(nil, WithDecoration("If the ElementalHostPatch request is badly formatted", "text/html", http.StatusBadRequest))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Authorization' header does not contain a Bearer token", "text/html", http.StatusUnauthorized))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Authorization' token is not valid", "text/html", http.StatusForbidden))
 	oc.AddRespStructure(nil, WithDecoration("", "text/html", http.StatusInternalServerError))
 
 	return nil
@@ -85,6 +90,16 @@ func (h *PatchElementalHostHandler) ServeHTTP(response http.ResponseWriter, requ
 			response.WriteHeader(http.StatusInternalServerError)
 			WriteResponse(logger, response, fmt.Sprintf("Could not fetch ElementalHost '%s'", hostName))
 		}
+		return
+	}
+
+	// Authenticate Request
+	if err := h.auth.ValidateHostRequest(request, response, host, registration); err != nil {
+		if errors.Is(err, ErrUnauthorized) || errors.Is(err, ErrForbidden) {
+			logger.Info("Host request denied", "reason", err.Error())
+			return
+		}
+		logger.Error(err, "Could not authenticate request")
 		return
 	}
 
@@ -159,12 +174,14 @@ var _ http.Handler = (*PostElementalHostHandler)(nil)
 type PostElementalHostHandler struct {
 	logger    logr.Logger
 	k8sClient client.Client
+	auth      Authenticator
 }
 
 func NewPostElementalHostHandler(logger logr.Logger, k8sClient client.Client) *PostElementalHostHandler {
 	return &PostElementalHostHandler{
 		logger:    logger,
 		k8sClient: k8sClient,
+		auth:      NewAuthenticator(k8sClient, logger),
 	}
 }
 
@@ -178,6 +195,8 @@ func (h *PostElementalHostHandler) SetupOpenAPIOperation(oc openapi.OperationCon
 	oc.AddRespStructure(nil, WithDecoration("ElementalHost with same name within this ElementalRegistration already exists", "text/html", http.StatusConflict))
 	oc.AddRespStructure(nil, WithDecoration("ElementalRegistration not found", "text/html", http.StatusNotFound))
 	oc.AddRespStructure(nil, WithDecoration("ElementalHost request is badly formatted", "text/html", http.StatusBadRequest))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Authorization' or 'Registration-Authorization' headers do not contain Bearer tokens", "text/html", http.StatusUnauthorized))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Authorization' or 'Registration-Authorization' tokens are not valid", "text/html", http.StatusForbidden))
 	oc.AddRespStructure(nil, WithDecoration("", "text/html", http.StatusInternalServerError))
 
 	return nil
@@ -243,6 +262,25 @@ func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, reque
 
 	logger = logger.WithValues(log.KeyElementalHost, newHost.Name)
 
+	// Authenticate Request
+	if err := h.auth.ValidateHostRequest(request, response, &newHost, registration); err != nil {
+		if errors.Is(err, ErrUnauthorized) || errors.Is(err, ErrForbidden) {
+			logger.Info("Host request denied", "reason", err.Error())
+			return
+		}
+		logger.Error(err, "Could not authenticate host request")
+		return
+	}
+	// Authenticate Registration token
+	if err := h.auth.ValidateRegistrationRequest(request, response, registration); err != nil {
+		if errors.Is(err, ErrUnauthorized) || errors.Is(err, ErrForbidden) {
+			logger.Info("Registration request denied", "reason", err.Error())
+			return
+		}
+		logger.Error(err, "Could not authenticate registration request")
+		return
+	}
+
 	// Create new Host
 	if err := h.k8sClient.Create(request.Context(), &newHost); err != nil {
 		if k8sapierrors.IsAlreadyExists(err) {
@@ -269,12 +307,14 @@ var _ http.Handler = (*DeleteElementalHostHandler)(nil)
 type DeleteElementalHostHandler struct {
 	logger    logr.Logger
 	k8sClient client.Client
+	auth      Authenticator
 }
 
 func NewDeleteElementalHostHandler(logger logr.Logger, k8sClient client.Client) *DeleteElementalHostHandler {
 	return &DeleteElementalHostHandler{
 		logger:    logger,
 		k8sClient: k8sClient,
+		auth:      NewAuthenticator(k8sClient, logger),
 	}
 }
 
@@ -286,6 +326,8 @@ func (h *DeleteElementalHostHandler) SetupOpenAPIOperation(oc openapi.OperationC
 
 	oc.AddRespStructure(nil, WithDecoration("ElementalHost correctly deleted.", "", http.StatusAccepted))
 	oc.AddRespStructure(nil, WithDecoration("ElementalHost not found", "text/html", http.StatusNotFound))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Authorization' header does not contain a Bearer token", "text/html", http.StatusUnauthorized))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Authorization' token is not valid", "text/html", http.StatusForbidden))
 	oc.AddRespStructure(nil, WithDecoration("", "text/html", http.StatusInternalServerError))
 
 	return nil
@@ -302,7 +344,7 @@ func (h *DeleteElementalHostHandler) ServeHTTP(response http.ResponseWriter, req
 		WithValues(log.KeyElementalHost, hostName)
 	logger.Info("Deleting ElementalHost")
 
-	// Fetch ElementalRegistration (sanity check)
+	// Fetch ElementalRegistration
 	registration := &infrastructurev1beta1.ElementalRegistration{}
 	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: registrationName}, registration); err != nil {
 		if k8sapierrors.IsNotFound(err) {
@@ -332,6 +374,16 @@ func (h *DeleteElementalHostHandler) ServeHTTP(response http.ResponseWriter, req
 		return
 	}
 
+	// Authenticate Request
+	if err := h.auth.ValidateHostRequest(request, response, host, registration); err != nil {
+		if errors.Is(err, ErrUnauthorized) || errors.Is(err, ErrForbidden) {
+			logger.Info("Host request denied", "reason", err.Error())
+			return
+		}
+		logger.Error(err, "Could not authenticate host request")
+		return
+	}
+
 	if !host.GetDeletionTimestamp().IsZero() {
 		logger.Info("ElementalHost is already scheduled for deletion")
 		response.WriteHeader(http.StatusAccepted)
@@ -355,12 +407,14 @@ var _ http.Handler = (*GetElementalHostBootstrapHandler)(nil)
 type GetElementalHostBootstrapHandler struct {
 	logger    logr.Logger
 	k8sClient client.Client
+	auth      Authenticator
 }
 
 func NewGetElementalHostBootstrapHandler(logger logr.Logger, k8sClient client.Client) *GetElementalHostBootstrapHandler {
 	return &GetElementalHostBootstrapHandler{
 		logger:    logger,
 		k8sClient: k8sClient,
+		auth:      NewAuthenticator(k8sClient, logger),
 	}
 }
 
@@ -372,6 +426,8 @@ func (h *GetElementalHostBootstrapHandler) SetupOpenAPIOperation(oc openapi.Oper
 
 	oc.AddRespStructure(BootstrapResponse{}, WithDecoration("Returns the ElementalHost bootstrap instructions", "application/json", http.StatusOK))
 	oc.AddRespStructure(nil, WithDecoration("If the ElementalRegistration or ElementalHost are not found, or if there are no bootstrap instructions yet", "text/html", http.StatusNotFound))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Authorization' header does not contain a Bearer token", "text/html", http.StatusUnauthorized))
+	oc.AddRespStructure(nil, WithDecoration("If the 'Authorization' token is not valid", "text/html", http.StatusForbidden))
 	oc.AddRespStructure(nil, WithDecoration("", "text/html", http.StatusInternalServerError))
 
 	return nil
@@ -413,6 +469,16 @@ func (h *GetElementalHostBootstrapHandler) ServeHTTP(response http.ResponseWrite
 			response.WriteHeader(http.StatusInternalServerError)
 			WriteResponse(logger, response, fmt.Sprintf("Could not fetch ElementalHost '%s'", hostName))
 		}
+		return
+	}
+
+	// Authenticate Request
+	if err := h.auth.ValidateHostRequest(request, response, host, registration); err != nil {
+		if errors.Is(err, ErrUnauthorized) || errors.Is(err, ErrForbidden) {
+			logger.Info("Host request denied", "reason", err.Error())
+			return
+		}
+		logger.Error(err, "Could not authenticate host request")
 		return
 	}
 
