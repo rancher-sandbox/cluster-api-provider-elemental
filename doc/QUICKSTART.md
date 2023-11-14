@@ -27,7 +27,7 @@
     mv ./kind /usr/local/bin/kind
 
     # Install clusterctl
-    curl -L https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.5.2/clusterctl-linux-amd64 -o clusterctl
+    curl -L https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.5.3/clusterctl-linux-amd64 -o clusterctl
     install -o root -g root -m 0755 clusterctl /usr/local/bin/clusterctl
 
     systemctl enable docker
@@ -55,7 +55,7 @@
     apiVersion: kind.x-k8s.io/v1alpha4
     nodes:
     - role: control-plane
-      image: kindest/node:v1.26.4
+      image: kindest/node:v1.26.6
       kubeadmConfigPatches:
       - |
         kind: InitConfiguration

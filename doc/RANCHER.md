@@ -34,7 +34,7 @@ The following steps must be executed on the machine reserved to run the Rancher 
     -n cattle-system \
     --set features=embedded-cluster-api=false \
     --set hostname=192.168.122.10.sslip.io \
-    --set version=2.7.6 \
+    --set version=2.7.9 \
     --set namespace=cattle-system \
     --set bootstrapPassword=admin \
     --set replicas=1 \
@@ -42,24 +42,21 @@ The following steps must be executed on the machine reserved to run the Rancher 
     --wait
     ```
 
-1. Clone the Rancher Turtles repository and cd into it:
-
-    ```bash
-    git clone --branch deploy-shenanigans https://github.com/anmazzotti/rancher-turtles.git
-    cd rancher-turtles
-    ```
-
 1. Install Rancher Turtles
 
-    - Follow the [official documentation](https://docs.rancher-turtles.com/docs/getting-started/install_turtles_operator).
-      Note: `cert-manager` should already be installed by `clusterctl init` from the [quickstart](./QUICKSTART.md) steps.
-
-    - Optionally (and temporarily) you can use this fork to build and deploy the Rancher Turtles operator:
+    Check the [official documentation](https://docs.rancher-turtles.com/docs/getting-started/install_turtles_operator) for more details.  
 
     ```bash
-    git clone --branch deploy-shenanigans https://github.com/anmazzotti/rancher-turtles.git
-    cd rancher-turtles
-    make deploy
+    helm repo add turtles https://rancher-sandbox.github.io/rancher-turtles/
+    helm repo update
+    
+    helm upgrade --install rancher-turtles turtles/rancher-turtles --version v0.2.0 \
+    -n rancher-turtles-system \
+    --set cluster-api-operator.cert-manager.enabled=false \
+    --set cluster-api-operator.cluster-api.enabled=false \
+    --dependency-update \
+    --create-namespace --wait \
+    --timeout 180s 
     ```
 
 1. Mark the namespace for auto-import:
