@@ -70,24 +70,15 @@ var _ = Describe("ElementalRegistration controller", Label("controller", "elemen
 		registrationWithURI.Name = registration.Name + "-with-uri"
 		registrationWithURI.Spec.Config.Elemental.Registration.URI = "just for testing"
 		Expect(k8sClient.Create(ctx, &registrationWithURI)).Should(Succeed())
-
-		// Let's trigger a patch just to ensure the controller will be triggered.
-		patchHelper, err := patch.NewHelper(&registrationWithURI, k8sClient)
-		Expect(err).ToNot(HaveOccurred())
-		registrationWithURI.Spec.Config.Elemental.Registration.CACert = "just to trigger the controller"
-		Expect(patchHelper.Patch(ctx, &registrationWithURI)).Should(Succeed())
+		// Verify the initial URI did not change
 		updatedRegistration := &v1beta1.ElementalRegistration{}
 		Eventually(func() string {
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
 				Name:      registrationWithURI.Name,
 				Namespace: registrationWithURI.Namespace},
 				updatedRegistration)).Should(Succeed())
-			return updatedRegistration.Spec.Config.Elemental.Registration.CACert
-		}).WithTimeout(time.Minute).Should(Equal(registrationWithURI.Spec.Config.Elemental.Registration.CACert))
-
-		// Verify the initial URI did not change
-		Expect(updatedRegistration.Spec.Config.Elemental.Registration.URI).
-			To(Equal(registrationWithURI.Spec.Config.Elemental.Registration.URI))
+			return updatedRegistration.Spec.Config.Elemental.Registration.URI
+		}).WithTimeout(time.Minute).Should(Equal(registrationWithURI.Spec.Config.Elemental.Registration.URI))
 	})
 	It("should create non-expirable registration token by default", func() {
 		// Initial Registration has empty token.
@@ -119,22 +110,15 @@ var _ = Describe("ElementalRegistration controller", Label("controller", "elemen
 		registrationWithToken.Name = registration.Name + "-with-token"
 		registrationWithToken.Spec.Config.Elemental.Registration.Token = "just a test token"
 		Expect(k8sClient.Create(ctx, &registrationWithToken)).Should(Succeed())
-		// Let's trigger a patch just to ensure the controller will be triggered.
-		patchHelper, err := patch.NewHelper(&registrationWithToken, k8sClient)
-		Expect(err).ToNot(HaveOccurred())
-		registrationWithToken.Spec.Config.Elemental.Registration.CACert = "just to trigger the controller"
-		Expect(patchHelper.Patch(ctx, &registrationWithToken)).Should(Succeed())
+		// Verify the initial token did not change
 		updatedRegistration := &v1beta1.ElementalRegistration{}
 		Eventually(func() string {
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
 				Name:      registrationWithToken.Name,
 				Namespace: registrationWithToken.Namespace},
 				updatedRegistration)).Should(Succeed())
-			return updatedRegistration.Spec.Config.Elemental.Registration.CACert
-		}).WithTimeout(time.Minute).Should(Equal(registrationWithToken.Spec.Config.Elemental.Registration.CACert))
-		// Verify the initial token did not change
-		Expect(updatedRegistration.Spec.Config.Elemental.Registration.Token).
-			To(Equal(registrationWithToken.Spec.Config.Elemental.Registration.Token))
+			return updatedRegistration.Spec.Config.Elemental.Registration.Token
+		}).WithTimeout(time.Minute).Should(Equal(registrationWithToken.Spec.Config.Elemental.Registration.Token))
 	})
 	It("should generate new token after token is deleted", func() {
 		// Initial Registration has empty token.
@@ -206,14 +190,9 @@ var _ = Describe("ElementalRegistration controller", Label("controller", "elemen
 		registrationWithCACert.Name = registration.Name + "-with-ca-cert"
 		registrationWithCACert.Spec.Config.Elemental.Registration.CACert = caCert
 		Expect(k8sClient.Create(ctx, &registrationWithCACert)).Should(Succeed())
-		// Let's trigger a patch just to ensure the controller will be triggered.
-		patchHelper, err := patch.NewHelper(&registrationWithCACert, k8sClient)
-		Expect(err).ToNot(HaveOccurred())
-		registrationWithCACert.Spec.Config.Elemental.Registration.Token = "just to trigger the controller"
-		Expect(patchHelper.Patch(ctx, &registrationWithCACert)).Should(Succeed())
 		// Verify CACert didn't change
+		updatedRegistration := &v1beta1.ElementalRegistration{}
 		Eventually(func() string {
-			updatedRegistration := &v1beta1.ElementalRegistration{}
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
 				Name:      registrationWithCACert.Name,
 				Namespace: registrationWithCACert.Namespace},
