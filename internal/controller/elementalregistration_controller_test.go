@@ -190,6 +190,37 @@ var _ = Describe("ElementalRegistration controller", Label("controller", "elemen
 		Expect(expirationTime).ShouldNot(BeNil(), "epiration time should be set")
 		Expect(expirationTime.Before(time.Now())).Should(BeTrue(), "registration token should be expired")
 	})
+	It("should update CACert with default value", func() {
+		Eventually(func() string {
+			updatedRegistration := &v1beta1.ElementalRegistration{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      registration.Name,
+				Namespace: registration.Namespace},
+				updatedRegistration)).Should(Succeed())
+			return updatedRegistration.Spec.Config.Elemental.Registration.CACert
+		}).WithTimeout(time.Minute).Should(Equal(testCAValue))
+	})
+	It("should not override already defined CACert", func() {
+		caCert := "an already defined CA cert"
+		registrationWithCACert := registration
+		registrationWithCACert.Name = registration.Name + "-with-ca-cert"
+		registrationWithCACert.Spec.Config.Elemental.Registration.CACert = caCert
+		Expect(k8sClient.Create(ctx, &registrationWithCACert)).Should(Succeed())
+		// Let's trigger a patch just to ensure the controller will be triggered.
+		patchHelper, err := patch.NewHelper(&registrationWithCACert, k8sClient)
+		Expect(err).ToNot(HaveOccurred())
+		registrationWithCACert.Spec.Config.Elemental.Registration.Token = "just to trigger the controller"
+		Expect(patchHelper.Patch(ctx, &registrationWithCACert)).Should(Succeed())
+		// Verify CACert didn't change
+		Eventually(func() string {
+			updatedRegistration := &v1beta1.ElementalRegistration{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      registrationWithCACert.Name,
+				Namespace: registrationWithCACert.Namespace},
+				updatedRegistration)).Should(Succeed())
+			return updatedRegistration.Spec.Config.Elemental.Registration.CACert
+		}).WithTimeout(time.Minute).Should(Equal(caCert))
+	})
 })
 
 var _ = Describe("Elemental API Registration controller", Label("api", "elemental-registration"), Ordered, func() {
