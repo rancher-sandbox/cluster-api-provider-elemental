@@ -101,7 +101,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	// Start the Elemental API server
-	server = api.NewServer(ctx, k8sClient, elementalAPIPort)
+	server = api.NewServer(ctx, k8sClient, elementalAPIPort, false, "", "")
 	go func() {
 		defer GinkgoRecover()
 		err := server.Start(ctx)
@@ -123,9 +123,9 @@ func setupAllWithManager(k8sManager manager.Manager) {
 	apiEndpoint, err := url.Parse(serverURL)
 	Expect(err).ToNot(HaveOccurred(), "failed to parse test url")
 	err = (&ElementalRegistrationReconciler{
-		Client:      k8sManager.GetClient(),
-		Scheme:      k8sManager.GetScheme(),
-		APIEndpoint: apiEndpoint,
+		Client: k8sManager.GetClient(),
+		Scheme: k8sManager.GetScheme(),
+		APIUrl: apiEndpoint,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 	err = (&ElementalMachineReconciler{

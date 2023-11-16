@@ -24,15 +24,14 @@ nodes:
     protocol: TCP
 EOF
 
-clusterctl init --bootstrap k3s:v0.1.8 --control-plane k3s:v0.1.8 --infrastructure "-"
-
 make generate-infra-yaml
-kubectl apply -f infrastructure-elemental/v0.0.0/infrastructure-components.yaml
+
+export ELEMENTAL_ENABLE_DEBUG="\"true\""
+export ELEMENTAL_API_ENDPOINT="192.168.122.10.sslip.io"
+export ELEMENTAL_API_PROTOCOL="https"
+clusterctl init --bootstrap k3s:v0.1.8 --control-plane k3s:v0.1.8 --infrastructure elemental:v0.0.0
 
 make kind-load
-
-export ELEMENTAL_API_URL="http://192.168.122.10:30009" 
-kubectl -n elemental-system patch deployment elemental-controller-manager -p '{"spec":{"template":{"spec":{"containers":[{"name":"manager","env":[{"name":"ELEMENTAL_API_URL","value":"'${ELEMENTAL_API_URL}'"}]}]}}}}'
 
 cat << EOF | kubectl apply -f -
 apiVersion: v1
@@ -64,13 +63,14 @@ spec:
         - name: root
           passwd: root
     elemental:
+      registration:
+        uri: https://192.168.122.10.sslip.io:30009/elemental/v1/namespaces/default/registrations/my-registration
       agent:
         hostname:
           useExisting: false
           prefix: "m-"
         debug: true
         osPlugin: "/usr/lib/elemental/plugins/elemental.so"
-        insecureAllowHttp: true
         workDir: "/oem/elemental/agent"
         postInstall:
           reboot: true

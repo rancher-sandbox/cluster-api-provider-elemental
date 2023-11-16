@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -43,17 +44,22 @@ import (
 	//+kubebuilder:scaffold:imports
 )
 
-const elementalAPIPort = 9090
-
 // Environment variables.
 const (
-	envElementalAPIURL = "ELEMENTAL_API_URL"
+	envEnableDebug       = "ELEMENTAL_ENABLE_DEBUG"
+	envAPIEndpoint       = "ELEMENTAL_API_ENDPOINT"
+	envAPIPort           = "ELEMENTAL_API_PORT"
+	envAPIProtocol       = "ELEMENTAL_API_PROTOCOL"
+	envAPITLSCA          = "ELEMENTAL_API_TLS_CA"
+	envAPITLSPrivateKey  = "ELEMENTAL_API_TLS_PRIVATE_KEY"
+	envAPITLSCertificate = "ELEMENTAL_API_TLS_CERTIFICATE"
 )
 
 // Errors.
 var (
-	ErrElementalAPIURLNotSet   = errors.New("ELEMENTAL_API_URL environment variable is not set")
-	ErrElementalAPIURLNotValid = errors.New("ELEMENTAL_API_URL is not a valid URL")
+	ErrElementalAPIEndpointNotSet      = errors.New("ELEMENTAL_API_ENDPOINT environment variable is not set")
+	ErrElementalAPIProtocolNotSet      = errors.New("ELEMENTAL_API_PROTOCOL environment variable is not set")
+	ErrElementalAPIProtocolUnsupported = errors.New("ELEMENTAL_API_PROTOCOL environment variable defines an unsupported protocol")
 )
 
 var (
@@ -70,6 +76,27 @@ func init() {
 	utilruntime.Must(clusterv1.AddToScheme(scheme))
 }
 
+func formatAPIURL() (*url.URL, error) {
+	endpoint := os.Getenv(envAPIEndpoint)
+	if len(envAPIEndpoint) == 0 {
+		return nil, ErrElementalAPIEndpointNotSet
+	}
+
+	protocol := os.Getenv(envAPIProtocol)
+	if len(protocol) == 0 {
+		return nil, ErrElementalAPIProtocolNotSet
+	}
+	if protocol != "http" && protocol != "https" {
+		return nil, fmt.Errorf("parsing protocol '%s': %w", protocol, ErrElementalAPIProtocolUnsupported)
+	}
+
+	endpointURL, err := url.Parse(fmt.Sprintf("%s://%s", protocol, endpoint))
+	if err != nil {
+		return nil, fmt.Errorf("formatting Elemental API URL: %w", err)
+	}
+	return endpointURL, nil
+}
+
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
@@ -79,26 +106,24 @@ func main() {
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	opts := zap.Options{
-		Development: true,
-		Level:       zapcore.DebugLevel, // TODO: Create debug flags and others.
+
+	// Handle Debug flag
+	debug := false
+	if os.Getenv(envEnableDebug) == "true" {
+		debug = true
+	}
+	opts := zap.Options{}
+	if debug {
+		opts = zap.Options{
+			Development: true,
+			Level:       zapcore.DebugLevel,
+		}
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	ctx := ctrl.SetupSignalHandler()
-
-	elementalAPIURLValue := os.Getenv(envElementalAPIURL)
-	if len(elementalAPIURLValue) == 0 {
-		setupLog.Error(ErrElementalAPIURLNotSet, "unable to start manager")
-		os.Exit(1)
-	}
-	elementalAPIURL, err := url.Parse(elementalAPIURLValue)
-	if err != nil {
-		setupLog.Error(ErrElementalAPIURLNotValid, fmt.Sprintf("parsing '%s' as URL", elementalAPIURLValue))
-		os.Exit(1)
-	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
@@ -160,10 +185,29 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ElementalClusterTemplate")
 		os.Exit(1)
 	}
+
+	// Start RegistrationReconciler
+	elementalAPIURL, err := formatAPIURL()
+	if err != nil {
+		setupLog.Error(err, "formatting Elemental API URL")
+		os.Exit(1)
+	}
+	// If Elemental API uses TLS, initialize default trust certificate
+	useTLS := elementalAPIURL.Scheme == "https"
+	var defaultCACert string
+	if useTLS {
+		defaultCACertBytes, err := os.ReadFile(os.Getenv(envAPITLSCA))
+		if err != nil {
+			setupLog.Error(err, "reading Elemental API TLS CA certificate")
+			os.Exit(1)
+		}
+		defaultCACert = string(defaultCACertBytes)
+	}
 	if err = (&controller.ElementalRegistrationReconciler{
-		Client:      mgr.GetClient(),
-		Scheme:      mgr.GetScheme(),
-		APIEndpoint: elementalAPIURL,
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		APIUrl:        elementalAPIURL,
+		DefaultCACert: defaultCACert,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ElementalRegistration")
 		os.Exit(1)
@@ -179,7 +223,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	elementalAPIServer := api.NewServer(ctx, mgr.GetClient(), elementalAPIPort)
+	// Start Elemental API
+	portValue := os.Getenv(envAPIPort)
+	port, err := strconv.ParseUint(portValue, 10, 32)
+	if err != nil {
+		setupLog.Error(err, "parsing Elemental API port value")
+	}
+	privateKey := os.Getenv(envAPITLSPrivateKey)
+	certificate := os.Getenv(envAPITLSCertificate)
+	elementalAPIServer := api.NewServer(ctx, mgr.GetClient(), uint(port), useTLS, privateKey, certificate)
 	go func() {
 		if err := elementalAPIServer.Start(ctx); err != nil {
 			setupLog.Error(err, "running Elemental API server")

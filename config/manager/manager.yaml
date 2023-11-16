@@ -73,6 +73,9 @@ spec:
         image: controller
         imagePullPolicy: IfNotPresent
         name: manager
+        envFrom:
+        - configMapRef:
+            name: elemental-controller-manager-envs
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -82,6 +85,10 @@ spec:
         - containerPort: 9090
           protocol: TCP
           name: http
+        volumeMounts:
+        - mountPath: "/etc/elemental/ssl"
+          name: elemental-api-ssl
+          readOnly: true
         livenessProbe:
           httpGet:
             path: /healthz
@@ -105,3 +112,7 @@ spec:
             memory: 64Mi
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
+      volumes:
+        - name: elemental-api-ssl
+          secret:
+            secretName: elemental-api-ssl

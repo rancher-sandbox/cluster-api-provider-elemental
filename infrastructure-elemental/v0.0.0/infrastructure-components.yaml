@@ -1259,6 +1259,19 @@ subjects:
   namespace: elemental-system
 ---
 apiVersion: v1
+data:
+  ELEMENTAL_API_ENDPOINT: ${ELEMENTAL_API_ENDPOINT:=""}
+  ELEMENTAL_API_PORT: ${ELEMENTAL_API_PORT:="9090"}
+  ELEMENTAL_API_PROTOCOL: ${ELEMENTAL_API_PROTOCOL:="https"}
+  ELEMENTAL_API_TLS_CERTIFICATE: ${ELEMENTAL_API_TLS_CERTIFICATE:="/etc/elemental/ssl/tls.crt"}
+  ELEMENTAL_API_TLS_PRIVATE_KEY: ${ELEMENTAL_API_TLS_PRIVATE_KEY:="/etc/elemental/ssl/tls.key"}
+  ELEMENTAL_ENABLE_DEBUG: ${ELEMENTAL_ENABLE_DEBUG:="false"}
+kind: ConfigMap
+metadata:
+  name: elemental-controller-manager-envs
+  namespace: elemental-system
+---
+apiVersion: v1
 kind: Service
 metadata:
   labels:
@@ -1335,6 +1348,9 @@ spec:
         - --leader-elect
         command:
         - /manager
+        envFrom:
+        - configMapRef:
+            name: elemental-controller-manager-envs
         image: ghcr.io/rancher-sandbox/cluster-api-provider-elemental:latest
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1366,7 +1382,35 @@ spec:
           capabilities:
             drop:
             - ALL
+        volumeMounts:
+        - mountPath: /etc/elemental/ssl
+          name: elemental-api-ssl
+          readOnly: true
       securityContext:
         runAsNonRoot: true
       serviceAccountName: elemental-controller-manager
       terminationGracePeriodSeconds: 10
+      volumes:
+      - name: elemental-api-ssl
+        secret:
+          secretName: elemental-api-ssl
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: elemental-api-ssl
+  namespace: elemental-system
+spec:
+  commonName: ${ELEMENTAL_API_ENDPOINT:=""}
+  issuerRef:
+    kind: Issuer
+    name: selfsigned-issuer
+  secretName: elemental-api-ssl
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: elemental-selfsigned
+  namespace: elemental-system
+spec:
+  selfSigned: {}
