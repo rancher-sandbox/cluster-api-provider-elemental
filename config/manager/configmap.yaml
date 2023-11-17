@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: controller-manager-envs
+  namespace: system
+data:
+  ELEMENTAL_ENABLE_DEBUG: ${ELEMENTAL_ENABLE_DEBUG:="false"}
+  ELEMENTAL_API_ENDPOINT: ${ELEMENTAL_API_ENDPOINT:=""}
+  ELEMENTAL_API_PORT: ${ELEMENTAL_API_PORT:="9090"}
+  ELEMENTAL_API_PROTOCOL: ${ELEMENTAL_API_PROTOCOL:="https"}
+  ELEMENTAL_API_TLS_CA: ${ELEMENTAL_API_TLS_CA:="/etc/elemental/ssl/ca.crt"}
+  ELEMENTAL_API_TLS_PRIVATE_KEY: ${ELEMENTAL_API_TLS_PRIVATE_KEY:="/etc/elemental/ssl/tls.key"}
+  ELEMENTAL_API_TLS_CERTIFICATE: ${ELEMENTAL_API_TLS_CERTIFICATE:="/etc/elemental/ssl/tls.crt"}
+

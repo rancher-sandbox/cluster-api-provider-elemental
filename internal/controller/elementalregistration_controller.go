@@ -49,8 +49,9 @@ var (
 // ElementalRegistrationReconciler reconciles a ElementalRegistration object.
 type ElementalRegistrationReconciler struct {
 	client.Client
-	Scheme      *runtime.Scheme
-	APIEndpoint *url.URL
+	Scheme        *runtime.Scheme
+	APIUrl        *url.URL
+	DefaultCACert string
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -108,6 +109,13 @@ func (r *ElementalRegistrationReconciler) Reconcile(ctx context.Context, req ctr
 		return ctrl.Result{RequeueAfter: time.Second}, nil
 	}
 
+	// Set default CA Cert if not set already and if we have a default one to trust.
+	if len(registration.Spec.Config.Elemental.Registration.CACert) == 0 && len(r.DefaultCACert) > 0 {
+		logger.Info("Setting default CACert")
+		registration.Spec.Config.Elemental.Registration.CACert = r.DefaultCACert
+		return ctrl.Result{RequeueAfter: time.Second}, nil
+	}
+
 	// Generate new token signing key if secret does not exists yet.
 	if registration.Spec.PrivateKeyRef == nil {
 		logger.Info("Generating new signing key")
@@ -130,11 +138,11 @@ func (r *ElementalRegistrationReconciler) Reconcile(ctx context.Context, req ctr
 }
 
 func (r *ElementalRegistrationReconciler) setURI(registration *infrastructurev1beta1.ElementalRegistration) error {
-	if r.APIEndpoint == nil {
+	if r.APIUrl == nil {
 		return ErrAPIEndpointNil
 	}
 	registration.Spec.Config.Elemental.Registration.URI = fmt.Sprintf("%s%s%s/namespaces/%s/registrations/%s",
-		r.APIEndpoint.String(),
+		r.APIUrl.String(),
 		api.Prefix,
 		api.PrefixV1,
 		registration.Namespace,

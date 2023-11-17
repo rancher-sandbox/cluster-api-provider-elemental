@@ -20,19 +20,25 @@ const (
 )
 
 type Server struct {
-	context    context.Context
-	port       uint
-	k8sClient  client.Client
-	httpServer *http.Server
-	logger     logr.Logger
+	context     context.Context
+	port        uint
+	k8sClient   client.Client
+	httpServer  *http.Server
+	logger      logr.Logger
+	useTLS      bool
+	privKey     string
+	certificate string
 }
 
-func NewServer(ctx context.Context, k8sClient client.Client, port uint) *Server {
+func NewServer(ctx context.Context, k8sClient client.Client, port uint, useTLS bool, privKey string, certificate string) *Server {
 	return &Server{
-		context:   ctx,
-		port:      port,
-		k8sClient: k8sClient,
-		logger:    log.FromContext(ctx),
+		context:     ctx,
+		port:        port,
+		k8sClient:   k8sClient,
+		logger:      log.FromContext(ctx),
+		useTLS:      useTLS,
+		privKey:     privKey,
+		certificate: certificate,
 	}
 }
 
@@ -74,7 +80,13 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 
 	go func() {
-		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		var err error
+		if s.useTLS {
+			err = s.httpServer.ListenAndServeTLS(s.certificate, s.privKey)
+		} else {
+			err = s.httpServer.ListenAndServe()
+		}
+		if err != nil && err != http.ErrServerClosed {
 			s.logger.Error(err, "FATAL: listening for TCP incoming connections")
 			os.Exit(1)
 		}

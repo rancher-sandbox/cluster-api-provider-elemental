@@ -1,0 +1,29 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: api-ca
+  namespace: system
+spec:
+  duration: 94800h # 10 years
+  renewBefore: 360h # 15 days
+  commonName: elemental-selfsigned-ca
+  issuerRef:
+    kind: Issuer
+    name: elemental-selfsigned
+  isCA: true
+  secretName: elemental-api-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: api-ssl
+  namespace: system
+spec:
+  duration: 9480h # 1 year
+  renewBefore: 360h # 15 days
+  issuerRef:
+    kind: Issuer
+    name: elemental-ca
+  dnsNames: 
+  - ${ELEMENTAL_API_ENDPOINT:=""}
+  secretName: elemental-api-ssl

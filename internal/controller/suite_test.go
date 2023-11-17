@@ -47,7 +47,10 @@ import (
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
-const elementalAPIPort = 9191
+const (
+	elementalAPIPort = 9191
+	testCAValue      = "just a test CA"
+)
 
 var (
 	cfg       *rest.Config
@@ -101,7 +104,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	// Start the Elemental API server
-	server = api.NewServer(ctx, k8sClient, elementalAPIPort)
+	server = api.NewServer(ctx, k8sClient, elementalAPIPort, false, "", "")
 	go func() {
 		defer GinkgoRecover()
 		err := server.Start(ctx)
@@ -123,9 +126,10 @@ func setupAllWithManager(k8sManager manager.Manager) {
 	apiEndpoint, err := url.Parse(serverURL)
 	Expect(err).ToNot(HaveOccurred(), "failed to parse test url")
 	err = (&ElementalRegistrationReconciler{
-		Client:      k8sManager.GetClient(),
-		Scheme:      k8sManager.GetScheme(),
-		APIEndpoint: apiEndpoint,
+		Client:        k8sManager.GetClient(),
+		Scheme:        k8sManager.GetScheme(),
+		APIUrl:        apiEndpoint,
+		DefaultCACert: testCAValue,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 	err = (&ElementalMachineReconciler{
