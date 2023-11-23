@@ -100,6 +100,7 @@
     ELEMENTAL_ENABLE_DEBUG="\"true\"" \
     ELEMENTAL_API_ENDPOINT="192.168.122.10.sslip.io" \
     ELEMENTAL_API_ENABLE_TLS="\"true\"" \
+    ELEMENTAL_ENABLE_DEFAULT_CA="\"true\"" \
     clusterctl init --bootstrap k3s:v0.1.8 --control-plane k3s:v0.1.8 --infrastructure elemental:v0.3.0
     ```
 
