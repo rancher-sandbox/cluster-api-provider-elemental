@@ -96,6 +96,7 @@ spec:
 ## Using Ingress
 
 Ingress can better take care of certificates rotation and integration with `cert-manager`.  
+When using a TLS termination proxy, you can configure this provider with the `ELEMENTAL_API_ENABLE_TLS="\"false\""` variable, which is also the default value.  
 If using the default self-signed CA, you can still configure `ELEMENTAL_ENABLE_DEFAULT_CA="\"true\""` and use the already generated `elemental-api-ssl` certificate to configure the Ingress `tls` settings.
 For example:
 
