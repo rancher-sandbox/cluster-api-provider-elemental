@@ -48,6 +48,8 @@ You can use it with any OpenAPI compliant tool, for example the online [Swagger 
 
 This API is consumed by the `elemental-agent` and is meant for **Internal** use only.  
 
+For more details on how to configure and expose the Elemental API, please read the related [document](./doc/ELEMENTAL_API_SETUP.md).  
+
 ### Authentication & Authorization
 
 The Elemental API uses two different authorization header.  
