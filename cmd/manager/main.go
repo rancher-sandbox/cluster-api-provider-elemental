@@ -43,7 +43,7 @@ import (
 	//+kubebuilder:scaffold:imports
 )
 
-// Defaults
+// Defaults.
 const (
 	defaultAPIPort = 9090
 )
@@ -54,7 +54,7 @@ const (
 	envEnableDefaultCA   = "ELEMENTAL_ENABLE_DEFAULT_CA"
 	envAPIEndpoint       = "ELEMENTAL_API_ENDPOINT"
 	envAPIProtocol       = "ELEMENTAL_API_PROTOCOL"
-	envAPITLSEnable      = "ELEMENTAL_API_ENABLE_TLS"
+	envAPITLSEnable      = "ELEMENTAL_API_ENABLE_TLS" //nolint:gosec //This is just a boolean flag. Should never contain credentials.
 	envAPITLSCA          = "ELEMENTAL_API_TLS_CA"
 	envAPITLSPrivateKey  = "ELEMENTAL_API_TLS_PRIVATE_KEY"
 	envAPITLSCertificate = "ELEMENTAL_API_TLS_CERTIFICATE"
