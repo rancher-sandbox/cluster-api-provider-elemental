@@ -2,6 +2,58 @@
 
 This document describes the possibilities when exposing the Elemental API service.  
 
+## Recommended configuration
+
+```bash
+ELEMENTAL_API_ENDPOINT="my.elemental.api.endpoint.com" \
+clusterctl init --bootstrap "-" --control-plane "-" --infrastructure elemental:v0.3.0
+```
+
+The most reliable way to serve the Elemental API is through an Ingress controller, making use of a public [ACME Issuer](https://cert-manager.io/docs/configuration/acme/).  
+Additionally it is recommended to keep the Elemental API under a private network, therefore using the [DNS01 challenge type](https://cert-manager.io/docs/configuration/acme/dns01/) to refresh certificates.  
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: elemental-api
+  namespace: elemental-system
+  annotations:
+    cert-manager.io/issuer: "my-acme-issuer"
+spec:
+  tls:
+  - hosts:
+    - my.elemental.api.endpoint.com
+    secretName: my-elemental-api-endpoint-com
+  rules:
+  - host: my.elemental.api.endpoint.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: elemental-controller-manager
+            port:
+              number: 9090
+```
+
+This allows to configure the `elemental-agent` to use the system's certificate pool, which can be managed and updated in a more convenient way, for example by simply installing the `ca-certificates-mozilla` package.  
+This setting can be included when creating any `ElementalRegistration`:  
+
+```yaml
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: ElementalRegistration
+metadata:
+  name: my-registration
+  namespace: default
+spec:
+  config:
+    elemental:
+      agent:
+        useSystemCertPool: true
+```
+
 ## Default self-signed CA
 
 By default this provider creates a self signed `cert-manager` CA Issuer.  
@@ -36,7 +88,6 @@ By default this is configured to be the `/etc/elemental/ssl/ca.crt` mounted from
 For example, to enable the TLS listener and use the default CA:  
 
 ```bash
-ELEMENTAL_ENABLE_DEBUG="\"true\"" \
 ELEMENTAL_API_ENDPOINT="my.elemental.api.endpoint.com" \
 ELEMENTAL_API_ENABLE_TLS="\"true\"" \
 ELEMENTAL_ENABLE_DEFAULT_CA="\"true\"" \
