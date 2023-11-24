@@ -213,7 +213,7 @@ spec:
 ## Using different Load Balancers
 
 The `ElementalRegistration` `spec.config.elemental.registration.uri` is normally populated automatically by the provider, from the `ELEMENTAL_API_PROTOCOL` and `ELEMENTAL_API_ENDPOINT` environment variables.  
-Howeverm it can also be set arbitrarily, for example to route different registrations to different load balancers.  
+However, it can also be set arbitrarily, for example to route different registrations to different load balancers.  
 This must be the fully qualified URI of the registration, including the registration name and namespace.  
 For example:  
 
