@@ -84,7 +84,7 @@ spec:
         ports:
         - containerPort: 9090
           protocol: TCP
-          name: http
+          name: api
         volumeMounts:
         - mountPath: "/etc/elemental/ssl"
           name: elemental-api-ssl

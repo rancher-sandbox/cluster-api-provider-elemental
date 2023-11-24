@@ -1260,16 +1260,31 @@ subjects:
 ---
 apiVersion: v1
 data:
+  ELEMENTAL_API_ENABLE_TLS: ${ELEMENTAL_API_ENABLE_TLS:="false"}
   ELEMENTAL_API_ENDPOINT: ${ELEMENTAL_API_ENDPOINT:=""}
-  ELEMENTAL_API_PORT: ${ELEMENTAL_API_PORT:="9090"}
   ELEMENTAL_API_PROTOCOL: ${ELEMENTAL_API_PROTOCOL:="https"}
+  ELEMENTAL_API_TLS_CA: ${ELEMENTAL_API_TLS_CA:="/etc/elemental/ssl/ca.crt"}
   ELEMENTAL_API_TLS_CERTIFICATE: ${ELEMENTAL_API_TLS_CERTIFICATE:="/etc/elemental/ssl/tls.crt"}
   ELEMENTAL_API_TLS_PRIVATE_KEY: ${ELEMENTAL_API_TLS_PRIVATE_KEY:="/etc/elemental/ssl/tls.key"}
   ELEMENTAL_ENABLE_DEBUG: ${ELEMENTAL_ENABLE_DEBUG:="false"}
+  ELEMENTAL_ENABLE_DEFAULT_CA: ${ELEMENTAL_ENABLE_DEFAULT_CA:="false"}
 kind: ConfigMap
 metadata:
   name: elemental-controller-manager-envs
   namespace: elemental-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elemental-controller-manager
+  namespace: elemental-system
+spec:
+  ports:
+  - port: 9090
+    protocol: TCP
+    targetPort: api
+  selector:
+    app.kubernetes.io/name: elemental-controller-manager
 ---
 apiVersion: v1
 kind: Service
@@ -1362,7 +1377,7 @@ spec:
         name: manager
         ports:
         - containerPort: 9090
-          name: http
+          name: api
           protocol: TCP
         readinessProbe:
           httpGet:
@@ -1398,14 +1413,41 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
+  name: elemental-api-ca
+  namespace: elemental-system
+spec:
+  commonName: elemental-selfsigned-ca
+  duration: 94800h
+  isCA: true
+  issuerRef:
+    kind: Issuer
+    name: elemental-selfsigned
+  renewBefore: 360h
+  secretName: elemental-api-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
   name: elemental-api-ssl
   namespace: elemental-system
 spec:
-  commonName: ${ELEMENTAL_API_ENDPOINT:=""}
+  dnsNames:
+  - ${ELEMENTAL_API_ENDPOINT:=""}
+  duration: 9480h
   issuerRef:
     kind: Issuer
-    name: selfsigned-issuer
+    name: elemental-ca
+  renewBefore: 360h
   secretName: elemental-api-ssl
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: elemental-ca
+  namespace: elemental-system
+spec:
+  ca:
+    secretName: elemental-api-ca
 ---
 apiVersion: cert-manager.io/v1
 kind: Issuer

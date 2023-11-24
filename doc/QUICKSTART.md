@@ -83,7 +83,7 @@
     cat << EOF > $HOME/.cluster-api/clusterctl.yaml
     providers:
     - name: "elemental"
-      url: "https://github.com/rancher-sandbox/cluster-api-provider-elemental/releases/v0.2.0/infrastructure-components.yaml"
+      url: "https://github.com/rancher-sandbox/cluster-api-provider-elemental/releases/v0.3.0/infrastructure-components.yaml"
       type: "InfrastructureProvider"
     - name: "k3s"
       url: "https://github.com/cluster-api-provider-k3s/cluster-api-k3s/releases/v0.1.8/bootstrap-components.yaml"
@@ -97,14 +97,11 @@
 1. Install CAPI Core provider, the k3s Control Plane and Bootstrap providers, and the Elemental Infrastructure provider:  
 
     ```bash
-    clusterctl init --bootstrap k3s:v0.1.8 --control-plane k3s:v0.1.8 --infrastructure elemental:v0.2.0
-    ```
-
-1. Set the `ELEMENTAL_API_URL` on the operator:
-
-    ```bash
-    export ELEMENTAL_API_URL="http://192.168.122.10:30009" 
-    kubectl -n elemental-system patch deployment elemental-controller-manager -p '{"spec":{"template":{"spec":{"containers":[{"name":"manager","env":[{"name":"ELEMENTAL_API_URL","value":"'${ELEMENTAL_API_URL}'"}]}]}}}}'
+    ELEMENTAL_ENABLE_DEBUG="\"true\"" \
+    ELEMENTAL_API_ENDPOINT="192.168.122.10.sslip.io" \
+    ELEMENTAL_API_ENABLE_TLS="\"true\"" \
+    ELEMENTAL_ENABLE_DEFAULT_CA="\"true\"" \
+    clusterctl init --bootstrap k3s:v0.1.8 --control-plane k3s:v0.1.8 --infrastructure elemental:v0.3.0
     ```
 
 1. Expose the Elemental API server:  
@@ -132,7 +129,7 @@
 
     ```bash
     CONTROL_PLANE_ENDPOINT_IP=192.168.122.100 clusterctl generate cluster \
-    --infrastructure elemental:v0.2.0 \
+    --infrastructure elemental:v0.3.0 \
     --flavor k3s-single-node \
     --kubernetes-version v1.28.2 \
     elemental-cluster-k3s > $HOME/elemental-cluster-k3s.yaml
@@ -145,6 +142,10 @@
     ```
 
 1. Create a new `ElementalRegistration`:
+
+    Note that since we are using a non-standard port for this quickstart, we are manually setting the registration `uri` field.  
+    Normally this would be automatically populated by the controller from the `ELEMENTAL_API_PROTOCOL` and `ELEMENTAL_API_ENDPOINT` environment variables.  
+    For more details on how to configure and expose the Elemental API, please read the related [document](./ELEMENTAL_API_SETUP.md).  
 
     ```bash
     cat << EOF | kubectl apply -f -
@@ -160,13 +161,14 @@
             - name: root
               passwd: root
         elemental:
+          registration:
+            uri: https://192.168.122.10.sslip.io:30009/elemental/v1/namespaces/default/registrations/my-registration
           agent:
             hostname:
               useExisting: false
               prefix: "m-"
             debug: true
             osPlugin: "/usr/lib/elemental/plugins/elemental.so"
-            insecureAllowHttp: true
             workDir: "/oem/elemental/agent"
             postInstall:
               reboot: true

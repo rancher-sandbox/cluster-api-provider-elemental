@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"strconv"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -44,12 +43,18 @@ import (
 	//+kubebuilder:scaffold:imports
 )
 
+// Defaults.
+const (
+	defaultAPIPort = 9090
+)
+
 // Environment variables.
 const (
 	envEnableDebug       = "ELEMENTAL_ENABLE_DEBUG"
+	envEnableDefaultCA   = "ELEMENTAL_ENABLE_DEFAULT_CA"
 	envAPIEndpoint       = "ELEMENTAL_API_ENDPOINT"
-	envAPIPort           = "ELEMENTAL_API_PORT"
 	envAPIProtocol       = "ELEMENTAL_API_PROTOCOL"
+	envAPITLSEnable      = "ELEMENTAL_API_ENABLE_TLS" //nolint:gosec //This is just a boolean flag. Should never contain credentials.
 	envAPITLSCA          = "ELEMENTAL_API_TLS_CA"
 	envAPITLSPrivateKey  = "ELEMENTAL_API_TLS_PRIVATE_KEY"
 	envAPITLSCertificate = "ELEMENTAL_API_TLS_CERTIFICATE"
@@ -192,10 +197,9 @@ func main() {
 		setupLog.Error(err, "formatting Elemental API URL")
 		os.Exit(1)
 	}
-	// If Elemental API uses TLS, initialize default trust certificate
-	useTLS := elementalAPIURL.Scheme == "https"
+	// Load the default CA if this behavior was enabled
 	var defaultCACert string
-	if useTLS {
+	if os.Getenv(envEnableDefaultCA) == "true" {
 		defaultCACertBytes, err := os.ReadFile(os.Getenv(envAPITLSCA))
 		if err != nil {
 			setupLog.Error(err, "reading Elemental API TLS CA certificate")
@@ -224,14 +228,10 @@ func main() {
 	}
 
 	// Start Elemental API
-	portValue := os.Getenv(envAPIPort)
-	port, err := strconv.ParseUint(portValue, 10, 32)
-	if err != nil {
-		setupLog.Error(err, "parsing Elemental API port value")
-	}
 	privateKey := os.Getenv(envAPITLSPrivateKey)
 	certificate := os.Getenv(envAPITLSCertificate)
-	elementalAPIServer := api.NewServer(ctx, mgr.GetClient(), uint(port), useTLS, privateKey, certificate)
+	useTLS := os.Getenv(envAPITLSEnable) == "true"
+	elementalAPIServer := api.NewServer(ctx, mgr.GetClient(), defaultAPIPort, useTLS, privateKey, certificate)
 	go func() {
 		if err := elementalAPIServer.Start(ctx); err != nil {
 			setupLog.Error(err, "running Elemental API server")
