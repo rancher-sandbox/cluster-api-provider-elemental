@@ -127,11 +127,11 @@ cp -a framework/files/* %{buildroot}
 %files -n elemental-plugin-toolkit
 %defattr(-,root,root,-)
 %license LICENSE
-%{buildroot}%{pluginsdir}/elemental.so
+%{pluginsdir}/elemental.so
 
 %files -n elemental-plugin-dummy
 %defattr(-,root,root,-)
 %license LICENSE
-%{buildroot}%{pluginsdir}/dummy.so
+%{pluginsdir}/dummy.so
 
 %changelog
