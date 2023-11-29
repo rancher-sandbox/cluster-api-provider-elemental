@@ -98,7 +98,7 @@ test: manifests generate fmt vet envtest generate-mocks $(GINKGO) ## Run tests.
 ##@ Build
 .PHONY: build-agent
 build-agent: fmt vet ## Build agent binary for local architecture.
-	CGO_ENABLED=1 go build -ldflags '$(LDFLAGS)' -o bin/elemental_agent cmd/agent/main.go
+	CGO_ENABLED=1 go build -ldflags '$(LDFLAGS)' -o bin/elemental-agent cmd/agent/main.go
 
 # This does depend on cross compilation library, for example: cross-aarch64-gcc13
 .PHONY: build-agent-all
