@@ -25,6 +25,7 @@ License:        Apache-2.0
 Group:          System/Management
 URL:            https://github.com/rancher-sandbox/cluster-api-provider-elemental
 Source:         %{name}-%{version}.tar
+Source1:        %{name}.obsinfo
 Requires:       elemental-plugin
 
 BuildRequires:  make
