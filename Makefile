@@ -262,6 +262,13 @@ endif
 		--entrypoint /usr/bin/elemental docker.io/library/elemental-iso:latest --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
 		--local --squash-no-compression -o /iso docker.io/library/elemental-iso:latest
 
+CAPI_VERSION=v1.5.2
+.PHONY: update-test-capi-crds
+update-test-capi-crds: 
+# These files can not be included when vendoring, but we need them to start the controller test suite
+	wget -P test/capi-crds https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/${CAPI_VERSION}/config/crd/bases/cluster.x-k8s.io_clusters.yaml
+	wget -P test/capi-crds https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/${CAPI_VERSION}/config/crd/bases/cluster.x-k8s.io_machines.yaml
+
 .PHONY: vendor
 vendor:
 	go mod tidy

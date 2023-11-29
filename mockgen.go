@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package main
 
-// This only exists so that we can vendor it
+// This only exists so that we can vendor it.
 import _ "go.uber.org/mock/mockgen/model"
