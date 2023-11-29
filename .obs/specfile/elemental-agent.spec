@@ -25,7 +25,6 @@ License:        Apache-2.0
 Group:          System/Management
 URL:            https://github.com/rancher-sandbox/cluster-api-provider-elemental
 Source:         %{name}-%{version}.tar
-Source1:        %{name}.obsinfo
 Requires:       elemental-plugin
 
 BuildRequires:  make
@@ -46,7 +45,7 @@ Summary: Elemental CAPI agent systemd services
 Requires: elemental-agent = %{version}-%{release}
 Requires: elemental-plugin-toolkit = %{version}-%{release}
 %{?systemd_requires}
-%description
+%description -n elemental-systemd-services
 This package contains systemd services to run the elemental-agent 
 when the elemental-plugin-toolkit is also in use.
 
@@ -55,7 +54,7 @@ Summary: elemental-toolkit plugin
 Provides: elemental-plugin
 Requires: elemental-agent = %{version}-%{release}
 Requires: elemental-toolkit
-%description
+%description -n elemental-plugin-toolkit
 The toolkit plugin allows integration between the elemental-toolkit 
 and the elemental-agent.
 
@@ -63,7 +62,7 @@ and the elemental-agent.
 Summary: dummy plugin
 Provides: elemental-plugin
 Requires: elemental-agent = %{version}-%{release}
-%description
+%description -n elemental-plugin-dummy
 The dummy plugin is a very basic plugin for the elemental-agent 
 that can be used for debugging, or when no other plugin option 
 is available.
