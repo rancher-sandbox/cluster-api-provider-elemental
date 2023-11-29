@@ -26,18 +26,14 @@ Group:          System/Management
 URL:            https://github.com/rancher-sandbox/cluster-api-provider-elemental
 Source:         %{name}-%{version}.tar
 Source1:        %{name}.obsinfo
+Requires:       elemental-plugin = %{version}-%{release}
 
-BuildRequires:  gcc
 BuildRequires:  make
 
 %if 0%{?suse_version}
 BuildRequires:  golang(API) >= 1.21
 BuildRequires:  golang-packaging
 %{go_provides}
-%else
-%global goipath    google.golang.org/api
-%global forgeurl   https://github.com/rancher-sandbox/cluster-api-provider-elemental
-%global commit     25abcdc57b9409d4c5b2009cf0a2f9aa6ff647ad
 %gometa
 %if (0%{?centos_version} == 800) || (0%{?rhel_version} == 800)
 BuildRequires:  go1.21
@@ -49,18 +45,43 @@ BuildRequires:  compiler(go-compiler)
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
 %description
-The Elemental CAPI agent is responsible for managing the OS
-versions and maintaining a machine inventory to assist with edge or
+The Elemental CAPI agent is responsible for managing the OS 
+versions and maintaining a machine inventory to assist with edge or 
 baremetal installations.
+
+%package -n elemental-systemd-services
+Summary: Elemental CAPI agent systemd services
+Requires: elemental-agent
+Requires: elemental-plugin-toolkit
+%{?systemd_requires}
+%description
+This package contains systemd services to run the elemental-agent 
+when the elemental-plugin-toolkit is also in use.
+
+%package -n elemental-plugin-toolkit
+Summary: elemental-toolkit plugin
+Provides: elemental-plugin = %{version}-%{release}
+Requires: elemental-agent
+Requires: elemental-toolkit
+%description
+The toolkit plugin allows integration between the elemental-toolkit 
+and the elemental-agent.
+
+%package -n elemental-plugin-dummy
+Summary: dummy plugin
+Provides: elemental-plugin = %{version}-%{release}
+Requires: elemental-agent
+%description
+The dummy plugin is a very basic plugin for the elemental-agent 
+that can be used for debugging, or when no other plugin option 
+is available.
 
 %prep
 %setup -q -n %{name}-%{version}
 cp %{S:1} .
 
 %build
-%if 0%{?suse_version}
 %goprep .
-%endif
 
 export GIT_TAG=`echo "%{version}" | cut -d "+" -f 1`
 GIT_COMMIT=$(cat %{name}.obsinfo | grep commit: | cut -d" " -f 2)
@@ -73,12 +94,10 @@ make build-agent
 make build-plugins
 
 %install
-%if 0%{?suse_version}
 %goinstall
-%endif
 
-%{__install} -d -m 755 %{buildroot}/%{_sbindir}
-%{__install} -d -m 755 %{buildroot}/%{_pluginsdir}
+%{__install} -d -m 755 %{buildroot}%{_sbindir}
+%{__install} -d -m 755 %{buildroot}%{_pluginsdir}
 
 %{__install} -m 755 bin/elemental-agent %{buildroot}%{_sbindir}
 %{__install} -m 755 bin/elemental.so %{buildroot}%{_pluginsdir}
@@ -86,42 +105,41 @@ make build-plugins
 
 
 cp -a framework/files/* %{buildroot}
-%pre
-%if 0%{?suse_version}
+%pre -n elemental-systemd-services
 %service_add_pre elemental-agent.service
 %service_add_pre elemental-agent-install.service
-%endif
 
-%post
-%if 0%{?suse_version}
+%post -n elemental-systemd-services
 %service_add_post elemental-agent.service
 %service_add_post elemental-agent-install.service
-%else
-%systemd_post elemental-agent.service
-%systemd_post elemental-agent-install.service
-%endif
 
-%preun
-%if 0%{?suse_version}
+%preun -n elemental-systemd-services
 %service_del_preun elemental-agent.service
 %service_del_preun elemental-agent-install.service
-%else
-%systemd_preun elemental-agent.service
-%systemd_preun elemental-agent-install.service
-%endif
 
-%postun
-%if 0%{?suse_version}
+%postun -n elemental-systemd-services
 %service_del_postun elemental-agent.service
 %service_del_postun elemental-agent-install.service
-%else
-%systemd_postun elemental-agent.service
-%systemd_postun elemental-agent-install.service
-%endif
 
 %files
 %defattr(-,root,root,-)
 %license LICENSE
 %{_sbindir}/%{name}
+
+%files -n elemental-systemd-services
+%defattr(-,root,root,-)
+%license LICENSE
+%{buildroot}/elemental-agent.service
+%{buildroot}/elemental-agent-install.service
+
+%files -n elemental-plugin-toolkit
+%defattr(-,root,root,-)
+%license LICENSE
+%{buildroot}%{_pluginsdir}/elemental.so
+
+%files -n elemental-plugin-dummy
+%defattr(-,root,root,-)
+%license LICENSE
+%{buildroot}%{_pluginsdir}/dummy.so
 
 %changelog
