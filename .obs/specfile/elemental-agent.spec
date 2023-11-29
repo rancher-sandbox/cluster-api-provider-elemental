@@ -51,8 +51,8 @@ baremetal installations.
 
 %package -n elemental-systemd-services
 Summary: Elemental CAPI agent systemd services
-Requires: elemental-agent
-Requires: elemental-plugin-toolkit
+Requires: elemental-agent = %{version}-%{release}
+Requires: elemental-plugin-toolkit = %{version}-%{release}
 %{?systemd_requires}
 %description
 This package contains systemd services to run the elemental-agent 
@@ -60,8 +60,8 @@ when the elemental-plugin-toolkit is also in use.
 
 %package -n elemental-plugin-toolkit
 Summary: elemental-toolkit plugin
-Provides: elemental-plugin = %{version}-%{release}
-Requires: elemental-agent
+Provides: elemental-plugin
+Requires: elemental-agent = %{version}-%{release}
 Requires: elemental-toolkit
 %description
 The toolkit plugin allows integration between the elemental-toolkit 
@@ -69,8 +69,8 @@ and the elemental-agent.
 
 %package -n elemental-plugin-dummy
 Summary: dummy plugin
-Provides: elemental-plugin = %{version}-%{release}
-Requires: elemental-agent
+Provides: elemental-plugin
+Requires: elemental-agent = %{version}-%{release}
 %description
 The dummy plugin is a very basic plugin for the elemental-agent 
 that can be used for debugging, or when no other plugin option 
