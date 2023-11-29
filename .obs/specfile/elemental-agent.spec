@@ -30,17 +30,9 @@ Requires:       elemental-plugin
 
 BuildRequires:  make
 
-%if 0%{?suse_version}
 BuildRequires:  golang(API) >= 1.21
 BuildRequires:  golang-packaging
 %{go_provides}
-%gometa
-%if (0%{?centos_version} == 800) || (0%{?rhel_version} == 800)
-BuildRequires:  go1.21
-%else
-BuildRequires:  compiler(go-compiler)
-%endif
-%endif
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
