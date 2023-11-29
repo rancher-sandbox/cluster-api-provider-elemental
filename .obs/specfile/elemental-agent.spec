@@ -117,6 +117,8 @@ cp -a framework/files/usr/lib/systemd/system/* %{buildroot}%{_unitdir}
 %defattr(-,root,root,-)
 %license LICENSE
 %{_sbindir}/%{name}
+%dir /usr/lib/elemental
+%dir %{pluginsdir}
 
 %files -n elemental-systemd-services
 %defattr(-,root,root,-)
