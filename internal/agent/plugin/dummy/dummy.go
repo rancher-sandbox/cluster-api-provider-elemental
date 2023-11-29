@@ -54,7 +54,7 @@ func (p *DummyPlugin) Init(context osplugin.PluginContext) error {
 	return nil
 }
 
-func (p *DummyPlugin) ApplyCloudInit(input []byte) error {
+func (p *DummyPlugin) InstallCloudInit(input []byte) error {
 	path := fmt.Sprintf("%s/%s", p.workDir, cloudInitFile)
 	cloudInitBytes := []byte("#cloud-config\n")
 	cloudInitContentBytes, err := plugin.UnmarshalRawJSONToYaml(input)
@@ -76,7 +76,7 @@ func (p *DummyPlugin) GetHostname() (string, error) {
 	return hostname, nil
 }
 
-func (p *DummyPlugin) PersistHostname(hostname string) error {
+func (p *DummyPlugin) InstallHostname(hostname string) error {
 	log.Debugf("Setting hostname %s", hostname)
 	if err := p.hostManager.SetHostname(hostname); err != nil {
 		return fmt.Errorf("setting hostname '%s': %w", hostname, err)
@@ -84,7 +84,7 @@ func (p *DummyPlugin) PersistHostname(hostname string) error {
 	return nil
 }
 
-func (p *DummyPlugin) PersistFile(content []byte, path string, _ uint32, _ int, _ int) error {
+func (p *DummyPlugin) InstallFile(content []byte, path string, _ uint32, _ int, _ int) error {
 	log.Debugf("Writing file %s", path)
 	if err := utils.WriteFile(p.fs, api.WriteFile{
 		Path:    path,

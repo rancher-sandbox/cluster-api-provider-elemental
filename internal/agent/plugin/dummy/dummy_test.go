@@ -48,7 +48,7 @@ var _ = Describe("Dummy Plugin", Label("agent", "plugin", "dummy"), func() {
 	})
 	It("should apply cloud-init by dumping info to file", func() {
 		cloudInit := []byte(`{"users":[{"name":"root","passwd":"root"}]}`)
-		Expect(plugin.ApplyCloudInit(cloudInit)).Should(Succeed())
+		Expect(plugin.InstallCloudInit(cloudInit)).Should(Succeed())
 		wantPath := fmt.Sprintf("%s/%s", pluginContext.WorkDir, cloudInitFile)
 		compareFiles(fs, wantPath, "_testdata/cloud-init.yaml")
 	})
@@ -62,12 +62,12 @@ var _ = Describe("Dummy Plugin", Label("agent", "plugin", "dummy"), func() {
 	It("should set the hostname", func() {
 		wantHostname := "just a test hostname to set"
 		hostManager.EXPECT().SetHostname(wantHostname).Return(nil)
-		Expect(plugin.PersistHostname(wantHostname)).Should(Succeed())
+		Expect(plugin.InstallHostname(wantHostname)).Should(Succeed())
 	})
 	It("should write file", func() {
 		content := []byte("Just a test file\n")
 		wantPath := "/any/location/should/be/fine"
-		Expect(plugin.PersistFile(content, wantPath, 0640, 0, 0)).Should(Succeed())
+		Expect(plugin.InstallFile(content, wantPath, 0640, 0, 0)).Should(Succeed())
 		compareFiles(fs, wantPath, "_testdata/persisted.txt")
 	})
 	It("should install by dumping info to file", func() {

@@ -315,9 +315,9 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 				plugin.EXPECT().GetHostname().Return("host", nil),
 				mClient.EXPECT().CreateHost(wantRequest, configFixture.Registration.Token).Return(nil),
 				// Post --register
-				plugin.EXPECT().PersistHostname(hostResponseFixture.Name).Return(nil),
-				plugin.EXPECT().PersistFile(wantAgentConfigBytes, configPathDefault, uint32(0640), 0, 0).Return(nil),
-				plugin.EXPECT().PersistFile(gomock.Any(), wantIdentityFilePath, uint32(0640), 0, 0).Return(nil),
+				plugin.EXPECT().InstallHostname(hostResponseFixture.Name).Return(nil),
+				plugin.EXPECT().InstallFile(wantAgentConfigBytes, configPathDefault, uint32(0640), 0, 0).Return(nil),
+				plugin.EXPECT().InstallFile(gomock.Any(), wantIdentityFilePath, uint32(0640), 0, 0).Return(nil),
 			)
 			Expect(cmd.Execute()).ToNot(HaveOccurred())
 		})
@@ -332,12 +332,12 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 				plugin.EXPECT().GetHostname().Return("host", nil),
 				mClient.EXPECT().CreateHost(wantRequest, configFixture.Registration.Token).Return(nil),
 				// Post --register
-				plugin.EXPECT().PersistHostname(hostResponseFixture.Name).Return(nil),
-				plugin.EXPECT().PersistFile(wantAgentConfigBytes, configPathDefault, uint32(0640), 0, 0).Return(nil),
-				plugin.EXPECT().PersistFile(gomock.Any(), wantIdentityFilePath, uint32(0640), 0, 0).Return(nil),
+				plugin.EXPECT().InstallHostname(hostResponseFixture.Name).Return(nil),
+				plugin.EXPECT().InstallFile(wantAgentConfigBytes, configPathDefault, uint32(0640), 0, 0).Return(nil),
+				plugin.EXPECT().InstallFile(gomock.Any(), wantIdentityFilePath, uint32(0640), 0, 0).Return(nil),
 				// --install
 				mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(registrationFixture, nil),
-				plugin.EXPECT().ApplyCloudInit(gomock.Any()).Return(nil),
+				plugin.EXPECT().InstallCloudInit(gomock.Any()).Return(nil),
 				plugin.EXPECT().Install(gomock.Any()).Return(nil),
 				mClient.EXPECT().PatchHost(gomock.Any(), gomock.Any()).Return(&api.HostResponse{}, nil),
 				// post --install
@@ -359,9 +359,9 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 					mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(nil, errors.New("get registration test error")),
 					mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(registrationFixture, nil),
 					// Make the cloud init apply fail. Expect to recover by getting registration and applying cloud init again
-					plugin.EXPECT().ApplyCloudInit(wantCloudInit).Return(errors.New("cloud init test failed")),
+					plugin.EXPECT().InstallCloudInit(wantCloudInit).Return(errors.New("cloud init test failed")),
 					mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(registrationFixture, nil),
-					plugin.EXPECT().ApplyCloudInit(wantCloudInit).Return(nil),
+					plugin.EXPECT().InstallCloudInit(wantCloudInit).Return(nil),
 					// Make the install fail. Expect to recover by getting registration and installing again
 					plugin.EXPECT().Install(wantInstall).Return(errors.New("install test fail")),
 					mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(registrationFixture, nil),

@@ -274,7 +274,7 @@ func handleRegistration(client client.Client, osPlugin osplugin.Plugin, pubKey [
 
 func handlePostRegistration(osPlugin osplugin.Plugin, hostnameToSet string, id identity.Identity, registration *api.RegistrationResponse) error {
 	// Persist registered hostname
-	if err := osPlugin.PersistHostname(hostnameToSet); err != nil {
+	if err := osPlugin.InstallHostname(hostnameToSet); err != nil {
 		return fmt.Errorf("persisting hostname '%s': %w", hostnameToSet, err)
 	}
 	// Persist agent config
@@ -283,7 +283,7 @@ func handlePostRegistration(osPlugin osplugin.Plugin, hostnameToSet string, id i
 	if err != nil {
 		return fmt.Errorf("marshalling agent config: %w", err)
 	}
-	if err := osPlugin.PersistFile(agentConfigBytes, configPath, 0640, 0, 0); err != nil {
+	if err := osPlugin.InstallFile(agentConfigBytes, configPath, 0640, 0, 0); err != nil {
 		return fmt.Errorf("persisting agent config file '%s': %w", configPath, err)
 	}
 	// Persist identity file
@@ -292,7 +292,7 @@ func handlePostRegistration(osPlugin osplugin.Plugin, hostnameToSet string, id i
 		return fmt.Errorf("marshalling identity: %w", err)
 	}
 	privateKeyPath := fmt.Sprintf("%s/%s", agentConfig.Agent.WorkDir, identity.PrivateKeyFile)
-	if err := osPlugin.PersistFile(identityBytes, privateKeyPath, 0640, 0, 0); err != nil {
+	if err := osPlugin.InstallFile(identityBytes, privateKeyPath, 0640, 0, 0); err != nil {
 		return fmt.Errorf("persisting private key file '%s': %w", privateKeyPath, err)
 	}
 	return nil
@@ -328,7 +328,7 @@ func handleInstall(client client.Client, osPlugin osplugin.Plugin, hostname stri
 				installationError = true
 				continue
 			}
-			if err := osPlugin.ApplyCloudInit(cloudConfigBytes); err != nil {
+			if err := osPlugin.InstallCloudInit(cloudConfigBytes); err != nil {
 				log.Error(err, "applying cloud config")
 				installationError = true
 				continue

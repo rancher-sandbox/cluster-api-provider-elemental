@@ -68,8 +68,8 @@ func (p *ElementalPlugin) Init(context osplugin.PluginContext) error {
 	return nil
 }
 
-func (p *ElementalPlugin) ApplyCloudInit(input []byte) error {
-	log.Debug("Applying cloud-init config")
+func (p *ElementalPlugin) InstallCloudInit(input []byte) error {
+	log.Debug("Installing cloud-init config")
 	cloudInitBytes := []byte("#cloud-config\n")
 	cloudInitContentBytes, err := plugin.UnmarshalRawJSONToYaml(input)
 	if err != nil {
@@ -90,8 +90,8 @@ func (p *ElementalPlugin) GetHostname() (string, error) {
 	return hostname, nil
 }
 
-func (p *ElementalPlugin) PersistHostname(hostname string) error {
-	log.Debugf("Persisting hostname: %s", hostname)
+func (p *ElementalPlugin) InstallHostname(hostname string) error {
+	log.Debugf("Installing hostname: %s", hostname)
 	hostNameCommand := fmt.Sprintf("echo %s > /etc/hostname", hostname)
 	hostNameConfig := schema.YipConfig{
 		Name: "Configure host",
@@ -113,8 +113,8 @@ func (p *ElementalPlugin) PersistHostname(hostname string) error {
 	return nil
 }
 
-func (p *ElementalPlugin) PersistFile(content []byte, path string, permission uint32, owner int, group int) error {
-	log.Debugf("Persisting file: %s", path)
+func (p *ElementalPlugin) InstallFile(content []byte, path string, permission uint32, owner int, group int) error {
+	log.Debugf("Installing file: %s", path)
 	// Create a "set-*.yaml" cloud init file to persist the input content
 	filename := p.formatSetFileName(path)
 	cloudConfigFilePath := fmt.Sprintf("%s/%s", cloudConfigDir, filename)
