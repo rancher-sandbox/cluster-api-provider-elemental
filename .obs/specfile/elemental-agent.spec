@@ -96,7 +96,7 @@ make build-plugins
 %{__install} -m 755 bin/dummy.so %{buildroot}%{pluginsdir}
 
 
-cp -a framework/files/* %{buildroot}
+cp -a framework/files/usr/lib/systemd/system/* %{buildroot}%{_unitdir}
 %pre -n elemental-systemd-services
 %service_add_pre elemental-agent.service
 %service_add_pre elemental-agent-install.service
