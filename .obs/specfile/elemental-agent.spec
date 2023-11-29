@@ -117,7 +117,6 @@ cp -a framework/files/usr/lib/systemd/system/* %{buildroot}%{_unitdir}
 %defattr(-,root,root,-)
 %license LICENSE
 %{_sbindir}/%{name}
-%dir %{pluginsdir}
 
 %files -n elemental-systemd-services
 %defattr(-,root,root,-)
@@ -128,11 +127,13 @@ cp -a framework/files/usr/lib/systemd/system/* %{buildroot}%{_unitdir}
 %files -n elemental-plugin-toolkit
 %defattr(-,root,root,-)
 %license LICENSE
+%dir %{pluginsdir}
 %{pluginsdir}/elemental.so
 
 %files -n elemental-plugin-dummy
 %defattr(-,root,root,-)
 %license LICENSE
+%dir %{pluginsdir}
 %{pluginsdir}/dummy.so
 
 %changelog
