@@ -129,8 +129,8 @@ cp -a framework/files/* %{buildroot}
 %files -n elemental-systemd-services
 %defattr(-,root,root,-)
 %license LICENSE
-%{buildroot}/elemental-agent.service
-%{buildroot}/elemental-agent-install.service
+%{_unitdir}/elemental-agent.service
+%{_unitdir}/elemental-agent-install.service
 
 %files -n elemental-plugin-toolkit
 %defattr(-,root,root,-)
