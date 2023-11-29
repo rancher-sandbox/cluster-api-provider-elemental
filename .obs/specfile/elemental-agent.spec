@@ -79,7 +79,7 @@ export GIT_TAG=`echo "%{version}" | cut -d "+" -f 1`
 GIT_COMMIT=$(cat %{name}.obsinfo | grep commit: | cut -d" " -f 2)
 export GIT_COMMIT=${GIT_COMMIT:0:8}
 MTIME=$(cat %{name}.obsinfo | grep mtime: | cut -d" " -f 2)
-export COMMITDATE=$(date -d @${MTIME} +%Y%m%d)
+export GIT_COMMIT_DATE=$(date -d @${MTIME} +%Y%m%d)
 
 mkdir -p bin
 make build-agent
