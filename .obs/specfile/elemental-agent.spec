@@ -51,7 +51,7 @@ This package contains systemd services to run the elemental-agent
 when the elemental-plugin-toolkit is also in use.
 
 %package -n elemental-plugin-toolkit
-Summary: elemental-toolkit plugin
+Summary: Provides the elemental plugin 
 Provides: elemental-plugin
 Requires: elemental-agent = %{version}-%{release}
 Requires: elemental-toolkit
@@ -60,7 +60,7 @@ The toolkit plugin allows integration between the elemental-toolkit
 and the elemental-agent.
 
 %package -n elemental-plugin-dummy
-Summary: dummy plugin
+Summary: Provides a dummy plugin
 Provides: elemental-plugin
 Requires: elemental-agent = %{version}-%{release}
 %description -n elemental-plugin-dummy
