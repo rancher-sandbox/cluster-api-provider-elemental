@@ -89,11 +89,11 @@ make build-plugins
 %goinstall
 
 %{__install} -d -m 755 %{buildroot}%{_sbindir}
-%{__install} -d -m 755 %{buildroot}%{_pluginsdir}
+%{__install} -d -m 755 %{buildroot}%{pluginsdir}
 
 %{__install} -m 755 bin/elemental-agent %{buildroot}%{_sbindir}
-%{__install} -m 755 bin/elemental.so %{buildroot}%{_pluginsdir}
-%{__install} -m 755 bin/dummy.so %{buildroot}%{_pluginsdir}
+%{__install} -m 755 bin/elemental.so %{buildroot}%{pluginsdir}
+%{__install} -m 755 bin/dummy.so %{buildroot}%{pluginsdir}
 
 
 cp -a framework/files/* %{buildroot}
@@ -127,11 +127,11 @@ cp -a framework/files/* %{buildroot}
 %files -n elemental-plugin-toolkit
 %defattr(-,root,root,-)
 %license LICENSE
-%{buildroot}%{_pluginsdir}/elemental.so
+%{buildroot}%{pluginsdir}/elemental.so
 
 %files -n elemental-plugin-dummy
 %defattr(-,root,root,-)
 %license LICENSE
-%{buildroot}%{_pluginsdir}/dummy.so
+%{buildroot}%{pluginsdir}/dummy.so
 
 %changelog
