@@ -247,8 +247,6 @@ lint: ## See: https://golangci-lint.run/usage/linters/
 		-E revive \
 		-E wrapcheck 
 
-ALL_VERIFY_CHECKS = manifests generate openapi
-
 .PHONY: build-iso
 build-iso: 
 ifeq ($(AGENT_CONFIG_FILE),"iso/config/example-config.yaml")
@@ -264,6 +262,12 @@ endif
 		--entrypoint /usr/bin/elemental docker.io/library/elemental-iso:latest --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
 		--local --squash-no-compression -o /iso docker.io/library/elemental-iso:latest
 
+.PHONY: vendor
+vendor:
+	go mod tidy
+	go mod vendor
+
+ALL_VERIFY_CHECKS = manifests generate openapi vendor
 .PHONY: verify
 verify: $(addprefix verify-,$(ALL_VERIFY_CHECKS))
 
@@ -293,4 +297,11 @@ verify-generate-infra-yaml: generate-infra-yaml
 	@if !(git diff --quiet HEAD); then \
 		git diff; \
 		echo "generated files are out of date, run make generate-infra-yaml"; exit 1; \
+	fi
+
+.PHONY: verify-vendor
+verify-vendor: vendor
+	@if !(git diff --quiet HEAD); then \
+		git diff; \
+		echo "generated files are out of date, run make generate"; exit 1; \
 	fi
