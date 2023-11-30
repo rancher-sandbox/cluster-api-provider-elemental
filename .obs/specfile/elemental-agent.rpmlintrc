@@ -1,0 +1,5 @@
+# ignore rclink missing checks
+addFilter("W: suse-missing-rclink");
+
+# ignore -fPIE/fpie compiler flags
+addFilter("W: position-independent-executable-suggested");

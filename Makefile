@@ -97,12 +97,12 @@ test: manifests generate fmt vet envtest generate-mocks $(GINKGO) ## Run tests.
 
 ##@ Build
 .PHONY: build-agent
-build-agent: manifests generate fmt vet ## Build manager binary for local architecture.
-	CGO_ENABLED=1 go build -ldflags '$(LDFLAGS)' -o bin/elemental_agent cmd/agent/main.go
+build-agent: fmt vet ## Build agent binary for local architecture.
+	CGO_ENABLED=1 go build -ldflags '$(LDFLAGS)' -o bin/elemental-agent cmd/agent/main.go
 
 # This does depend on cross compilation library, for example: cross-aarch64-gcc13
 .PHONY: build-agent-all
-build-agent-all: manifests generate fmt vet ## Build manager binary for all architectures.
+build-agent-all: fmt vet ## Build agent binary for all architectures.
 	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags '$(LDFLAGS)' -o bin/elemental_agent_linux_amd64 cmd/agent/main.go
 	CC=$(CROSS_COMPILER) CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -ldflags '$(LDFLAGS)' -o bin/elemental_agent_linux_arm64 cmd/agent/main.go
 
@@ -111,7 +111,7 @@ build-manager: manifests generate fmt vet ## Build manager binary.
 	go build -ldflags '$(LDFLAGS)' -o bin/manager cmd/manager/main.go
 
 .PHONY: build-plugins
-build-plugins: generate fmt vet
+build-plugins: fmt vet
 	CGO_ENABLED=1 go build -buildmode=plugin -o bin/elemental.so internal/agent/plugin/elemental/elemental.go
 	CGO_ENABLED=1 go build -buildmode=plugin -o bin/dummy.so internal/agent/plugin/dummy/dummy.go
 
@@ -247,8 +247,6 @@ lint: ## See: https://golangci-lint.run/usage/linters/
 		-E revive \
 		-E wrapcheck 
 
-ALL_VERIFY_CHECKS = manifests generate openapi
-
 .PHONY: build-iso
 build-iso: 
 ifeq ($(AGENT_CONFIG_FILE),"iso/config/example-config.yaml")
@@ -264,6 +262,19 @@ endif
 		--entrypoint /usr/bin/elemental docker.io/library/elemental-iso:latest --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
 		--local --squash-no-compression -o /iso docker.io/library/elemental-iso:latest
 
+CAPI_VERSION=v1.5.2
+.PHONY: update-test-capi-crds
+update-test-capi-crds: 
+# These files can not be included when vendoring, but we need them to start the controller test suite
+	wget -P test/capi-crds https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/${CAPI_VERSION}/config/crd/bases/cluster.x-k8s.io_clusters.yaml
+	wget -P test/capi-crds https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/${CAPI_VERSION}/config/crd/bases/cluster.x-k8s.io_machines.yaml
+
+.PHONY: vendor
+vendor:
+	go mod tidy
+	go mod vendor
+
+ALL_VERIFY_CHECKS = manifests generate openapi vendor
 .PHONY: verify
 verify: $(addprefix verify-,$(ALL_VERIFY_CHECKS))
 
@@ -293,4 +304,11 @@ verify-generate-infra-yaml: generate-infra-yaml
 	@if !(git diff --quiet HEAD); then \
 		git diff; \
 		echo "generated files are out of date, run make generate-infra-yaml"; exit 1; \
+	fi
+
+.PHONY: verify-vendor
+verify-vendor: vendor
+	@if !(git diff --quiet HEAD); then \
+		git diff; \
+		echo "generated files are out of date, run make generate"; exit 1; \
 	fi
