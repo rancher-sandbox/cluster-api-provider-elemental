@@ -123,6 +123,7 @@ cp -a framework/files/usr/lib/systemd/system/* %{buildroot}%{_unitdir}
 %files -n elemental-systemd-services
 %defattr(-,root,root,-)
 %license LICENSE
+%dir %{_unitdir}
 %{_unitdir}/elemental-agent.service
 %{_unitdir}/elemental-agent-install.service
 
