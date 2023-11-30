@@ -41,12 +41,12 @@ The Elemental CAPI agent is responsible for managing the OS
 versions and maintaining a machine inventory to assist with edge or 
 baremetal installations.
 
-%package -n elemental-services
+%package -n elemental-systemd-services
 Summary: Elemental CAPI agent systemd services
 Requires: elemental-agent = %{version}-%{release}
 Requires: elemental-plugin-toolkit = %{version}-%{release}
 %{?systemd_requires}
-%description -n elemental-services
+%description -n elemental-systemd-services
 This package contains systemd services to run the elemental-agent 
 when the elemental-plugin-toolkit is also in use.
 
@@ -97,19 +97,19 @@ make build-plugins
 
 mkdir -p %{buildroot}%{_unitdir}
 cp -a framework/files/usr/lib/systemd/system/* %{buildroot}%{_unitdir}
-%pre -n elemental-services
+%pre -n elemental-systemd-services
 %service_add_pre elemental-agent.service
 %service_add_pre elemental-agent-install.service
 
-%post -n elemental-services
+%post -n elemental-systemd-services
 %service_add_post elemental-agent.service
 %service_add_post elemental-agent-install.service
 
-%preun -n elemental-services
+%preun -n elemental-systemd-services
 %service_del_preun elemental-agent.service
 %service_del_preun elemental-agent-install.service
 
-%postun -n elemental-services
+%postun -n elemental-systemd-services
 %service_del_postun elemental-agent.service
 %service_del_postun elemental-agent-install.service
 
@@ -120,7 +120,7 @@ cp -a framework/files/usr/lib/systemd/system/* %{buildroot}%{_unitdir}
 %dir /usr/lib/elemental
 %dir %{pluginsdir}
 
-%files -n elemental-services
+%files -n elemental-systemd-services
 %defattr(-,root,root,-)
 %license LICENSE
 %{_unitdir}/elemental-agent.service
