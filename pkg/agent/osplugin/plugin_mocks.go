@@ -92,6 +92,20 @@ func (m *MockPlugin) EXPECT() *MockPluginMockRecorder {
 	return m.recorder
 }
 
+// Bootstrap mocks base method.
+func (m *MockPlugin) Bootstrap(arg0 string, arg1 []byte) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Bootstrap", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Bootstrap indicates an expected call of Bootstrap.
+func (mr *MockPluginMockRecorder) Bootstrap(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Bootstrap", reflect.TypeOf((*MockPlugin)(nil).Bootstrap), arg0, arg1)
+}
+
 // GetHostname mocks base method.
 func (m *MockPlugin) GetHostname() (string, error) {
 	m.ctrl.T.Helper()

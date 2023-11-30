@@ -108,6 +108,10 @@ func (p *DummyPlugin) Install(input []byte) error {
 	return nil
 }
 
+func (p *DummyPlugin) Bootstrap(format string, input []byte) error {
+	return nil
+}
+
 func (p *DummyPlugin) TriggerReset() error {
 	log.Debug("Triggering Unmanaged OS reset")
 	sentinelFile := p.resetSentinelFilePath()

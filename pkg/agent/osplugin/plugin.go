@@ -36,6 +36,9 @@ type Plugin interface {
 	// Install should install any needed components to the machine, given an input install config (in JSON format).
 	// This is called by the agent on '--install' argument.
 	Install(input []byte) error
+	// Bootstrap should apply the CAPI bootstrap config to the machine.
+	// The format can be either "cloud-init" or "ignition".
+	Bootstrap(format string, input []byte) error
 	// TriggerReset should prepare the machine for reset.
 	TriggerReset() error
 	// Reset should reset the machine to an installable state, given an input reset config (in JSON format).

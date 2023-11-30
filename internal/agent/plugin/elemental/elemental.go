@@ -181,6 +181,10 @@ func (p *ElementalPlugin) Install(input []byte) error {
 	return nil
 }
 
+func (p *ElementalPlugin) Bootstrap(format string, input []byte) error {
+	return nil
+}
+
 func (p *ElementalPlugin) TriggerReset() error {
 	log.Debug("Triggering Elemental reset")
 	// Create /oem dir if not exists yet.
