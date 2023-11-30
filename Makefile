@@ -7,7 +7,7 @@ IMG_NAME ?= ghcr.io/rancher-sandbox/cluster-api-provider-elemental
 IMG_TAG ?= latest
 IMG = ${IMG_NAME}:${IMG_TAG}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.27.1
+ENVTEST_K8S_VERSION = 1.28.3
 
 AGENT_CONFIG_FILE?="iso/config/example-config.yaml"
 
@@ -38,7 +38,7 @@ LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/interna
 ABS_TOOLS_DIR :=  $(abspath bin/)
 GO_INSTALL := ./test/scripts/go_install.sh
 
-GINKGO_VER := v2.13.0
+GINKGO_VER := v2.13.2
 GINKGO := $(ABS_TOOLS_DIR)/ginkgo-$(GINKGO_VER)
 GINKGO_PKG := github.com/onsi/ginkgo/v2/ginkgo
 
@@ -196,8 +196,8 @@ CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 
 ## Tool Versions
-KUSTOMIZE_VERSION ?= v5.0.1
-CONTROLLER_TOOLS_VERSION ?= v0.12.0
+KUSTOMIZE_VERSION ?= v5.2.1
+CONTROLLER_TOOLS_VERSION ?= v0.13.0
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
@@ -262,12 +262,12 @@ endif
 		--entrypoint /usr/bin/elemental docker.io/library/elemental-iso:latest --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
 		--local --squash-no-compression -o /iso docker.io/library/elemental-iso:latest
 
-CAPI_VERSION=v1.5.2
+CAPI_VERSION=v1.5.3
 .PHONY: update-test-capi-crds
 update-test-capi-crds: 
 # These files can not be included when vendoring, but we need them to start the controller test suite
-	wget -P test/capi-crds https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/${CAPI_VERSION}/config/crd/bases/cluster.x-k8s.io_clusters.yaml
-	wget -P test/capi-crds https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/${CAPI_VERSION}/config/crd/bases/cluster.x-k8s.io_machines.yaml
+	wget -O test/capi-crds/cluster.x-k8s.io_clusters.yaml https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/${CAPI_VERSION}/config/crd/bases/cluster.x-k8s.io_clusters.yaml
+	wget -O test/capi-crds/cluster.x-k8s.io_machines.yaml https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/${CAPI_VERSION}/config/crd/bases/cluster.x-k8s.io_machines.yaml
 
 .PHONY: vendor
 vendor:
