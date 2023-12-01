@@ -166,6 +166,22 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, commandRunner utils.Com
 					continue
 				}
 
+				// Handle Reset trigger
+				//
+				// Reset should always be prioritized in the normal reconcile loop,
+				// to allow reset of machines that are otherwise stuck in other phases,
+				// like bootstrapping.
+				if host.NeedsReset {
+					log.Info("Triggering reset")
+					if err := osPlugin.TriggerReset(); err != nil {
+						log.Error(err, "handling reset needed")
+					} else {
+						// If Reset was triggered successfully, exit the program.
+						log.Info("Reset was triggered successfully. Exiting program.")
+						return nil
+					}
+				}
+
 				// Handle bootstrap if needed
 				if host.BootstrapReady && !host.Bootstrapped {
 					log.Info("Applying bootstrap config")
@@ -176,18 +192,6 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, commandRunner utils.Com
 						continue
 					}
 					log.Info("Bootstrap config applied successfully")
-				}
-
-				// Handle Reset Needed
-				if host.NeedsReset {
-					log.Info("Triggering reset")
-					if err := osPlugin.TriggerReset(); err != nil {
-						log.Error(err, "handling reset needed")
-					} else {
-						// If Reset was triggered successfully, exit the program.
-						log.Info("Reset was triggered successfully. Exiting program.")
-						return nil
-					}
 				}
 
 				log.Debugf("Waiting %s...", conf.Agent.Reconciliation.String())

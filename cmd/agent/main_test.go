@@ -265,6 +265,17 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 			Expect(fs.ReadFile("/foo")).Should(Equal([]byte("foo/n")))
 			Expect(fs.ReadFile("/bar")).Should(Equal([]byte("bar/n")))
 		})
+		It("should trigger reset before boostrap", func() {
+			cmd.SetArgs([]string{"--debug"})
+			bootstrapAndResetResponse := triggerResetResponse
+			bootstrapAndResetResponse.BootstrapReady = true
+			gomock.InOrder(
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&bootstrapAndResetResponse, nil),
+				plugin.EXPECT().TriggerReset().Return(nil),
+				// Implicitly any other call to the mocked plugin will make the test fail.
+			)
+			Expect(cmd.Execute()).ToNot(HaveOccurred())
+		})
 		It("should not bootstrap twice", func() {
 			cmd.SetArgs([]string{"--debug"})
 			// Mark the system as bootstrapped. This path is part of the CAPI contract: https://cluster-api.sigs.k8s.io/developer/providers/bootstrap.html#sentinel-file

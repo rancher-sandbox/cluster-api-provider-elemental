@@ -108,7 +108,7 @@ func (p *DummyPlugin) Install(input []byte) error {
 	return nil
 }
 
-func (p *DummyPlugin) Bootstrap(format string, input []byte) error {
+func (p *DummyPlugin) Bootstrap(_ string, _ []byte) error {
 	return nil
 }
 

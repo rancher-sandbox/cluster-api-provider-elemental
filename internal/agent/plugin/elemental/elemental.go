@@ -181,7 +181,7 @@ func (p *ElementalPlugin) Install(input []byte) error {
 	return nil
 }
 
-func (p *ElementalPlugin) Bootstrap(format string, input []byte) error {
+func (p *ElementalPlugin) Bootstrap(_ string, _ []byte) error {
 	return nil
 }
 
