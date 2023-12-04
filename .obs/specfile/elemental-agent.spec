@@ -26,6 +26,7 @@ Group:          System/Management
 URL:            https://github.com/rancher-sandbox/cluster-api-provider-elemental
 Source:         %{name}-%{version}.tar
 Source1:        %{name}.obsinfo
+Source2:        %{name}.rpmlintrc
 Requires:       elemental-plugin
 
 BuildRequires:  make
