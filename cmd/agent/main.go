@@ -51,15 +51,14 @@ func main() {
 	fs := vfs.OSFS
 	osPluginLoader := osplugin.NewLoader()
 	client := client.NewClient(version.Version)
-	commandRunner := utils.NewCommandRunner()
-	cmd := newCommand(fs, osPluginLoader, commandRunner, client)
+	cmd := newCommand(fs, osPluginLoader, client)
 	if err := cmd.Execute(); err != nil {
 		log.Error(err, "running elemental-agent")
 		os.Exit(1)
 	}
 }
 
-func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, commandRunner utils.CommandRunner, client client.Client) *cobra.Command {
+func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, client client.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "elemental-agent",
 		Short: "Elemental Agent command",
@@ -184,14 +183,18 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, commandRunner utils.Com
 
 				// Handle bootstrap if needed
 				if host.BootstrapReady && !host.Bootstrapped {
-					log.Info("Applying bootstrap config")
-					if err := handleBootstrap(commandRunner, fs, client, hostname); err != nil {
+					log.Debug("Handling bootstrap application")
+					exit, err := handleBootstrap(fs, client, osPlugin, hostname)
+					if err != nil {
 						log.Error(err, "handling bootstrap")
-						log.Debugf("Waiting %s...", conf.Agent.Reconciliation.String())
-						time.Sleep(conf.Agent.Reconciliation)
-						continue
 					}
-					log.Info("Bootstrap config applied successfully")
+					if exit {
+						log.Info("Exiting program after bootstrap.")
+						return nil
+					}
+					log.Debugf("Waiting %s...", conf.Agent.Reconciliation.String())
+					time.Sleep(conf.Agent.Reconciliation)
+					continue
 				}
 
 				log.Debugf("Waiting %s...", conf.Agent.Reconciliation.String())
@@ -422,39 +425,55 @@ func handleReset(client client.Client, osPlugin osplugin.Plugin, hostname string
 	}
 }
 
-func handleBootstrap(cmdRunner utils.CommandRunner, fs vfs.FS, client client.Client, hostname string) error {
-	// Avoid applying bootstrap multiple times
-	// See contract: https://cluster-api.sigs.k8s.io/developer/providers/bootstrap.html#sentinel-file
+// handleBootstrap is usually called twice during the bootstrap phase.
+//
+// The first call should normally fetch the remote bootstrap config and propagate it to the plugin implementation.
+// The system should then reboot, and upon successful reboot, the `/run/cluster-api/bootstrap-success.complete`
+// sentinel file is expected to exist.
+// Note that the reboot is currently enforced, since both `cloud-init` and `ignition` formats are meant to be applied
+// during system boot.
+// See contract: https://cluster-api.sigs.k8s.io/developer/providers/bootstrap.html#sentinel-file
+//
+// The second call should normally patch the remote Host resource as bootstrapped,
+// after verifying the existance of `/run/cluster-api/bootstrap-success.complete`.
+// Note that since `/run` is normally mounted as tmpfs and the bootstrap config is not re-executed at every boot,
+// the remote host needs to be patched before the system is ever rebooted an additional time.
+// If reboot happens and `/run/cluster-api/bootstrap-success.complete` is not found on the already-bootstrapped system,
+// the plugin will be invoked again to re-apply the bootstrap config. It's up to the plugin implementation to recover
+// from this state if possible, or to just return an error to highlight manual intervention is needed (and possibly a machine reset).
+func handleBootstrap(fs vfs.FS, client client.Client, osPlugin osplugin.Plugin, hostname string) (bool, error) {
+	// Assume system was already bootstrapped if sentinel file is found
 	_, err := fs.Stat(bootstrapSentinelFile)
+	if err == nil {
+		// Patch the ElementalHost as successfully bootstrapped
+		if _, err := client.PatchHost(api.HostPatchRequest{Bootstrapped: ptr.To(true)}, hostname); err != nil {
+			return false, fmt.Errorf("patching ElementalHost after bootstrap: %w", err)
+		}
+		log.Info("Bootstrap config applied successfully")
+		return false, nil
+	}
+
+	// Sentinel file not found, assume system needs bootstrapping
 	if os.IsNotExist(err) {
 		log.Debug("Fetching bootstrap config")
 		bootstrap, err := client.GetBootstrap(hostname)
 		if err != nil {
-			return fmt.Errorf("fetching bootstrap config: %w", err)
+			return false, fmt.Errorf("fetching bootstrap config: %w", err)
 		}
-
-		for _, file := range bootstrap.Files {
-			if err := utils.WriteFile(fs, file); err != nil {
-				return fmt.Errorf("writing bootstrap file: %w", err)
-			}
+		log.Info("Applying bootstrap config")
+		if err := osPlugin.Bootstrap(bootstrap.Format, []byte(bootstrap.Config)); err != nil {
+			return false, fmt.Errorf("applying bootstrap config: %w", err)
 		}
-
-		for _, command := range bootstrap.Commands {
-			if err := cmdRunner.RunCommand(command); err != nil {
-				return fmt.Errorf("running bootstrap command: %w", err)
-			}
+		log.Info("System is rebooting to execute the bootstrap configuration...")
+		if err := osPlugin.Reboot(); err != nil {
+			// Exit the program in case of reboot failures
+			// Assume this is not recoverable and requires manual intervention
+			return true, fmt.Errorf("rebooting system for bootstrapping: %w", err)
 		}
-	} else if err != nil {
-		return fmt.Errorf("verifying bootstrap sentinel file '%s': %w", bootstrapSentinelFile, err)
+		return true, nil
 	}
 
-	// Patch the ElementalHost as successfully bootstrapped
-	if _, err := client.PatchHost(api.HostPatchRequest{Bootstrapped: ptr.To(true)}, hostname); err != nil {
-		return fmt.Errorf("patching ElementalHost after bootstrap: %w", err)
-	}
-	log.Info("Host successfully patched as bootstrapped")
-
-	return nil
+	return false, fmt.Errorf("verifying bootstrap sentinel file '%s': %w", bootstrapSentinelFile, err)
 }
 
 func handlePost(osPlugin osplugin.Plugin, poweroff bool, reboot bool) {

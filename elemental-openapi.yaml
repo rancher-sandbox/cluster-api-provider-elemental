@@ -306,16 +306,10 @@ components:
   schemas:
     ApiBootstrapResponse:
       properties:
-        runcmd:
-          items:
-            type: string
-          nullable: true
-          type: array
-        write_files:
-          items:
-            $ref: '#/components/schemas/ApiWriteFile'
-          nullable: true
-          type: array
+        config:
+          type: string
+        format:
+          type: string
       type: object
     ApiHostCreateRequest:
       properties:
@@ -385,17 +379,6 @@ components:
           additionalProperties:
             type: string
           type: object
-      type: object
-    ApiWriteFile:
-      properties:
-        content:
-          type: string
-        owner:
-          type: string
-        path:
-          type: string
-        permissions:
-          type: string
       type: object
     RuntimeRawExtension:
       type: object
