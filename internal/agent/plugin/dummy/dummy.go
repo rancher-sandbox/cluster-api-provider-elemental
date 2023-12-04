@@ -20,9 +20,14 @@ const (
 	installFile             = "install.yaml"
 	resetFile               = "reset.yaml"
 	sentinelFileResetNeeded = "reset.needed"
+	bootstrapCloudInitPath  = "/etc/cloud/cloud.cfg.d/elemental-capi-bootstrap.cfg"
+	bootstrapIgnitionPath   = "/usr/local/bin/ignition/data/elemental-capi-bootstrap.conf"
 )
 
-var ErrUnmanagedOSNotReset = errors.New("unmanaged OS reset sentinel file still exists")
+var (
+	ErrUnmanagedOSNotReset        = errors.New("unmanaged OS reset sentinel file still exists")
+	ErrUnsupportedBootstrapFormat = errors.New("unsupported bootstrap format")
+)
 
 type DummyPlugin struct {
 	fs          vfs.FS
@@ -108,7 +113,25 @@ func (p *DummyPlugin) Install(input []byte) error {
 	return nil
 }
 
-func (p *DummyPlugin) Bootstrap(_ string, _ []byte) error {
+func (p *DummyPlugin) Bootstrap(format string, input []byte) error {
+	switch format {
+	case "cloud-config":
+		if err := vfs.MkdirAll(p.fs, filepath.Dir(bootstrapCloudInitPath), os.ModePerm); err != nil {
+			return fmt.Errorf("creating directory '%s': %w", filepath.Dir(bootstrapCloudInitPath), err)
+		}
+		if err := p.fs.WriteFile(bootstrapCloudInitPath, input, os.ModePerm); err != nil {
+			return fmt.Errorf("writing bootstrap file '%s': %w", bootstrapCloudInitPath, err)
+		}
+	case "ignition":
+		if err := vfs.MkdirAll(p.fs, filepath.Dir(bootstrapIgnitionPath), os.ModePerm); err != nil {
+			return fmt.Errorf("creating directory '%s': %w", filepath.Dir(bootstrapIgnitionPath), err)
+		}
+		if err := p.fs.WriteFile(bootstrapIgnitionPath, input, os.ModePerm); err != nil {
+			return fmt.Errorf("writing bootstrap file '%s': %w", bootstrapIgnitionPath, err)
+		}
+	default:
+		return fmt.Errorf("using bootstrapping format '%s': %w", format, ErrUnsupportedBootstrapFormat)
+	}
 	return nil
 }
 

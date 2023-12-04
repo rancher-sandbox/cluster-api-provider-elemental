@@ -100,6 +100,19 @@ var _ = Describe("Dummy Plugin", Label("agent", "plugin", "dummy"), func() {
 		hostManager.EXPECT().Reboot().Return(nil)
 		Expect(plugin.Reboot()).Should(Succeed())
 	})
+	It("should apply cloud-init bootstrap", func() {
+		wantInput := "foo\n"
+		Expect(plugin.Bootstrap("cloud-config", []byte(wantInput))).Should(Succeed())
+		compareFiles(fs, bootstrapCloudInitPath, "_testdata/bootstrap.config")
+	})
+	It("should apply ignition bootstrap", func() {
+		wantInput := "foo\n"
+		Expect(plugin.Bootstrap("ignition", []byte(wantInput))).Should(Succeed())
+		compareFiles(fs, bootstrapIgnitionPath, "_testdata/bootstrap.config")
+	})
+	It("should fail on unknown bootstrap format", func() {
+		Expect(plugin.Bootstrap("uknown", []byte(""))).ShouldNot(Succeed())
+	})
 })
 
 func compareFiles(fs vfs.FS, got string, want string) {
