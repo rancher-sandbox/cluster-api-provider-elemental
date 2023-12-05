@@ -27,6 +27,7 @@ const (
 var (
 	ErrUnmanagedOSNotReset        = errors.New("unmanaged OS reset sentinel file still exists")
 	ErrUnsupportedBootstrapFormat = errors.New("unsupported bootstrap format")
+	ErrBootstrapAlreadyApplied    = errors.New("bootstrap already applied")
 )
 
 type DummyPlugin struct {
@@ -116,6 +117,9 @@ func (p *DummyPlugin) Install(input []byte) error {
 func (p *DummyPlugin) Bootstrap(format string, input []byte) error {
 	switch format {
 	case "cloud-config":
+		if _, err := p.fs.Stat(bootstrapCloudInitPath); err == nil {
+			return fmt.Errorf("applying cloud-config bootstrap: %w", ErrBootstrapAlreadyApplied)
+		}
 		if err := vfs.MkdirAll(p.fs, filepath.Dir(bootstrapCloudInitPath), os.ModePerm); err != nil {
 			return fmt.Errorf("creating directory '%s': %w", filepath.Dir(bootstrapCloudInitPath), err)
 		}
@@ -123,6 +127,9 @@ func (p *DummyPlugin) Bootstrap(format string, input []byte) error {
 			return fmt.Errorf("writing bootstrap file '%s': %w", bootstrapCloudInitPath, err)
 		}
 	case "ignition":
+		if _, err := p.fs.Stat(bootstrapIgnitionPath); err == nil {
+			return fmt.Errorf("applying ignition bootstrap: %w", ErrBootstrapAlreadyApplied)
+		}
 		if err := vfs.MkdirAll(p.fs, filepath.Dir(bootstrapIgnitionPath), os.ModePerm); err != nil {
 			return fmt.Errorf("creating directory '%s': %w", filepath.Dir(bootstrapIgnitionPath), err)
 		}

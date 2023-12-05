@@ -144,6 +144,15 @@ var _ = Describe("Elemental Plugin", Label("agent", "plugin", "elemental"), func
 		hostManager.EXPECT().Reboot().Return(nil)
 		Expect(plugin.Reboot()).Should(Succeed())
 	})
+	It("should bootstrap cloud-init", func() {
+		capiBootstrap, err := os.ReadFile("_testdata/capi-bootstrap.yaml")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(plugin.Bootstrap("cloud-config", capiBootstrap)).Should(Succeed())
+		compareFiles(fs, bootstrapPath, "_testdata/capi-yipified.yaml")
+	})
+	It("should fail bootstrap on unsupported format", func() {
+		Expect(plugin.Bootstrap("ignition", []byte(""))).ShouldNot(Succeed())
+	})
 })
 
 func compareFiles(fs vfs.FS, got string, want string) {

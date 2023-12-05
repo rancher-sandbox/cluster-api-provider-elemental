@@ -432,7 +432,7 @@ func handleReset(client client.Client, osPlugin osplugin.Plugin, hostname string
 // sentinel file is expected to exist.
 // Note that the reboot is currently enforced, since both `cloud-init` and `ignition` formats are meant to be applied
 // during system boot.
-// See contract: https://cluster-api.sigs.k8s.io/developer/providers/bootstrap.html#sentinel-file
+// See: https://cluster-api.sigs.k8s.io/developer/providers/bootstrap.html#sentinel-file
 //
 // The second call should normally patch the remote Host resource as bootstrapped,
 // after verifying the existance of `/run/cluster-api/bootstrap-success.complete`.

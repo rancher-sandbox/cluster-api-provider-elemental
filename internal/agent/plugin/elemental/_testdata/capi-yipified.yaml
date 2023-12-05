@@ -1,0 +1,143 @@
+stages:
+    initramfs:
+        - {}
+    network:
+        - commands:
+            - curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.28.2+k3s1 sh -s - server
+            - mkdir -p /run/cluster-api && echo success > /run/cluster-api/bootstrap-success.complete
+          files:
+            - path: /var/lib/rancher/k3s/server/tls/server-ca.crt
+              permissions: 416
+              owner: 0
+              group: 0
+              content: |
+                -----BEGIN CERTIFICATE-----
+                MIIC6jCCAdKgAwIBAgIBADANBgkqhkiG9w0BAQsFADAVMRMwEQYDVQQDEwprdWJl
+                cm5ldGVzMB4XDTIzMTIwNDE2NDQwN1oXDTMzMTIwMTE2NDkwN1owFTETMBEGA1UE
+                AxMKa3ViZXJuZXRlczCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAKWX
+                HkB6ogklLLq0BaOB42m6zLAWKAKF1PQ5yFQAKmk8/6a1LedgDZD4kQh3+yZj1Xap
+                GyADjfGTSKytmFe0M7rQdUUc83Y1+VJr6xQgZvB4eCyxFp9x7cQdywr+2yHj3v9Q
+                20Cuzz56r0xCWPblYDdO0hllx2rHO1WL9sur7z3bHlKQ6AI793gaQDX9/PvM+U02
+                KFdK3as43F09L9536w8cYbmfPEXJfi/gVfshqPpNbUMCsP3lGvByuv3Yd9vMzBxk
+                GZo/wZuDpSy07WjIipnRxJNx3VjdlaLwMUnie/rsDj3nHH1qpIqkqZudWBuCPQWw
+                vRciQ+AtLXP0I4DTKqUCAwEAAaNFMEMwDgYDVR0PAQH/BAQDAgKkMBIGA1UdEwEB
+                /wQIMAYBAf8CAQAwHQYDVR0OBBYEFKl2AxgvBrEhaJN2fS8sNecVKA19MA0GCSqG
+                SIb3DQEBCwUAA4IBAQBAk60XnxFtIx3eVIhBw13DBnObPg6ZmuJ7UY2GsYvMT3Z4
+                Bj8P45l7bQfxHqAn0ejcuMr/zErkdxjl+9M3kLgy0KcwvvrXoKPOzBbX2VYmVFzg
+                bM4FgnEW4LbJ6FRhK1jhbVErcPid1iLKHDtz/0vyD6LofvRM5onKMmB+5e4yCvN5
+                BXDWPjcoYumk3Web2gOC0jcdhx6ltRpIWPIt7dzHsADpdLipsptddMD/SlNJypCr
+                b6BKQhjtNwHYnftFTGKbDswTVR2HVwmm4kXFpD0ujoDtpslQFNCAzCrUnIp17TLQ
+                r4ng8NOApswoB0Zom/GY02KdT4OLcoGXicPzXCp6
+                -----END CERTIFICATE-----
+              encoding: ""
+              ownerstring: root:root
+            - path: /var/lib/rancher/k3s/server/tls/server-ca.key
+              permissions: 384
+              owner: 0
+              group: 0
+              content: |
+                -----BEGIN RSA PRIVATE KEY-----
+                MIIEogIBAAKCAQEApZceQHqiCSUsurQFo4HjabrMsBYoAoXU9DnIVAAqaTz/prUt
+                52ANkPiRCHf7JmPVdqkbIAON8ZNIrK2YV7QzutB1RRzzdjX5UmvrFCBm8Hh4LLEW
+                n3HtxB3LCv7bIePe/1DbQK7PPnqvTEJY9uVgN07SGWXHasc7VYv2y6vvPdseUpDo
+                Ajv3eBpANf38+8z5TTYoV0rdqzjcXT0v3nfrDxxhuZ88Rcl+L+BV+yGo+k1tQwKw
+                /eUa8HK6/dh328zMHGQZmj/Bm4OlLLTtaMiKmdHEk3HdWN2VovAxSeJ7+uwOPecc
+                fWqkiqSpm51YG4I9BbC9FyJD4C0tc/QjgNMqpQIDAQABAoIBAEyAosNbZN0gxaeE
+                YE6IRc6lNMftlJKFzjr/LyRP50gznFEix5Br+hiOHkNxWyEDYq2ttxB1U/DWAO92
+                TDnI0VVv1Z4WoAxvJz8DCNqFlclnfu326uLDOfwvX4027Xqc0nvWmVUq7iiJec+b
+                n4qBspAa5EpDkXwti6YcQesbBi7m/L5tBMGm9OkFWn0+NnDTvycqABKjLRRTKdAs
+                WVQoNmV5bUNq7M8RAWS7xdiM1OrWEpRvfJmk++G6D7MB6NwJspQZLvf/hsuo3LkA
+                4W5keZYSH1gKBIuQqcwAC0VVg4aynmDknMu5dXQhYQQKjqeZwmQCPwAf0Sei9etB
+                nzSpZwkCgYEAzjN117B0ew3lvjgmn13L7K2SccJ/h+bL7rvCBH1/ukeW4hKHrhvv
+                dEbvFPkgE7+FirYa4H8eraSs6tFLgSgknvzUfAvY/qna/K4AN35JrzMl6LmT4TtJ
+                uzIt8eTmjATEeh+j+XYcR5Ca4PiQ/YPic4uqm+gMb8utenUf/tMsZDMCgYEAzZTe
+                Zc+B3OdAiO+/1Gajp93GHVIf53fA75Bq6AFUofXfiblRwezKmJTfgq70omfAwP8q
+                ZapWtPAAtye3uuiY6xMeBa2HSiEPc11uMT8dIm9qjrTW9lX6ntxtBw5DX+uvpNz7
+                PP/YvpFOyJulMnsCTffcz17QsI6N0qHT5xKqnccCgYBUaOR4oxdLuGiv8bR90JvG
+                C1fDkec67tPUqq/Fvsomq1+stAEu2OixJMiCQWlMLD6yhdGCzQb19k+C4KKUAKbd
+                HoqtLPxrY4Ttox0bmmr3eWyvVCihLvAD3YrJVva5osn7ZDBv0lXJRfzg02AnJ3Hv
+                8uCoadmNekdNtdyfKDsn2QKBgGb4m/Su3UMCaaatP45p4qsgQC1Lh0NvDipwUbvn
+                frao6tCXDEZwDoIif1l7vHjkMv34UQofKdLzK8iRkkuCWaXVK4J4in0s1gpYz+rG
+                zBcFa4ATQGCebCvKCKoyELko2g9fyE+jbrL1IVsF6tbAGkVnUyhjO3BT1uGbwQHK
+                rb7dAoGAXW1QJjqSR0T1mYrsOVlSS61ZLZWF+5fXmJK5gt5c1pKPQECbj9TRpxwG
+                m0WM2DNPNcU62VRyP4H782SmON3Ouv059bp2ZEC7F8I5eARJlzODifFIWDGhOpWg
+                b0Pj+jK8gVGw9F11PpypA9ws8Yz8uCwQF3MRl4ZnSc0l2AnUU0I=
+                -----END RSA PRIVATE KEY-----
+              encoding: ""
+              ownerstring: root:root
+            - path: /var/lib/rancher/k3s/server/tls/client-ca.crt
+              permissions: 416
+              owner: 0
+              group: 0
+              content: |
+                -----BEGIN CERTIFICATE-----
+                MIIC6jCCAdKgAwIBAgIBADANBgkqhkiG9w0BAQsFADAVMRMwEQYDVQQDEwprdWJl
+                cm5ldGVzMB4XDTIzMTIwNDE2NDQwN1oXDTMzMTIwMTE2NDkwN1owFTETMBEGA1UE
+                AxMKa3ViZXJuZXRlczCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAKiI
+                KBhiWaCPG8a35xzdN/VHiHtlZ9z3LyK0ZJv7+f5GU6zL/oyNEkriqQcq0qtJYDSE
+                Ncc0PB621grxUiWrK++Vmtegc1vGCBKg9pYGH1darTyO9csN67VcrL1UYoqLZEDm
+                7VfZPMX2+TV0fmIj/YTnhtNTFP/ZD12E0t5E5amUAHmyARk++KKAwVC9CfmNfF9t
+                e503KuA+unws1HFXHOs3K/08T/FCo+zFBjuvLg6ofB0mkxD8E5slfLK/r2m77MV4
+                SMz/tn2QT/dNHkzuVqatjBkq2sz2I5mk3OxF2e644bcLtnTTpZ3Y0sbZkaTm/60T
+                WM39SC8DuTJzt8d+5aUCAwEAAaNFMEMwDgYDVR0PAQH/BAQDAgKkMBIGA1UdEwEB
+                /wQIMAYBAf8CAQAwHQYDVR0OBBYEFCARdVHQB6Gmna4ll/kc/ZIobczsMA0GCSqG
+                SIb3DQEBCwUAA4IBAQBHDzdIqhOMgWEtrH+h2vpHR8Db04acNrv0ljaXMMo8eDOn
+                0mIARr50CQCtooVz/g6HZ4jX8UPEratb5Yo/swhJd9dyO9jhrlW6DbUYKZj0SIoF
+                L4p9NuO49ZRgL0I5wu6Z69qUs+PTb5fsVS0QnWnEOHTkbVb8xz244DhGOgRfhk24
+                O3htwfZd4FfzbiyQ/9Mc5pw3XvmWN+QwBW/Wof2CmiRvfX/xKX9r9rB7TlzcDZ5/
+                zThuFt8AVuIYZMS+9qp0dLFDrcYM/+LB6k4nPqPvOGmMF+k3YBbTdJ/B9Tk1bdZA
+                TfuzulOxArFXmLrBlgVrrl4vJSVhKK5DfZpLyC2V
+                -----END CERTIFICATE-----
+              encoding: ""
+              ownerstring: root:root
+            - path: /var/lib/rancher/k3s/server/tls/client-ca.key
+              permissions: 384
+              owner: 0
+              group: 0
+              content: |
+                -----BEGIN RSA PRIVATE KEY-----
+                MIIEowIBAAKCAQEAqIgoGGJZoI8bxrfnHN039UeIe2Vn3PcvIrRkm/v5/kZTrMv+
+                jI0SSuKpByrSq0lgNIQ1xzQ8HrbWCvFSJasr75Wa16BzW8YIEqD2lgYfV1qtPI71
+                yw3rtVysvVRiiotkQObtV9k8xfb5NXR+YiP9hOeG01MU/9kPXYTS3kTlqZQAebIB
+                GT74ooDBUL0J+Y18X217nTcq4D66fCzUcVcc6zcr/TxP8UKj7MUGO68uDqh8HSaT
+                EPwTmyV8sr+vabvsxXhIzP+2fZBP900eTO5Wpq2MGSrazPYjmaTc7EXZ7rjhtwu2
+                dNOlndjSxtmRpOb/rRNYzf1ILwO5MnO3x37lpQIDAQABAoIBAB8P0UwFPH2yQq1S
+                kd8pCrpDb+1GWGlKib58vxpcy8vIzH1Jr+XZzmhM9Fhk1SVKxdeIEp1fjEEg87xa
+                lAhrTxK+YSai5QAiNLSyRCCMilRAWzORKc4+B5aKuS/AENV2MYkgxtftKx1VksL+
+                cJjIB17qiVgDtRgeuo1DANaEnkuttgOGQSjdrQ+5yndWUmJAsMs89b+uZlji2Tuw
+                gaa+nY9Vn17DZi+FRWWlvGWha4fjFwyNGLhyxwuRDMIQkNRtg42JbTyGyXElg1pQ
+                FXyE4NfbtNOeS6AAIz1IWlIO4GH1oG/p2FoTPHnA4go99qONBjAjW9bZR5pkzS07
+                fbL//eECgYEAz2MVjcCGP3mIwjqBxcx0Hg487TgXXNAk3XiLwyM/a4yVBlfCW4Xj
+                dxfGIKN0KsIg2I/ApT2TtHuFpUg6PZ5Hk+8ofFrq99H3ivXQO/qGwa91HzVsq18a
+                vE9vAui50MIfiJpFHRluSTZVjM8OnL+mQCH06+Xyca5Rz2PTIOXqKe0CgYEA0Alx
+                sCuVDj6hxqUf6TirWbLK2PD1NGxEzKmPnizKmsHGLss/ptShubV/tj1rPx9ftgp7
+                Hfdyo95zj4uj7GarrzjXl5baD1BsBNL1SlQMzRetfET6Pk0Iaf5oo/CTCqlIMEgc
+                cxUrG9O4hDuSDcQiVzPv584OY43uujnwR5BEU5kCgYEAsut8I/CuocKbr15Eqb7L
+                i0ajX9GdrlBRDdW7Vp5pT8NYqsE6CDYJ2axkHbKHPYCAT/YtsSHf9bz/v2oB/Tk5
+                7bJOjoLt5uJ6G6QZhDWO3zkd5c/0siD58u7hCnR4I1fnVrYp3IIdOQKsajAVHjzm
+                FLx3DrIzKcrIABHSi7ZwAL0CgYACP1ffE1l04fBVeQszNc2EFo5icZf0jQbhPyOy
+                DcHSki1V7BQv9TQaEX/jtB4ofGpISSyzUi0G4CxXbKbEswc/yVlq5dJNQA0qsCy+
+                NNI+lPbm1MfvTF2+52SyALNV9iY1f1HvXFcu4caohww44dmNH56D3pIBOVNO57lU
+                zJYwYQKBgAJ+bJ3hLW+OEE3wFYSPX3y+QfWTzh07u04Qb1eZEbGRm+EQrmZEbDmz
+                PncoNW5xE5BlP0+sCJFt1kJOb9c3mrLYHhD7kScxKHJTtSQ6uAnvNbttZELGcbV2
+                hJTRqZM7wsrdFe4U2uNPD2MBzp2cCoBUpjvoPsIlmKfoxZFtlu04
+                -----END RSA PRIVATE KEY-----
+              encoding: ""
+              ownerstring: root:root
+            - path: /etc/rancher/k3s/config.yaml
+              permissions: 416
+              owner: 0
+              group: 0
+              content: |
+                cluster-init: true
+                kube-apiserver-arg:
+                - anonymous-auth=true
+                - tls-cipher-suites=TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_RSA_WITH_AES_128_GCM_SHA256,TLS_RSA_WITH_AES_256_GCM_SHA384
+                tls-san:
+                - 192.168.122.100
+                token: 80f780f9b01af1d2c1b7c08efe86830c
+              encoding: ""
+              ownerstring: root:root
+    network.after:
+        - commands:
+            - if [ -f /run/cluster-api/bootstrap-success.complete ]; then rm /oem/bootstrap-cloud-config.yaml; fi
