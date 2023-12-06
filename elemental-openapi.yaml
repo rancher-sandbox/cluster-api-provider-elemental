@@ -306,16 +306,10 @@ components:
   schemas:
     ApiBootstrapResponse:
       properties:
-        runcmd:
-          items:
-            type: string
-          nullable: true
-          type: array
-        write_files:
-          items:
-            $ref: '#/components/schemas/ApiWriteFile'
-          nullable: true
-          type: array
+        config:
+          type: string
+        format:
+          type: string
       type: object
     ApiHostCreateRequest:
       properties:
@@ -386,20 +380,8 @@ components:
             type: string
           type: object
       type: object
-    ApiWriteFile:
-      properties:
-        content:
-          type: string
-        owner:
-          type: string
-        path:
-          type: string
-        permissions:
-          type: string
-      type: object
     RuntimeRawExtension:
       type: object
-    TimeDuration: {}
     V1Beta1Agent:
       properties:
         debug:
@@ -419,7 +401,7 @@ components:
         postReset:
           $ref: '#/components/schemas/V1Beta1PostReset'
         reconciliation:
-          $ref: '#/components/schemas/TimeDuration'
+          type: integer
         useSystemCertPool:
           type: boolean
         workDir:

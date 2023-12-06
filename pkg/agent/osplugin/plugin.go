@@ -25,17 +25,20 @@ type PluginContext struct {
 type Plugin interface {
 	// Init is called just after the plugin is loaded to pass context information.
 	Init(PluginContext) error
-	// ApplyCloudInit should apply a cloud-init input config (in JSON format) to the machine.
-	ApplyCloudInit(input []byte) error
 	// GetHostname should return the current machine hostname.
 	GetHostname() (string, error)
-	// PersistHostname should persist the input hostname to the machine.
-	PersistHostname(hostname string) error
-	// PersistFile should persist any file in the input path, given a content.
-	PersistFile(content []byte, path string, permission uint32, owner int, group int) error
+	// InstallCloudInit should install a cloud-init input config (in JSON format) to the machine.
+	InstallCloudInit(input []byte) error
+	// InstallHostname should install the input hostname to the machine.
+	InstallHostname(hostname string) error
+	// InstallFile should install any file to the input path, given a content.
+	InstallFile(content []byte, path string, permission uint32, owner int, group int) error
 	// Install should install any needed components to the machine, given an input install config (in JSON format).
 	// This is called by the agent on '--install' argument.
 	Install(input []byte) error
+	// Bootstrap should apply the CAPI bootstrap config to the machine.
+	// The format can be either "cloud-init" or "ignition".
+	Bootstrap(format string, input []byte) error
 	// TriggerReset should prepare the machine for reset.
 	TriggerReset() error
 	// Reset should reset the machine to an installable state, given an input reset config (in JSON format).

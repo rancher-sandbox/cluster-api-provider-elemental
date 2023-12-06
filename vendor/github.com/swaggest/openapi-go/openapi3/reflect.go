@@ -1,11 +1,8 @@
 package openapi3
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"mime/multipart"
 	"net/http"
 	"reflect"
 	"regexp"
@@ -323,102 +320,17 @@ func (r *Reflector) parseRequestBody(
 	tag string,
 	additionalTags ...string,
 ) error {
-	input := cu.Structure
-
-	httpMethod = strings.ToUpper(httpMethod)
-	_, forceRequestBody := input.(openapi.RequestBodyEnforcer)
-	_, forceJSONRequestBody := input.(openapi.RequestJSONBodyEnforcer)
-
-	// GET, HEAD, DELETE and TRACE requests should not have body.
-	switch httpMethod {
-	case http.MethodGet, http.MethodHead, http.MethodDelete, http.MethodTrace:
-		if !forceRequestBody {
-			return nil
-		}
-	}
-
-	hasTaggedFields := refl.HasTaggedFields(input, tag)
-	for _, t := range additionalTags {
-		if hasTaggedFields {
-			break
-		}
-
-		hasTaggedFields = refl.HasTaggedFields(input, t)
-	}
-
-	// Form data can not have map or array as body.
-	if !hasTaggedFields && len(mapping) == 0 && tag != tagJSON {
-		return nil
-	}
-
-	// If `formData` is defined on a request body `json` is ignored.
-	if tag == tagJSON &&
-		(refl.HasTaggedFields(input, tagFormData) || refl.HasTaggedFields(input, tagForm)) &&
-		!forceJSONRequestBody {
-		return nil
-	}
-
-	// JSON can be a map or array without field tags.
-	if !hasTaggedFields && len(mapping) == 0 && !refl.IsSliceOrMap(input) && refl.FindEmbeddedSliceOrMap(input) == nil {
-		return nil
-	}
-
-	hasFileUpload := false
-	definitionPrefix := ""
-
-	if tag != tagJSON {
-		definitionPrefix += strings.Title(tag)
-	}
-
-	schema, err := r.Reflect(input,
+	schema, hasFileUpload, err := internal.ReflectRequestBody(
+		r.JSONSchemaReflector(),
+		cu,
+		httpMethod,
+		mapping,
+		tag,
+		additionalTags,
 		openapi.WithOperationCtx(oc, false, "body"),
 		jsonschema.DefinitionsPrefix(componentsSchemas),
-		jsonschema.InterceptDefName(func(t reflect.Type, defaultDefName string) string {
-			if tag != tagJSON {
-				v := reflect.New(t).Interface()
-
-				if refl.HasTaggedFields(v, tag) {
-					return definitionPrefix + defaultDefName
-				}
-
-				for _, at := range additionalTags {
-					if refl.HasTaggedFields(v, at) {
-						return definitionPrefix + defaultDefName
-					}
-				}
-			}
-
-			return defaultDefName
-		}),
-		jsonschema.RootRef,
-		jsonschema.PropertyNameMapping(mapping),
-		jsonschema.PropertyNameTag(tag, additionalTags...),
-		sanitizeDefName,
-		jsonschema.InterceptSchema(func(params jsonschema.InterceptSchemaParams) (stop bool, err error) {
-			vv := params.Value.Interface()
-
-			found := false
-			if _, ok := vv.(*multipart.File); ok {
-				found = true
-			}
-
-			if _, ok := vv.(*multipart.FileHeader); ok {
-				found = true
-			}
-
-			if found {
-				params.Schema.AddType(jsonschema.String)
-				params.Schema.WithFormat("binary")
-
-				hasFileUpload = true
-
-				return true, nil
-			}
-
-			return false, nil
-		}),
 	)
-	if err != nil {
+	if err != nil || schema == nil {
 		return err
 	}
 
@@ -468,27 +380,17 @@ func (r *Reflector) parseParametersIn(
 	in openapi.In,
 	additionalTags ...string,
 ) error {
-	input := c.Structure
-	propertyMapping := c.FieldMapping(in)
-
-	if refl.IsSliceOrMap(input) {
+	if refl.IsSliceOrMap(c.Structure) {
 		return nil
 	}
 
-	definitionsPrefix := componentsSchemas
-
-	s, err := r.Reflect(input,
-		openapi.WithOperationCtx(oc, false, in),
-		jsonschema.DefinitionsPrefix(definitionsPrefix),
-		jsonschema.CollectDefinitions(r.collectDefinition()),
-		jsonschema.PropertyNameMapping(propertyMapping),
-		jsonschema.PropertyNameTag(string(in), additionalTags...),
-		func(rc *jsonschema.ReflectContext) {
-			rc.UnnamedFieldWithTag = true
-		},
-		sanitizeDefName,
-		jsonschema.SkipEmbeddedMapsSlices,
-		jsonschema.InterceptProp(func(params jsonschema.InterceptPropParams) error {
+	s, err := internal.ReflectParametersIn(
+		r.JSONSchemaReflector(),
+		oc,
+		c,
+		in,
+		r.collectDefinition(),
+		func(params jsonschema.InterceptPropParams) error {
 			if !params.Processed || len(params.Path) > 1 {
 				return nil
 			}
@@ -530,7 +432,7 @@ func (r *Reflector) parseParametersIn(
 			if refl.HasTaggedFields(property, tagJSON) && !refl.HasTaggedFields(property, string(in)) {
 				propertySchema, err := r.Reflect(property,
 					openapi.WithOperationCtx(oc, false, in),
-					jsonschema.DefinitionsPrefix(definitionsPrefix),
+					jsonschema.DefinitionsPrefix(componentsSchemas),
 					jsonschema.CollectDefinitions(r.collectDefinition()),
 					jsonschema.RootRef,
 					sanitizeDefName,
@@ -583,8 +485,7 @@ func (r *Reflector) parseParametersIn(
 			o.Parameters = append(o.Parameters, ParameterOrRef{Parameter: &p})
 
 			return nil
-		}),
-	)
+		}, additionalTags...)
 	if err != nil {
 		return err
 	}
@@ -620,22 +521,14 @@ func (r *Reflector) collectDefinition() func(name string, schema jsonschema.Sche
 }
 
 func (r *Reflector) parseResponseHeader(resp *Response, oc openapi.OperationContext, cu openapi.ContentUnit) error {
-	output := cu.Structure
-	mapping := cu.FieldMapping(openapi.InHeader)
-
-	if output == nil {
+	if cu.Structure == nil {
 		return nil
 	}
 
 	res := make(map[string]HeaderOrRef)
 
-	schema, err := r.Reflect(output,
-		openapi.WithOperationCtx(oc, true, openapi.InHeader),
-		jsonschema.InlineRefs,
-		jsonschema.PropertyNameMapping(mapping),
-		jsonschema.PropertyNameTag(tagHeader),
-		sanitizeDefName,
-		jsonschema.InterceptProp(func(params jsonschema.InterceptPropParams) error {
+	schema, err := internal.ReflectResponseHeader(r.JSONSchemaReflector(), oc, cu,
+		func(params jsonschema.InterceptPropParams) error {
 			if !params.Processed || len(params.Path) > 1 { // only top-level fields (including embedded).
 				return nil
 			}
@@ -667,7 +560,7 @@ func (r *Reflector) parseResponseHeader(resp *Response, oc openapi.OperationCont
 			}
 
 			return nil
-		}),
+		},
 	)
 	if err != nil {
 		return err
@@ -680,32 +573,6 @@ func (r *Reflector) parseResponseHeader(resp *Response, oc openapi.OperationCont
 	}
 
 	return nil
-}
-
-func (r *Reflector) hasJSONBody(output interface{}) (bool, error) {
-	schema, err := r.Reflect(output, sanitizeDefName)
-	if err != nil {
-		return false, err
-	}
-
-	// Remove non-constraining fields to prepare for marshaling.
-	schema.Title = nil
-	schema.Description = nil
-	schema.Comment = nil
-	schema.ExtraProperties = nil
-	schema.ID = nil
-	schema.Examples = nil
-
-	j, err := json.Marshal(schema)
-	if err != nil {
-		return false, err
-	}
-
-	if !bytes.Equal([]byte("{}"), j) && !bytes.Equal([]byte(`{"type":"object"}`), j) {
-		return true, nil
-	}
-
-	return false, nil
 }
 
 func (r *Reflector) setupResponse(o *Operation, oc openapi.OperationContext) error {
@@ -784,31 +651,20 @@ func (r *Reflector) ensureResponseContentType(resp *Response, contentType string
 }
 
 func (r *Reflector) parseJSONResponse(resp *Response, oc openapi.OperationContext, cu openapi.ContentUnit) error {
-	output := cu.Structure
-	contentType := cu.ContentType
-
-	if output == nil {
-		return nil
-	}
-
-	// Check if output structure exposes meaningful schema.
-	if hasJSONBody, err := r.hasJSONBody(output); err == nil && !hasJSONBody {
-		return nil
-	}
-
-	schema, err := r.Reflect(output,
+	sch, err := internal.ReflectJSONResponse(
+		r.JSONSchemaReflector(),
+		cu.Structure,
 		openapi.WithOperationCtx(oc, true, openapi.InBody),
-		jsonschema.RootRef,
 		jsonschema.DefinitionsPrefix(componentsSchemas),
 		jsonschema.CollectDefinitions(r.collectDefinition()),
-		sanitizeDefName,
 	)
-	if err != nil {
+
+	if err != nil || sch == nil {
 		return err
 	}
 
 	oaiSchema := SchemaOrRef{}
-	oaiSchema.FromJSONSchema(schema.ToSchemaOrBool())
+	oaiSchema.FromJSONSchema(sch.ToSchemaOrBool())
 
 	if oaiSchema.Schema != nil {
 		oaiSchema.Schema.Nullable = nil
@@ -818,6 +674,7 @@ func (r *Reflector) parseJSONResponse(resp *Response, oc openapi.OperationContex
 		resp.Content = map[string]MediaType{}
 	}
 
+	contentType := cu.ContentType
 	if contentType == "" {
 		contentType = mimeJSON
 	}
@@ -830,8 +687,8 @@ func (r *Reflector) parseJSONResponse(resp *Response, oc openapi.OperationContex
 		MapOfAnything: nil,
 	}
 
-	if schema.Description != nil && resp.Description == "" {
-		resp.Description = *schema.Description
+	if sch.Description != nil && resp.Description == "" {
+		resp.Description = *sch.Description
 	}
 
 	return nil

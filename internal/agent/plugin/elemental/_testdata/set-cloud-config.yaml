@@ -1,4 +1,4 @@
 #cloud-config
 users:
-- name: root
-  passwd: root
+    - name: root
+      passwd: root

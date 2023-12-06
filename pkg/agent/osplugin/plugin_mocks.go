@@ -92,18 +92,18 @@ func (m *MockPlugin) EXPECT() *MockPluginMockRecorder {
 	return m.recorder
 }
 
-// ApplyCloudInit mocks base method.
-func (m *MockPlugin) ApplyCloudInit(arg0 []byte) error {
+// Bootstrap mocks base method.
+func (m *MockPlugin) Bootstrap(arg0 string, arg1 []byte) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ApplyCloudInit", arg0)
+	ret := m.ctrl.Call(m, "Bootstrap", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// ApplyCloudInit indicates an expected call of ApplyCloudInit.
-func (mr *MockPluginMockRecorder) ApplyCloudInit(arg0 any) *gomock.Call {
+// Bootstrap indicates an expected call of Bootstrap.
+func (mr *MockPluginMockRecorder) Bootstrap(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApplyCloudInit", reflect.TypeOf((*MockPlugin)(nil).ApplyCloudInit), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Bootstrap", reflect.TypeOf((*MockPlugin)(nil).Bootstrap), arg0, arg1)
 }
 
 // GetHostname mocks base method.
@@ -149,32 +149,46 @@ func (mr *MockPluginMockRecorder) Install(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Install", reflect.TypeOf((*MockPlugin)(nil).Install), arg0)
 }
 
-// PersistFile mocks base method.
-func (m *MockPlugin) PersistFile(arg0 []byte, arg1 string, arg2 uint32, arg3, arg4 int) error {
+// InstallCloudInit mocks base method.
+func (m *MockPlugin) InstallCloudInit(arg0 []byte) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PersistFile", arg0, arg1, arg2, arg3, arg4)
+	ret := m.ctrl.Call(m, "InstallCloudInit", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// PersistFile indicates an expected call of PersistFile.
-func (mr *MockPluginMockRecorder) PersistFile(arg0, arg1, arg2, arg3, arg4 any) *gomock.Call {
+// InstallCloudInit indicates an expected call of InstallCloudInit.
+func (mr *MockPluginMockRecorder) InstallCloudInit(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PersistFile", reflect.TypeOf((*MockPlugin)(nil).PersistFile), arg0, arg1, arg2, arg3, arg4)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstallCloudInit", reflect.TypeOf((*MockPlugin)(nil).InstallCloudInit), arg0)
 }
 
-// PersistHostname mocks base method.
-func (m *MockPlugin) PersistHostname(arg0 string) error {
+// InstallFile mocks base method.
+func (m *MockPlugin) InstallFile(arg0 []byte, arg1 string, arg2 uint32, arg3, arg4 int) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PersistHostname", arg0)
+	ret := m.ctrl.Call(m, "InstallFile", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// PersistHostname indicates an expected call of PersistHostname.
-func (mr *MockPluginMockRecorder) PersistHostname(arg0 any) *gomock.Call {
+// InstallFile indicates an expected call of InstallFile.
+func (mr *MockPluginMockRecorder) InstallFile(arg0, arg1, arg2, arg3, arg4 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PersistHostname", reflect.TypeOf((*MockPlugin)(nil).PersistHostname), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstallFile", reflect.TypeOf((*MockPlugin)(nil).InstallFile), arg0, arg1, arg2, arg3, arg4)
+}
+
+// InstallHostname mocks base method.
+func (m *MockPlugin) InstallHostname(arg0 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InstallHostname", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InstallHostname indicates an expected call of InstallHostname.
+func (mr *MockPluginMockRecorder) InstallHostname(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstallHostname", reflect.TypeOf((*MockPlugin)(nil).InstallHostname), arg0)
 }
 
 // PowerOff mocks base method.

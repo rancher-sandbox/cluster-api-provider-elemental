@@ -1,14 +1,15 @@
 package api
 
 import (
-	"fmt"
+	"errors"
 
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"golang.org/x/exp/maps"
-	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+var ErrBootstrapSecretNoConfig = errors.New("CAPI bootstrap secret does not contain any config")
 
 type HostCreateRequest struct {
 	Auth    string `header:"Authorization"`
@@ -144,8 +145,8 @@ type BootstrapGetRequest struct {
 }
 
 type BootstrapResponse struct {
-	Files    []WriteFile `json:"write_files" yaml:"write_files"` //nolint:tagliatelle //Matching cloud-init schema
-	Commands []string    `json:"runcmd" yaml:"runcmd"`
+	Format string `json:"format"`
+	Config string `json:"config"`
 }
 
 type WriteFile struct {
@@ -156,9 +157,13 @@ type WriteFile struct {
 }
 
 func (b *BootstrapResponse) fromSecret(secret *corev1.Secret) error {
-	data := secret.Data["value"]
-	if err := yaml.Unmarshal(data, b); err != nil {
-		return fmt.Errorf("unmarshalling bootstrap secret value: %w", err)
+	b.Format = "cloud-config" // Assume 'cloud-config' by default.
+	if format, found := secret.Data["format"]; found {
+		b.Format = string(format)
 	}
-	return nil
+	if config, found := secret.Data["value"]; found {
+		b.Config = string(config)
+		return nil
+	}
+	return ErrBootstrapSecretNoConfig
 }

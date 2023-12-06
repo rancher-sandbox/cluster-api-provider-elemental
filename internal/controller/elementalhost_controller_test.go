@@ -116,6 +116,15 @@ var _ = Describe("Elemental API Host controller", Label("api", "elemental-host")
 			},
 		},
 	}
+	bootstrapFormat := "cloud-config"
+	bootstrapConfig := `#cloud-config
+write_files:
+-   path: '/tmp/test-file'
+	owner: 'root:root'
+	permissions: '0640'
+	content: 'JUST FOR TESTING'
+runcmd:
+- 'echo testing'`
 	bootstrapSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-bootstrap",
@@ -123,15 +132,8 @@ var _ = Describe("Elemental API Host controller", Label("api", "elemental-host")
 		},
 		Type: "cluster.x-k8s.io/secret",
 		StringData: map[string]string{
-			"format": "cloud-config",
-			"value": `#cloud-config
-write_files:
--   path: '/tmp/test-file'
-    owner: 'root:root'
-    permissions: '0640'
-    content: 'JUST FOR TESTING'
-runcmd:
-- 'echo testing'`,
+			"format": bootstrapFormat,
+			"value":  bootstrapConfig,
 		},
 	}
 	request := api.HostCreateRequest{
@@ -237,16 +239,8 @@ runcmd:
 	It("should get bootstrap if bootstrap ready", func() {
 		bootstrapResponse, err := eClient.GetBootstrap(request.Name)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(len(bootstrapResponse.Commands)).Should(Equal(1), "Must only contain one command")
-		Expect(bootstrapResponse.Commands).Should(ContainElement("echo testing"))
-		wantFile := api.WriteFile{
-			Path:        "/tmp/test-file",
-			Owner:       "root:root",
-			Permissions: "0640",
-			Content:     "JUST FOR TESTING",
-		}
-		Expect(len(bootstrapResponse.Files)).Should(Equal(1), "Must only contain one file to write")
-		Expect(bootstrapResponse.Files).Should(ContainElement(wantFile))
+		Expect(bootstrapResponse.Format).Should(Equal(bootstrapFormat))
+		Expect(bootstrapResponse.Config).Should(Equal(bootstrapConfig))
 	})
 	It("should patch host with bootstrapped label", func() {
 		// Patch the host as bootstrapped

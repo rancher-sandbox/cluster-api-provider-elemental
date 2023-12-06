@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,14 +20,22 @@ import (
 )
 
 const (
-	cloudConfigDir       = "/oem"
-	hostnameInitPath     = "/oem/set-hostname.yaml"
-	identityInitPath     = "/oem/set-private-key.yaml"
-	cloudConfigInitPath  = "/oem/set-cloud-config.yaml"
-	agentConfigInitPath  = "/oem/set-config-yaml.yaml"
-	agentConfigTempPath  = "/tmp/elemental-agent-config.yaml"
-	resetCloudConfigPath = "/oem/reset-cloud-config.yaml"
-	liveModeFile         = "/run/cos/live_mode"
+	cloudConfigDir        = "/oem"
+	hostnameInitPath      = "/oem/set-hostname.yaml"
+	identityInitPath      = "/oem/set-private-key.yaml"
+	cloudConfigInitPath   = "/oem/set-cloud-config.yaml"
+	agentConfigInitPath   = "/oem/set-config-yaml.yaml"
+	agentConfigTempPath   = "/tmp/elemental-agent-config.yaml"
+	resetCloudConfigPath  = "/oem/reset-cloud-config.yaml"
+	bootstrapPath         = "/oem/bootstrap-cloud-config.yaml"
+	liveModeFile          = "/run/cos/live_mode"
+	bootstrapSentinelPath = "/run/cluster-api/bootstrap-success.complete"
+)
+
+var (
+	ErrUnsupportedBootstrapFormat = errors.New("unsupported bootstrap format")
+	ErrBootstrapAlreadyApplied    = errors.New("bootstrap already applied")
+	ErrUnsupportedCloudInitSchema = errors.New("unsupported cloud-init schema")
 )
 
 var _ osplugin.Plugin = (*ElementalPlugin)(nil)
@@ -68,8 +77,8 @@ func (p *ElementalPlugin) Init(context osplugin.PluginContext) error {
 	return nil
 }
 
-func (p *ElementalPlugin) ApplyCloudInit(input []byte) error {
-	log.Debug("Applying cloud-init config")
+func (p *ElementalPlugin) InstallCloudInit(input []byte) error {
+	log.Debug("Installing cloud-init config")
 	cloudInitBytes := []byte("#cloud-config\n")
 	cloudInitContentBytes, err := plugin.UnmarshalRawJSONToYaml(input)
 	if err != nil {
@@ -90,13 +99,13 @@ func (p *ElementalPlugin) GetHostname() (string, error) {
 	return hostname, nil
 }
 
-func (p *ElementalPlugin) PersistHostname(hostname string) error {
-	log.Debugf("Persisting hostname: %s", hostname)
+func (p *ElementalPlugin) InstallHostname(hostname string) error {
+	log.Debugf("Installing hostname: %s", hostname)
 	hostNameCommand := fmt.Sprintf("echo %s > /etc/hostname", hostname)
 	hostNameConfig := schema.YipConfig{
 		Name: "Configure host",
 		Stages: map[string][]schema.Stage{
-			"boot.after": {
+			"boot": {
 				{
 					Commands: []string{hostNameCommand},
 				},
@@ -113,15 +122,15 @@ func (p *ElementalPlugin) PersistHostname(hostname string) error {
 	return nil
 }
 
-func (p *ElementalPlugin) PersistFile(content []byte, path string, permission uint32, owner int, group int) error {
-	log.Debugf("Persisting file: %s", path)
+func (p *ElementalPlugin) InstallFile(content []byte, path string, permission uint32, owner int, group int) error {
+	log.Debugf("Installing file: %s", path)
 	// Create a "set-*.yaml" cloud init file to persist the input content
 	filename := p.formatSetFileName(path)
 	cloudConfigFilePath := fmt.Sprintf("%s/%s", cloudConfigDir, filename)
 	writeFileConfig := schema.YipConfig{
 		Name: "Write File",
 		Stages: map[string][]schema.Stage{
-			"boot.after": {
+			"boot": {
 				{
 					Files: []schema.File{
 						{
@@ -181,6 +190,89 @@ func (p *ElementalPlugin) Install(input []byte) error {
 	return nil
 }
 
+func (p *ElementalPlugin) Bootstrap(format string, input []byte) error {
+	switch format {
+	case "cloud-config":
+		if _, err := p.fs.Stat(bootstrapPath); err == nil {
+			return ErrBootstrapAlreadyApplied
+		}
+		yipConfig, err := p.convertBootstrapToYip(input)
+		if err != nil {
+			return fmt.Errorf("converting bootstrap config to yip schema: %w", err)
+		}
+		if err := p.fs.WriteFile(bootstrapPath, yipConfig, os.ModePerm); err != nil {
+			return fmt.Errorf("writing bootstrap config: %w", err)
+		}
+	default:
+		return fmt.Errorf("using bootstrapping format '%s': %w", format, ErrUnsupportedBootstrapFormat)
+	}
+	return nil
+}
+
+func (p *ElementalPlugin) convertBootstrapToYip(input []byte) ([]byte, error) {
+	// Ensure file starts with #cloud-config by removing any other previous comment
+	// or adding it if missing
+	inputString := string(input)
+	startIndex := strings.Index(inputString, "#cloud-config")
+	if startIndex == -1 {
+		inputString = fmt.Sprintf("#cloud-config\n\n%s", inputString)
+	} else {
+		inputString = inputString[startIndex:]
+	}
+
+	// Map the #cloud-config input to a yip config
+	config, err := schema.Load(inputString, nil, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("loading #cloud-config input: %w", err)
+	}
+
+	// Sanity check
+	if config.Stages == nil || config.Stages["boot"] == nil {
+		return nil, fmt.Errorf("validating yip stages: %w", ErrUnsupportedCloudInitSchema)
+	}
+
+	// By default yip maps most of the cloud-init style keys to a 'boot' stage.
+	// Since the k3s and rke2 and other providers may fetch their own binaries from remote urls,
+	// we need to ensure that at least the 'runcmd' instructions are ran after network is available.
+	// For simplicity everything is going to be moved at network stage.
+	config.Stages["network"] = config.Stages["boot"]
+	delete(config.Stages, "boot")
+
+	// TODO: Fix this in k3s upstream
+	sentinelCreated := false
+	for _, stage := range config.Stages["network"] {
+		for _, command := range stage.Commands {
+			if strings.Contains(command, bootstrapSentinelPath) {
+				sentinelCreated = true
+			}
+		}
+	}
+	if !sentinelCreated && len(config.Stages["network"]) > 0 {
+		log.Info("Bootstrap provider does not implement /run/cluster-api/bootstrap-success.complete creation. Attempting fix.")
+		config.Stages["network"][0].Commands = append(config.Stages["network"][0].Commands, "mkdir -p /run/cluster-api && echo success > /run/cluster-api/bootstrap-success.complete")
+	}
+
+	// elemental-toolkit will re-execute the bootstrap config at each boot.
+	// Since CAPI bootstraps are not meant to be executed more than twice, this config needs to
+	// self-destruct after application.
+	// Note that these config contain sensitive information, like a k8s cluster join token,
+	// so deleting the file instead of moving it away is a safer approach.
+	// The `/run/cluster-api/bootstrap-success.complete` sentinel file can be used for this purpose.
+	// See: https://cluster-api.sigs.k8s.io/developer/providers/bootstrap.html#sentinel-file
+	config.Stages["network.after"] = []schema.Stage{
+		{
+			Commands: []string{fmt.Sprintf("if [ -f %s ]; then rm %s; fi", bootstrapSentinelPath, bootstrapPath)},
+		},
+	}
+
+	// Now serialize to yaml
+	configBytes, err := yaml.Marshal(config)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling bootstrap config: %w", err)
+	}
+	return configBytes, nil
+}
+
 func (p *ElementalPlugin) TriggerReset() error {
 	log.Debug("Triggering Elemental reset")
 	// Create /oem dir if not exists yet.
@@ -191,7 +283,7 @@ func (p *ElementalPlugin) TriggerReset() error {
 	resetCloudConfig := schema.YipConfig{
 		Name: "Elemental Reset",
 		Stages: map[string][]schema.Stage{
-			"network.after": {
+			"network": {
 				schema.Stage{
 					If:   "[ -f /run/cos/recovery_mode ]",
 					Name: "Runs elemental reset and re-register the system",
