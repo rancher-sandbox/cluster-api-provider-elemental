@@ -39,14 +39,6 @@ const (
 // Conditions.
 // See: https://github.com/kubernetes-sigs/cluster-api/blob/main/docs/proposals/20200506-conditions.md
 
-// Common Conditions.
-const (
-	// Ready provides a summary of the overall state of the resource.
-	Ready clusterv1.ConditionType = "Ready"
-	// UnderlyingConditionsFailedReason is a generic reason used whenever any other Condition for this resource failed.
-	UnderlyingConditionsFailedReason = "UnderlyingConditionsFailed"
-)
-
 // ElementalHost Conditions and Reasons.
 const (
 	// RegistrationReady describes the Host registration phase.

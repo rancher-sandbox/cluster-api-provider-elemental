@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/hostname"
@@ -21,7 +22,9 @@ import (
 	"github.com/twpayne/go-vfs"
 	"github.com/twpayne/go-vfsafero"
 	"gopkg.in/yaml.v3"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
 const (
@@ -127,8 +130,30 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, client client.Client) *
 				hostname, registration = handleRegistration(client, osPlugin, pubKey, conf.Registration.Token, conf.Agent.Reconciliation)
 				log.Infof("Successfully registered as '%s'", hostname)
 				if err := handlePostRegistration(osPlugin, hostname, identity, registration); err != nil {
-					return fmt.Errorf("handling post registration: %w", err)
+					err = fmt.Errorf("handling post registration: %w", err)
+					attemptConditionReporting(client, hostname, clusterv1.Condition{
+						Type:     infrastructurev1beta1.RegistrationReady,
+						Status:   corev1.ConditionFalse,
+						Severity: clusterv1.ConditionSeverityError,
+						Reason:   infrastructurev1beta1.RegistrationFailedReason,
+						Message:  err.Error(),
+					})
+					return err
 				}
+				attemptConditionReporting(client, hostname, clusterv1.Condition{
+					Type:     infrastructurev1beta1.RegistrationReady,
+					Status:   corev1.ConditionTrue,
+					Severity: clusterv1.ConditionSeverityInfo,
+					Reason:   "",
+					Message:  "",
+				})
+				attemptConditionReporting(client, hostname, clusterv1.Condition{
+					Type:     infrastructurev1beta1.InstallationReady,
+					Status:   corev1.ConditionFalse,
+					Severity: infrastructurev1beta1.WaitingForInstallationReasonSeverity,
+					Reason:   infrastructurev1beta1.WaitingForInstallationReason,
+					Message:  "Host is registered successfully. Waiting for installation.",
+				})
 				// Exit program if --install was not called
 				if !installFlag {
 					return nil
@@ -173,12 +198,27 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, client client.Client) *
 				if host.NeedsReset {
 					log.Info("Triggering reset")
 					if err := osPlugin.TriggerReset(); err != nil {
-						log.Error(err, "handling reset needed")
-					} else {
-						// If Reset was triggered successfully, exit the program.
-						log.Info("Reset was triggered successfully. Exiting program.")
-						return nil
+						log.Error(err, "triggering reset")
+						err := fmt.Errorf("triggering reset: %w", err)
+						attemptConditionReporting(client, hostname, clusterv1.Condition{
+							Type:     infrastructurev1beta1.ResetReady,
+							Status:   corev1.ConditionFalse,
+							Severity: clusterv1.ConditionSeverityError,
+							Reason:   infrastructurev1beta1.ResetFailedReason,
+							Message:  err.Error(),
+						})
+						continue
 					}
+					attemptConditionReporting(client, hostname, clusterv1.Condition{
+						Type:     infrastructurev1beta1.ResetReady,
+						Status:   corev1.ConditionFalse,
+						Severity: infrastructurev1beta1.WaitingForResetReasonSeverity,
+						Reason:   infrastructurev1beta1.WaitingForResetReason,
+						Message:  "Reset was triggered successfully. Waiting for host to reset.",
+					})
+					// If Reset was triggered successfully, exit the program.
+					log.Info("Reset was triggered successfully. Exiting program.")
+					return nil
 				}
 
 				// Handle bootstrap if needed
@@ -187,9 +227,16 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, client client.Client) *
 					exit, err := handleBootstrap(fs, client, osPlugin, hostname)
 					if err != nil {
 						log.Error(err, "handling bootstrap")
+						attemptConditionReporting(client, hostname, clusterv1.Condition{
+							Type:     infrastructurev1beta1.BootstrapReady,
+							Status:   corev1.ConditionFalse,
+							Severity: clusterv1.ConditionSeverityError,
+							Reason:   infrastructurev1beta1.BootstrapFailedReason,
+							Message:  err.Error(),
+						})
 					}
 					if exit {
-						log.Info("Exiting program after bootstrap.")
+						log.Info("Exiting program after bootstrap application.")
 						return nil
 					}
 					log.Debugf("Waiting %s...", conf.Agent.Reconciliation.String())
@@ -308,10 +355,24 @@ func handlePostRegistration(osPlugin osplugin.Plugin, hostnameToSet string, id i
 func handleInstall(client client.Client, osPlugin osplugin.Plugin, hostname string, registrationToken string, installationRecoveryPeriod time.Duration) {
 	cloudConfigAlreadyApplied := false
 	alreadyInstalled := false
-	installationError := false
+	var installationError error
+	installationErrorReason := infrastructurev1beta1.InstallationFailedReason
 	for {
-		// Wait for recovery (end user may fix the remote installation instructions meanwhile)
-		if installationError {
+		if installationError != nil {
+			// Log error
+			log.Error(installationError, "installing host")
+			// Attempt to report failed condition on management server
+			attemptConditionReporting(client, hostname, clusterv1.Condition{
+				Type:     infrastructurev1beta1.InstallationReady,
+				Status:   corev1.ConditionFalse,
+				Severity: clusterv1.ConditionSeverityError,
+				Reason:   installationErrorReason,
+				Message:  installationError.Error(),
+			})
+			// Clear error for next attempt
+			installationError = nil
+			installationErrorReason = infrastructurev1beta1.InstallationFailedReason
+			// Wait for recovery (end user may fix the remote installation instructions meanwhile)
 			log.Debugf("Waiting '%s' on installation error for installation instructions to mutate", installationRecoveryPeriod)
 			time.Sleep(installationRecoveryPeriod)
 		}
@@ -322,8 +383,7 @@ func handleInstall(client client.Client, osPlugin osplugin.Plugin, hostname stri
 			log.Debug("Fetching remote registration")
 			registration, err = client.GetRegistration(registrationToken)
 			if err != nil {
-				log.Error(err, "getting remote Registration")
-				installationError = true
+				installationError = fmt.Errorf("getting remote Registration: %w", err)
 				continue
 			}
 		}
@@ -331,13 +391,13 @@ func handleInstall(client client.Client, osPlugin osplugin.Plugin, hostname stri
 		if !cloudConfigAlreadyApplied {
 			cloudConfigBytes, err := json.Marshal(registration.Config.CloudConfig)
 			if err != nil {
-				log.Error(err, "marshalling cloud config")
-				installationError = true
+				installationError = fmt.Errorf("marshalling cloud config: %w", err)
+				installationErrorReason = infrastructurev1beta1.CloudConfigInstallationFailedReason
 				continue
 			}
 			if err := osPlugin.InstallCloudInit(cloudConfigBytes); err != nil {
-				log.Error(err, "applying cloud config")
-				installationError = true
+				installationError = fmt.Errorf("installing cloud config: %w", err)
+				installationErrorReason = infrastructurev1beta1.CloudConfigInstallationFailedReason
 				continue
 			}
 			cloudConfigAlreadyApplied = true
@@ -346,24 +406,23 @@ func handleInstall(client client.Client, osPlugin osplugin.Plugin, hostname stri
 		if !alreadyInstalled {
 			installBytes, err := json.Marshal(registration.Config.Elemental.Install)
 			if err != nil {
-				log.Error(err, "marshalling install config")
-				installationError = true
+				installationError = fmt.Errorf("marshalling install config: %w", err)
 				continue
 			}
 			if err := osPlugin.Install(installBytes); err != nil {
-				// TODO: Patch the Elemental Host with installation failure status and reason
-				log.Error(err, "installing Elemental")
-				installationError = true
+				installationError = fmt.Errorf("installing host: %w", err)
 				continue
 			}
 			alreadyInstalled = true
 		}
 		// Report installation success
-		if _, err := client.PatchHost(api.HostPatchRequest{
-			Installed: ptr.To(true),
-		}, hostname); err != nil {
-			log.Error(err, "patching host with installation successful")
-			installationError = true
+		patchRequest := api.HostPatchRequest{Installed: ptr.To(true)}
+		patchRequest.SetCondition(infrastructurev1beta1.InstallationReady,
+			corev1.ConditionTrue,
+			clusterv1.ConditionSeverityInfo,
+			"", "")
+		if _, err := client.PatchHost(patchRequest, hostname); err != nil {
+			installationError = fmt.Errorf("patching host with installation successful: %w", err)
 			continue
 		}
 		break
@@ -371,11 +430,23 @@ func handleInstall(client client.Client, osPlugin osplugin.Plugin, hostname stri
 }
 
 func handleReset(client client.Client, osPlugin osplugin.Plugin, hostname string, registrationToken string, resetRecoveryPeriod time.Duration) {
-	resetError := false
+	var resetError error
 	alreadyReset := false
 	for {
 		// Wait for recovery (end user may fix the remote reset instructions meanwhile)
-		if resetError {
+		if resetError != nil {
+			// Log error
+			log.Error(resetError, "resetting")
+			// Attempt to report failed condition on management server
+			attemptConditionReporting(client, hostname, clusterv1.Condition{
+				Type:     infrastructurev1beta1.ResetReady,
+				Status:   corev1.ConditionFalse,
+				Severity: clusterv1.ConditionSeverityError,
+				Reason:   infrastructurev1beta1.ResetFailedReason,
+				Message:  resetError.Error(),
+			})
+			// Clear error for next attempt
+			resetError = nil
 			log.Debugf("Waiting '%s' on reset error for reset instructions to mutate", resetRecoveryPeriod)
 			time.Sleep(resetRecoveryPeriod)
 		}
@@ -383,8 +454,7 @@ func handleReset(client client.Client, osPlugin osplugin.Plugin, hostname string
 		// Repeat in case of failures. May be exploited server side to track repeated attempts.
 		log.Debugf("Marking ElementalHost for deletion: %s", hostname)
 		if err := client.DeleteHost(hostname); err != nil {
-			log.Error(err, "marking host for deletion")
-			resetError = true
+			resetError = fmt.Errorf("marking host for deletion: %w", err)
 			continue
 		}
 		// Reset
@@ -393,32 +463,30 @@ func handleReset(client client.Client, osPlugin osplugin.Plugin, hostname string
 			log.Debug("Fetching remote registration")
 			registration, err := client.GetRegistration(registrationToken)
 			if err != nil {
-				log.Error(err, "getting remote Registration")
-				resetError = true
+				resetError = fmt.Errorf("getting remote Registration: %w", err)
 				continue
 			}
 			log.Debug("Resetting...")
 			resetBytes, err := json.Marshal(registration.Config.Elemental.Reset)
 			if err != nil {
-				log.Error(err, "marshalling reset config")
-				resetError = true
+				resetError = fmt.Errorf("marshalling reset config: %w", err)
 				continue
 			}
 			if err := osPlugin.Reset(resetBytes); err != nil {
-				// TODO: Patch the Elemental Host with reset failure status and reason
-				log.Error(err, "resetting Elemental")
-				resetError = true
+				resetError = fmt.Errorf("resetting host: %w", err)
 				continue
 			}
 			alreadyReset = true
 		}
 		// Report reset success
 		log.Debug("Patching ElementalHost as reset")
-		if _, err := client.PatchHost(api.HostPatchRequest{
-			Reset: ptr.To(true),
-		}, hostname); err != nil {
-			log.Error(err, "patching host with reset successful")
-			resetError = true
+		patchRequest := api.HostPatchRequest{Reset: ptr.To(true)}
+		patchRequest.SetCondition(infrastructurev1beta1.ResetReady,
+			corev1.ConditionTrue,
+			clusterv1.ConditionSeverityInfo,
+			"", "")
+		if _, err := client.PatchHost(patchRequest, hostname); err != nil {
+			resetError = fmt.Errorf("patching host with reset successful: %w", err)
 			continue
 		}
 		break
@@ -446,7 +514,12 @@ func handleBootstrap(fs vfs.FS, client client.Client, osPlugin osplugin.Plugin, 
 	_, err := fs.Stat(bootstrapSentinelFile)
 	if err == nil {
 		// Patch the ElementalHost as successfully bootstrapped
-		if _, err := client.PatchHost(api.HostPatchRequest{Bootstrapped: ptr.To(true)}, hostname); err != nil {
+		patchRequest := api.HostPatchRequest{Bootstrapped: ptr.To(true)}
+		patchRequest.SetCondition(infrastructurev1beta1.BootstrapReady,
+			corev1.ConditionTrue,
+			clusterv1.ConditionSeverityInfo,
+			"", "")
+		if _, err := client.PatchHost(patchRequest, hostname); err != nil {
 			return false, fmt.Errorf("patching ElementalHost after bootstrap: %w", err)
 		}
 		log.Info("Bootstrap config applied successfully")
@@ -464,6 +537,13 @@ func handleBootstrap(fs vfs.FS, client client.Client, osPlugin osplugin.Plugin, 
 		if err := osPlugin.Bootstrap(bootstrap.Format, []byte(bootstrap.Config)); err != nil {
 			return false, fmt.Errorf("applying bootstrap config: %w", err)
 		}
+		attemptConditionReporting(client, hostname, clusterv1.Condition{
+			Type:     infrastructurev1beta1.BootstrapReady,
+			Status:   corev1.ConditionFalse,
+			Severity: infrastructurev1beta1.WaitingForBootstrapReasonSeverity,
+			Reason:   infrastructurev1beta1.WaitingForBootstrapReason,
+			Message:  "Waiting for bootstrap to be executed",
+		})
 		log.Info("System is rebooting to execute the bootstrap configuration...")
 		if err := osPlugin.Reboot(); err != nil {
 			// Exit the program in case of reboot failures
@@ -487,5 +567,17 @@ func handlePost(osPlugin osplugin.Plugin, poweroff bool, reboot bool) {
 		if err := osPlugin.Reboot(); err != nil {
 			log.Error(err, "Rebooting system")
 		}
+	}
+}
+
+// attemptConditionReporting is a best effort method to update the remote condition.
+// Due to the unexpected nature of failures, we should not attempt indefinitely as there is no indication for recovery.
+// For example if a network error occurs, leading to a failed condition, it's likely that reporting the condition will fail as well.
+// The controller should always try to reconcile the 'True' status for each Host condition, so reporting failures should not be critical.
+func attemptConditionReporting(client client.Client, hostname string, condition clusterv1.Condition) {
+	if _, err := client.PatchHost(api.HostPatchRequest{
+		Condition: &condition,
+	}, hostname); err != nil {
+		log.Error(err, "reporting condition", "conditionType", condition.Type, "conditionReason", condition.Reason)
 	}
 }

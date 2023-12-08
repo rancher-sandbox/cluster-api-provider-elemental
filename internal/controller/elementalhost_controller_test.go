@@ -18,6 +18,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/cluster-api/util/conditions"
 )
 
 var _ = Describe("ElementalHost controller", Label("controller", "elemental-host"), Ordered, func() {
@@ -75,6 +76,12 @@ var _ = Describe("ElementalHost controller", Label("controller", "elemental-host
 				updatedHost)).Should(Succeed())
 			return updatedHost.Labels[v1beta1.LabelElementalHostNeedsReset]
 		}).WithTimeout(time.Minute).Should(Equal("true"), "ElementalHost should have needs-reset label")
+		resetCondition := conditions.Get(updatedHost, v1beta1.ResetReady)
+		Expect(resetCondition).ShouldNot(BeNil())
+		Expect(resetCondition.Status).Should(Equal(corev1.ConditionFalse))
+		Expect(resetCondition.Severity).Should(Equal(v1beta1.WaitingForResetReasonSeverity))
+		Expect(resetCondition.Reason).Should(Equal(v1beta1.WaitingForResetReason))
+		Expect(resetCondition.Message).Should(Equal("Waiting for remote host to reset"))
 		// Patch with reset done label
 		updatedHost.Labels[v1beta1.LabelElementalHostReset] = "true"
 		Expect(k8sClient.Update(ctx, updatedHost)).Should(Succeed())
@@ -205,6 +212,15 @@ runcmd:
 		value, found := updatedHost.Labels[v1beta1.LabelElementalHostInstalled]
 		Expect(found).Should(BeTrue(), "Installed label must be present")
 		Expect(value).Should(Equal("true"), "Installed label must have 'true' value")
+		Eventually(func() bool {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      request.Name,
+				Namespace: namespace.Name},
+				updatedHost)).Should(Succeed())
+			registeredCondition := conditions.Get(updatedHost, v1beta1.RegistrationReady)
+			installedCondition := conditions.Get(updatedHost, v1beta1.InstallationReady)
+			return registeredCondition != nil && registeredCondition.Status == corev1.ConditionTrue && installedCondition != nil && installedCondition.Status == corev1.ConditionTrue
+		}).WithTimeout(time.Minute).Should(BeTrue(), "conditions must be set")
 	})
 	It("should fail to get bootstrap if bootstrap secret not ready yet", func() {
 		_, err := eClient.GetBootstrap(request.Name)
@@ -256,9 +272,16 @@ runcmd:
 		value, found := updatedHost.Labels[v1beta1.LabelElementalHostInstalled]
 		Expect(found).Should(BeTrue(), "Bootstrapped label must be present")
 		Expect(value).Should(Equal("true"), "Bootstrapped label must have 'true' value")
+		Eventually(func() bool {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      request.Name,
+				Namespace: namespace.Name},
+				updatedHost)).Should(Succeed())
+			bootstrappedCondition := conditions.Get(updatedHost, v1beta1.BootstrapReady)
+			return bootstrappedCondition != nil && bootstrappedCondition.Status == corev1.ConditionTrue
+		}).WithTimeout(time.Minute).Should(BeTrue(), "condition must be set")
 	})
 	It("should receive needs reset flag", func() {
-		// Add the bootstrap secret reference
 		host := &v1beta1.ElementalHost{}
 		Expect(k8sClient.Get(ctx, types.NamespacedName{
 			Name:      request.Name,
@@ -283,6 +306,14 @@ runcmd:
 			host)).Should(Succeed())
 		Expect(host.GetDeletionTimestamp()).ShouldNot(BeNil())
 		Expect(host.GetDeletionTimestamp().IsZero()).ShouldNot(BeTrue())
+		Eventually(func() bool {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      request.Name,
+				Namespace: namespace.Name},
+				host)).Should(Succeed())
+			value, found := host.Labels[v1beta1.LabelElementalHostNeedsReset]
+			return found && value == "true"
+		}).WithTimeout(time.Minute).Should(BeTrue(), "needs reset label must be set")
 	})
 	It("should remove ElementalHost finalizer on reset complete", func() {
 		// Patch the host as reset done

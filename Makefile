@@ -93,7 +93,7 @@ vet: ## Run go vet against code.
 
 .PHONY: test
 test: manifests generate fmt vet envtest generate-mocks $(GINKGO) ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GINKGO) -v -r --trace --race --covermode=atomic --coverprofile=coverage.out --coverpkg=github.com/rancher-sandbox/cluster-api-provider-elemental/... ./internal/... ./cmd/... ./pkg/...
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GINKGO) -v -r --trace --race --covermode=atomic --coverprofile=coverage.out $(GINKGO_EXTRA_ARGS) --coverpkg=github.com/rancher-sandbox/cluster-api-provider-elemental/... ./internal/... ./cmd/... ./pkg/...
 
 ##@ Build
 .PHONY: build-agent

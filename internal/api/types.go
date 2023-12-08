@@ -7,6 +7,9 @@ import (
 	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+
+	"sigs.k8s.io/cluster-api/util/conditions"
 )
 
 var ErrBootstrapSecretNoConfig = errors.New("CAPI bootstrap secret does not contain any config")
@@ -58,6 +61,18 @@ type HostPatchRequest struct {
 	Bootstrapped *bool             `json:"bootstrapped,omitempty"`
 	Installed    *bool             `json:"installed,omitempty"`
 	Reset        *bool             `json:"reset,omitempty"`
+
+	Condition *clusterv1.Condition `json:"condition,omitempty"`
+}
+
+func (h *HostPatchRequest) SetCondition(conditionType clusterv1.ConditionType, status corev1.ConditionStatus, severity clusterv1.ConditionSeverity, reason string, message string) {
+	h.Condition = &clusterv1.Condition{
+		Type:     conditionType,
+		Status:   status,
+		Severity: severity,
+		Reason:   reason,
+		Message:  message,
+	}
 }
 
 func (h *HostPatchRequest) applyToElementalHost(elementalHost *infrastructurev1beta1.ElementalHost) {
@@ -79,6 +94,13 @@ func (h *HostPatchRequest) applyToElementalHost(elementalHost *infrastructurev1b
 	if h.Reset != nil {
 		elementalHost.Labels[infrastructurev1beta1.LabelElementalHostReset] = "true"
 	}
+	if elementalHost.Status.Conditions == nil {
+		elementalHost.Status.Conditions = clusterv1.Conditions{}
+	}
+	// Set the patch condition to the ElementalHost object.
+	conditions.Set(elementalHost, h.Condition)
+	// Always update the Summary after conditions change
+	conditions.SetSummary(elementalHost)
 }
 
 type HostResponse struct {

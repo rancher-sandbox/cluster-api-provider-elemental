@@ -185,7 +185,7 @@ func (p *ElementalPlugin) Install(input []byte) error {
 	// Install
 	log.Info("Running elemental install")
 	if err := p.cliRunner.Install(install); err != nil {
-		return fmt.Errorf("running elemental install: %w", err)
+		return fmt.Errorf("invoking elemental install: %w", err)
 	}
 	return nil
 }
@@ -330,7 +330,7 @@ func (p *ElementalPlugin) Reset(input []byte) error {
 	// Call elemental-toolkit reset
 	log.Info("Running elemental reset")
 	if err := p.cliRunner.Reset(reset); err != nil {
-		return fmt.Errorf("running elemental reset: %w", err)
+		return fmt.Errorf("invoking elemental reset: %w", err)
 	}
 	// Mount /oem back if needed
 	command = fmt.Sprintf("mount %s", cloudConfigDir)

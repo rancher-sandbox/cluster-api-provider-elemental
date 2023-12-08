@@ -43,6 +43,16 @@ type ElementalClusterStatus struct {
 	FailureDomains clusterv1.FailureDomains `json:"failureDomains,omitempty"`
 }
 
+// GetConditions returns the set of conditions for this object.
+func (c *ElementalCluster) GetConditions() clusterv1.Conditions {
+	return c.Status.Conditions
+}
+
+// SetConditions sets the conditions on this object.
+func (c *ElementalCluster) SetConditions(conditions clusterv1.Conditions) {
+	c.Status.Conditions = conditions
+}
+
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
