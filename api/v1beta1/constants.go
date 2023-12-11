@@ -89,7 +89,8 @@ const (
 	// MissingBootstrapSecretReason indicates that no bootstrap secret has been found.
 	MissingBootstrapSecretReason = "MissingBootstrapSecret"
 	// MissingAvailableHostsReason indicates that no ElementalHost is available for association.
-	MissingAvailableHostsReason = "MissingAvailableHosts"
+	MissingAvailableHostsReason                                     = "MissingAvailableHosts"
+	MissingAvailableHostsReasonSeverity clusterv1.ConditionSeverity = clusterv1.ConditionSeverityWarning
 	// AssociatedHostNotFoundReason indicates that a previously associated ElementalHost is not found.
 	// This can be the consequence of deleting an existing ElementalHost, for example to replace defective hardware.
 	// This Reason should be transient as the provider should try to associate the ElementalMachine with a new available ElementalHost.
@@ -98,12 +99,14 @@ const (
 
 	// HostReady summarizes the status of the associated ElementalHost.
 	HostReady clusterv1.ConditionType = "HostReady"
+	// HostWaitingForInstallReason indicates the associated ElementalHost was not installed yet.
+	// This can only happen if association was manually edited by the user.
+	// In normal cirumstances only ElementalHosts must be installed first to be selected for association.
+	HostWaitingForInstallReason = "HostWaitingForInstall"
 	// HostWaitingForBootstrapReason indicates that the bootstrap was applied on the host
 	// and the provider is waiting for success confirmation.
 	HostWaitingForBootstrapReason                                     = "HostWaitingForBootstrap"
 	HostWaitingForBootstrapReasonSeverity clusterv1.ConditionSeverity = clusterv1.ConditionSeverityInfo
-	// HostBoostrapFailedReason indicates that the underlying host failed to apply the CAPI bootstrap.
-	HostBoostrapFailedReason = "HostBootstrapFailed"
 )
 
 // ElementalCluster Conditions and Reasons.

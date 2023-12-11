@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -30,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -197,13 +199,42 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, fmt.Errorf("fetching ElementalMachine: %w", err)
 	}
 
+	// Create the patch helper.
+	patchHelper, err := patch.NewHelper(elementalMachine, r.Client)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
+	}
+	defer func() {
+		// Reconcile Summary Condition
+		conditions.SetSummary(elementalMachine)
+		// Reconciliation step #12: Patch the resource to persist changes
+		if err := patchHelper.Patch(ctx, elementalMachine); err != nil {
+			rerr = errors.Join(rerr, fmt.Errorf("patching ElementalMachine: %w", err))
+		}
+	}()
+
 	// Reconciliation step #1: If the resource does not have a Machine owner, exit the reconciliation
 	machine, err := util.GetOwnerMachine(ctx, r.Client, elementalMachine.ObjectMeta)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("getting Machine owner: %w", err)
+		err := fmt.Errorf("getting Machine owner: %w", err)
+		conditions.Set(elementalMachine, &clusterv1.Condition{
+			Type:     infrastructurev1beta1.AssociationReady,
+			Status:   corev1.ConditionFalse,
+			Severity: clusterv1.ConditionSeverityError,
+			Reason:   infrastructurev1beta1.MissingMachineOwnerReason,
+			Message:  err.Error(),
+		})
+		return ctrl.Result{}, err
 	}
 	if machine == nil {
 		logger.Info("ElementalMachine resource has no Machine owner")
+		conditions.Set(elementalMachine, &clusterv1.Condition{
+			Type:     infrastructurev1beta1.AssociationReady,
+			Status:   corev1.ConditionFalse,
+			Severity: clusterv1.ConditionSeverityError,
+			Reason:   infrastructurev1beta1.MissingMachineOwnerReason,
+			Message:  "ElementalMachine resource has no Machine owner",
+		})
 		return ctrl.Result{}, nil
 	}
 
@@ -213,26 +244,29 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	// Fetch the Cluster
 	cluster, err := util.GetClusterFromMetadata(ctx, r.Client, elementalMachine.ObjectMeta)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("fetching Cluster: %w", err)
+		err := fmt.Errorf("fetching Cluster: %w", err)
+		conditions.Set(elementalMachine, &clusterv1.Condition{
+			Type:     infrastructurev1beta1.AssociationReady,
+			Status:   corev1.ConditionFalse,
+			Severity: clusterv1.ConditionSeverityError,
+			Reason:   infrastructurev1beta1.MissingAssociatedClusterReason,
+			Message:  err.Error(),
+		})
+		return ctrl.Result{}, err
 	}
 
 	// Reconciliation step #3: If the Cluster to which this resource belongs cannot be found, exit the reconciliation
 	if cluster == nil {
 		logger.Info("ElementalMachine resource is not associated with any Cluster")
+		conditions.Set(elementalMachine, &clusterv1.Condition{
+			Type:     infrastructurev1beta1.AssociationReady,
+			Status:   corev1.ConditionFalse,
+			Severity: clusterv1.ConditionSeverityError,
+			Reason:   infrastructurev1beta1.MissingAssociatedClusterReason,
+			Message:  "ElementalMachine resource is not associated with any Cluster",
+		})
 		return ctrl.Result{}, nil
 	}
-
-	// Create the patch helper.
-	patchHelper, err := patch.NewHelper(elementalMachine, r.Client)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
-	}
-	defer func() {
-		// Reconciliation step #12: Patch the resource to persist changes
-		if err := patchHelper.Patch(ctx, elementalMachine); err != nil {
-			rerr = errors.Join(rerr, fmt.Errorf("patching ElementalMachine: %w", err))
-		}
-	}()
 
 	if elementalMachine.GetDeletionTimestamp().IsZero() {
 		// The object is not being deleted, so register the finalizer
@@ -243,11 +277,25 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		// Reconciliation step #5: If the associated Cluster‘s status.infrastructureReady is false, exit the reconciliation
 		if !cluster.Status.InfrastructureReady {
 			logger.Info("Cluster status.infrastructureReady is false")
+			conditions.Set(elementalMachine, &clusterv1.Condition{
+				Type:     infrastructurev1beta1.AssociationReady,
+				Status:   corev1.ConditionFalse,
+				Severity: clusterv1.ConditionSeverityError,
+				Reason:   infrastructurev1beta1.MissingClusterInfrastructureReadyReason,
+				Message:  "Cluster status.infrastructureReady is false",
+			})
 			return ctrl.Result{}, nil
 		}
 		// Reconciliation step #6: If the associated Machine‘s spec.bootstrap.dataSecretName is nil, exit the reconciliation
 		if machine.Spec.Bootstrap.DataSecretName == nil {
 			logger.Info("Machine spec.bootstrap.dataSecretName is nil")
+			conditions.Set(elementalMachine, &clusterv1.Condition{
+				Type:     infrastructurev1beta1.AssociationReady,
+				Status:   corev1.ConditionFalse,
+				Severity: clusterv1.ConditionSeverityError,
+				Reason:   infrastructurev1beta1.MissingBootstrapSecretReason,
+				Message:  "Machine spec.bootstrap.dataSecretName is nil",
+			})
 			return ctrl.Result{}, nil
 		}
 		// Reconciliation step #7: Reconcile provider-specific machine infrastructure
@@ -277,6 +325,9 @@ func (r *ElementalMachineReconciler) reconcileNormal(ctx context.Context, elemen
 		WithValues(ilog.KeyNamespace, elementalMachine.Namespace).
 		WithValues(ilog.KeyElementalMachine, elementalMachine.Name)
 	logger.Info("Normal ElementalMachine reconcile")
+	// Always assume Ready false
+	elementalMachine.Status.Ready = false
+
 	// Reconciliation step #7-2: If this is a control plane machine, register the instance with the provider’s control plane load balancer (optional)
 	// TODO: Not implemented yet.
 
@@ -292,29 +343,69 @@ func (r *ElementalMachineReconciler) reconcileNormal(ctx context.Context, elemen
 	// Re-association with a new host should happen for this ElementalMachine then.
 	if apierrors.IsNotFound(err) {
 		logger.Info("ElementalHost is not found. Removing association reference", ilog.KeyElementalHost, elementalMachine.Spec.HostRef.Name)
+		conditions.Set(elementalMachine, &clusterv1.Condition{
+			Type:     infrastructurev1beta1.AssociationReady,
+			Status:   corev1.ConditionFalse,
+			Severity: infrastructurev1beta1.AssociatedHostNotFoundReasonSeverity,
+			Reason:   infrastructurev1beta1.AssociatedHostNotFoundReason,
+			Message:  fmt.Sprintf("Previously associated host not found: %s", *elementalMachine.Spec.ProviderID),
+		})
 		elementalMachine.Spec.ProviderID = nil
 		elementalMachine.Spec.HostRef = nil
-		// TODO: Most likely deserves a specific failure message.
-		elementalMachine.Status.Ready = false
 		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
 	}
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("fetching associated ElementalHost: %w", err)
+		err := fmt.Errorf("fetching associated ElementalHost '%s': %w", *elementalMachine.Spec.ProviderID, err)
+		conditions.Set(elementalMachine, &clusterv1.Condition{
+			Type:     infrastructurev1beta1.AssociationReady,
+			Status:   corev1.ConditionFalse,
+			Severity: infrastructurev1beta1.AssociatedHostNotFoundReasonSeverity,
+			Reason:   infrastructurev1beta1.AssociatedHostNotFoundReason,
+			Message:  err.Error(),
+		})
+		// Do not remove the association. Assume this is a recoverable error (for ex. permissions or i/o)
+		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, err
 	}
+	// Since we invalidate AssociationReady when fetching the associated host and failing,
+	// we must restore AssociationReady true status after recovery.
+	conditions.Set(elementalMachine, &clusterv1.Condition{
+		Type:     infrastructurev1beta1.AssociationReady,
+		Status:   corev1.ConditionTrue,
+		Severity: clusterv1.ConditionSeverityInfo,
+	})
 	logger = logger.WithValues(ilog.KeyElementalHost, host.Name)
 
 	// Check if the Host is installed and Bootstrapped
 	if value, found := host.Labels[infrastructurev1beta1.LabelElementalHostInstalled]; !found || value != "true" {
 		logger.Info("Waiting for ElementalHost to be installed")
+		conditions.Set(elementalMachine, &clusterv1.Condition{
+			Type:     infrastructurev1beta1.HostReady,
+			Status:   corev1.ConditionFalse,
+			Severity: clusterv1.ConditionSeverityError,
+			Reason:   infrastructurev1beta1.HostWaitingForInstallReason,
+			Message:  fmt.Sprintf("ElementalHost '%s' is not installed.", host.Name),
+		})
 		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
 	}
 	if value, found := host.Labels[infrastructurev1beta1.LabelElementalHostBootstrapped]; !found || value != "true" {
 		logger.Info("Waiting for ElementalHost to be bootstrapped")
+		conditions.Set(elementalMachine, &clusterv1.Condition{
+			Type:     infrastructurev1beta1.HostReady,
+			Status:   corev1.ConditionFalse,
+			Severity: infrastructurev1beta1.HostWaitingForBootstrapReasonSeverity,
+			Reason:   infrastructurev1beta1.HostWaitingForBootstrapReason,
+			Message:  fmt.Sprintf("Waiting for ElementalHost '%s' to be bootstrapped", host.Name),
+		})
 		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
 	}
 
 	// Mark the ElementalMachine as ready
 	elementalMachine.Status.Ready = true
+	conditions.Set(elementalMachine, &clusterv1.Condition{
+		Type:     infrastructurev1beta1.HostReady,
+		Status:   corev1.ConditionTrue,
+		Severity: clusterv1.ConditionSeverityInfo,
+	})
 
 	// Reconciliation step #11: Set spec.failureDomain to the provider-specific failure domain the instance is running in (optional)
 	// TODO: Not implemented yet.
@@ -365,6 +456,13 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 	// If there are no available, wait for new hosts to be installed
 	if len(elementalHosts.Items) == 0 {
 		logger.Info("No ElementalHosts available for association. Waiting for new hosts to be provisioned.")
+		conditions.Set(elementalMachine, &clusterv1.Condition{
+			Type:     infrastructurev1beta1.AssociationReady,
+			Status:   corev1.ConditionFalse,
+			Severity: infrastructurev1beta1.MissingAvailableHostsReasonSeverity,
+			Reason:   infrastructurev1beta1.MissingAvailableHostsReason,
+			Message:  fmt.Sprintf("No ElementalHosts available for association."),
+		})
 		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
 	}
 
@@ -419,8 +517,13 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 	}
 
 	logger.Info("Association successful")
+	conditions.Set(elementalMachine, &clusterv1.Condition{
+		Type:     infrastructurev1beta1.AssociationReady,
+		Status:   corev1.ConditionTrue,
+		Severity: clusterv1.ConditionSeverityInfo,
+	})
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: time.Second}, nil
 }
 
 func (r *ElementalMachineReconciler) reconcileDelete(ctx context.Context, elementalMachine *infrastructurev1beta1.ElementalMachine) (ctrl.Result, error) {
