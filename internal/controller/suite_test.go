@@ -141,6 +141,11 @@ func setupAllWithManager(k8sManager manager.Manager) {
 		Scheme: k8sManager.GetScheme(),
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
+	err = (&ElementalClusterReconciler{
+		Client: k8sManager.GetClient(),
+		Scheme: k8sManager.GetScheme(),
+	}).SetupWithManager(ctx, k8sManager)
+	Expect(err).ToNot(HaveOccurred())
 }
 
 var _ = AfterSuite(func() {

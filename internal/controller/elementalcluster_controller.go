@@ -21,9 +21,11 @@ import (
 	"errors"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/cluster-api/util"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -32,6 +34,12 @@ import (
 
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	ilog "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/log"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+)
+
+var (
+	ErrMissingControlPlaneEndpoint = errors.New("ElementalCluster.spec.controlPlaneEndpoint was not defined")
+	ErrMissingCAPIClusterOwner     = errors.New("Missing CAPI Cluster owner")
 )
 
 // ElementalClusterReconciler reconciles a ElementalCluster object.
@@ -80,30 +88,54 @@ func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, fmt.Errorf("fetching ElementalCluster: %w", err)
 	}
 
-	// Reconciliation step #2: If the resource does not have a Cluster owner, exit the reconciliation
-	cluster, err := util.GetOwnerCluster(ctx, r.Client, elementalCluster.ObjectMeta)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("getting Cluster owner: %w", err)
-	}
-	if cluster == nil {
-		logger.Info("Current resource has no Cluster owner")
-		return ctrl.Result{}, nil
-	}
-
-	// Reconciliation step #3: Add the provider-specific finalizer, if needed
-	// Not needed yet
-
 	// Create the patch helper.
 	patchHelper, err := patch.NewHelper(elementalCluster, r.Client)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
 	}
 	defer func() {
+		// Reconcile Summary Condition
+		conditions.SetSummary(elementalCluster)
 		// Reconciliation step #8: Patch the resource to persist changes
 		if err := patchHelper.Patch(ctx, elementalCluster); err != nil {
 			rerr = errors.Join(rerr, fmt.Errorf("patching ElementalCluster: %w", err))
 		}
 	}()
+
+	// Always assume Ready status is false.
+	elementalCluster.Status.Ready = false
+
+	// Reconciliation step #2: If the resource does not have a Cluster owner, exit the reconciliation
+	cluster, err := util.GetOwnerCluster(ctx, r.Client, elementalCluster.ObjectMeta)
+	if err != nil {
+		err := fmt.Errorf("getting CAPI Cluster owner: %w", err)
+		conditions.Set(elementalCluster, &clusterv1.Condition{
+			Type:     infrastructurev1beta1.CAPIClusterReady,
+			Status:   corev1.ConditionFalse,
+			Severity: clusterv1.ConditionSeverityError,
+			Reason:   infrastructurev1beta1.MissingClusterOwnerReason,
+			Message:  err.Error(),
+		})
+		return ctrl.Result{}, err
+	}
+	if cluster == nil {
+		conditions.Set(elementalCluster, &clusterv1.Condition{
+			Type:     infrastructurev1beta1.CAPIClusterReady,
+			Status:   corev1.ConditionFalse,
+			Severity: clusterv1.ConditionSeverityError,
+			Reason:   infrastructurev1beta1.MissingClusterOwnerReason,
+			Message:  ErrMissingCAPIClusterOwner.Error(),
+		})
+		return ctrl.Result{}, ErrMissingCAPIClusterOwner
+	}
+	conditions.Set(elementalCluster, &clusterv1.Condition{
+		Type:     infrastructurev1beta1.CAPIClusterReady,
+		Status:   corev1.ConditionTrue,
+		Severity: clusterv1.ConditionSeverityInfo,
+	})
+
+	// Reconciliation step #3: Add the provider-specific finalizer, if needed
+	// Not needed yet
 
 	// Reconciliation step #4: Reconcile provider-specific cluster infrastructure
 	if elementalCluster.GetDeletionTimestamp() == nil || elementalCluster.GetDeletionTimestamp().IsZero() {
@@ -118,6 +150,8 @@ func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		}
 	}
 
+	// Reconciliation step #6: Set status.ready to true
+	elementalCluster.Status.Ready = true
 	return ctrl.Result{}, nil
 }
 
@@ -127,11 +161,21 @@ func (r *ElementalClusterReconciler) reconcileNormal(ctx context.Context, elemen
 		WithValues(ilog.KeyElementalCluster, elementalCluster.Name)
 	logger.Info("Normal ElementalCluster reconcile")
 	// Reconciliation step #5: If the provider created a load balancer for the control plane, record its hostname or IP
-	// TODO: If using kube-vip, most likely nothing to do.
-	//       However if no controlPlaneEndpoint was provided by the user, this could be an error.
-
-	// Reconciliation step #6: Set status.ready to true
-	elementalCluster.Status.Ready = true
+	if !elementalCluster.Spec.ControlPlaneEndpoint.IsValid() {
+		conditions.Set(elementalCluster, &clusterv1.Condition{
+			Type:     infrastructurev1beta1.ControlPlaneEndpointReady,
+			Status:   corev1.ConditionFalse,
+			Severity: clusterv1.ConditionSeverityError,
+			Reason:   infrastructurev1beta1.MissingControlPlaneEndpointReason,
+			Message:  ErrMissingControlPlaneEndpoint.Error(),
+		})
+		return ErrMissingControlPlaneEndpoint
+	}
+	conditions.Set(elementalCluster, &clusterv1.Condition{
+		Type:     infrastructurev1beta1.ControlPlaneEndpointReady,
+		Status:   corev1.ConditionTrue,
+		Severity: clusterv1.ConditionSeverityInfo,
+	})
 
 	// Reconciliation step #7: Set status.failureDomains based on available provider failure domains (optional)
 	// TODO: Considering implementing failure domains.
@@ -143,8 +187,8 @@ func (r *ElementalClusterReconciler) reconcileDelete(ctx context.Context, elemen
 		WithValues(ilog.KeyNamespace, elementalCluster.Namespace).
 		WithValues(ilog.KeyElementalCluster, elementalCluster.Name)
 	logger.Info("Delete ElementalCluster reconcile")
-	// TODO: Most likely nothing.
-	//       Expect CAPI controller to delete the Machine objects as well and on cascade the owned ElementalMachines.
-	//       ElementalMachine controller can handle infra deletion reconciliation (for ex. reset)
+	// Nothing to do.
+	// Expect CAPI Core controller to delete the Machine objects as well, and on cascade the owned ElementalMachines.
+	// ElementalMachine controller handles the infra deletion reconciliation (for ex. host reset)
 	return nil
 }

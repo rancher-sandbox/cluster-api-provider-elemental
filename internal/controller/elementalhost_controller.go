@@ -82,6 +82,9 @@ func (r *ElementalHostReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
 	}
 	defer func() {
+		// Reconcile Summary Condition
+		conditions.SetSummary(host)
+		// Patch the resource
 		if err := patchHelper.Patch(ctx, host); err != nil {
 			rerr = errors.Join(rerr, fmt.Errorf("patching ElementalHost: %w", err))
 		}
@@ -148,8 +151,6 @@ func (r *ElementalHostReconciler) reconcileNormal(ctx context.Context, host *inf
 		})
 	}
 
-	// Reconcile Summary Condition
-	conditions.SetSummary(host)
 	return ctrl.Result{}, nil
 }
 

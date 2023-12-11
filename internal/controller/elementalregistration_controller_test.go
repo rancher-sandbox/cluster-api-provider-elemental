@@ -18,7 +18,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/cluster-api/util/patch"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("ElementalRegistration controller", Label("controller", "elemental-registration"), Ordered, func() {
@@ -46,7 +48,11 @@ var _ = Describe("ElementalRegistration controller", Label("controller", "elemen
 		Expect(k8sClient.Delete(ctx, &registration)).Should(Succeed())
 	})
 	AfterAll(func() {
-		Expect(k8sClient.Delete(ctx, &namespace)).Should(Succeed())
+		deletionPropagation := metav1.DeletePropagationForeground
+		Expect(k8sClient.Delete(ctx, &namespace, &ctrlclient.DeleteOptions{
+			GracePeriodSeconds: ptr.To(int64(0)),
+			PropagationPolicy:  &deletionPropagation,
+		})).Should(Succeed())
 	})
 	It("should set URI if empty", func() {
 		// Initial Registration has empty URI field.
@@ -275,7 +281,11 @@ wcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K
 		Expect(k8sClient.Delete(ctx, &registration)).Should(Succeed())
 	})
 	AfterAll(func() {
-		Expect(k8sClient.Delete(ctx, &namespace)).Should(Succeed())
+		deletionPropagation := metav1.DeletePropagationForeground
+		Expect(k8sClient.Delete(ctx, &namespace, &ctrlclient.DeleteOptions{
+			GracePeriodSeconds: ptr.To(int64(0)),
+			PropagationPolicy:  &deletionPropagation,
+		})).Should(Succeed())
 	})
 	It("should return expected Registration Response", func() {
 		conf := config.Config{

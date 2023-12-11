@@ -108,6 +108,10 @@ const (
 
 // ElementalCluster Conditions and Reasons.
 const (
+	// CAPIClusterReady describes the presence of a CAPI Cluster resource owning the ElementalCluster.
+	CAPIClusterReady clusterv1.ConditionType = "CAPIClusterReady"
+	// MissingClusterOwnerReason indicates the ElementalCluster has no CAPI Cluster owner set.
+	MissingClusterOwnerReason = "MissingClusterOwner"
 	// ControlPlaneEndpointReady describes the status of the ControlPlaneEndpoint.
 	ControlPlaneEndpointReady clusterv1.ConditionType = "ControlPlaneEndpointReady"
 	// MissingControlPlaneEndpointReason indicates that the ElementalCluster.spec.controlPlaneEndpoint was not defined.
