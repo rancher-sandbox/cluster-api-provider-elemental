@@ -147,6 +147,9 @@ func (r *ElementalHostReconciler) reconcileNormal(ctx context.Context, host *inf
 			Severity: v1beta1.ConditionSeverityInfo,
 		})
 	}
+
+	// Reconcile Summary Condition
+	conditions.SetSummary(host)
 	return ctrl.Result{}, nil
 }
 

@@ -18,6 +18,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/conditions"
 )
 
@@ -92,6 +93,66 @@ var _ = Describe("ElementalHost controller", Label("controller", "elemental-host
 				updatedHost)
 			return apierrors.IsNotFound(err)
 		}).WithTimeout(time.Minute).Should(BeTrue(), "ElementalHost should be deleted")
+	})
+	It("should set conditions summary", func() {
+		// Create an "already installed" host
+		hostWithConditions := host
+		hostWithConditions.ObjectMeta.Name = "test-with-conditions"
+		hostWithConditions.Labels = map[string]string{v1beta1.LabelElementalHostInstalled: "true"}
+		Expect(k8sClient.Create(ctx, &hostWithConditions)).Should(Succeed())
+		Eventually(func() corev1.ConditionStatus {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      hostWithConditions.Name,
+				Namespace: hostWithConditions.Namespace},
+				&hostWithConditions)).Should(Succeed())
+			condition := conditions.Get(&hostWithConditions, v1beta1.InstallationReady)
+			if condition == nil {
+				return corev1.ConditionUnknown
+			}
+			return condition.Status
+		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionTrue), "InstallationReady condition should be true")
+		Expect(conditions.Get(&hostWithConditions, v1beta1.RegistrationReady)).ShouldNot(BeNil(), "RegistrationReady condition should be present")
+		Expect(conditions.Get(&hostWithConditions, v1beta1.RegistrationReady).Status).Should(Equal(corev1.ConditionTrue), "RegistrationReady condition should be true if host is installed")
+		Expect(conditions.Get(&hostWithConditions, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
+		Expect(conditions.Get(&hostWithConditions, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionTrue), "Conditions summary should be true")
+		// Set one unready condition and expect summary to be false
+		hostWithConditionsPatch := hostWithConditions
+		conditions.Set(&hostWithConditionsPatch, &clusterv1.Condition{
+			Type:     v1beta1.BootstrapReady,
+			Status:   corev1.ConditionFalse,
+			Severity: clusterv1.ConditionSeverityError,
+			Reason:   "test reason",
+			Message:  "just for testing",
+		})
+		patchObject(ctx, k8sClient, &hostWithConditions, &hostWithConditionsPatch)
+		Eventually(func() corev1.ConditionStatus {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      hostWithConditions.Name,
+				Namespace: hostWithConditions.Namespace},
+				&hostWithConditions)).Should(Succeed())
+			condition := conditions.Get(&hostWithConditions, clusterv1.ReadyCondition)
+			if condition == nil {
+				return corev1.ConditionUnknown
+			}
+			return condition.Status
+		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionTrue), "Conditions summary should be false")
+		// Set bootstrapped label
+		hostWithConditionsPatch.Status.Conditions = clusterv1.Conditions{}
+		hostWithConditionsPatch.Labels = map[string]string{v1beta1.LabelElementalHostBootstrapped: "true"}
+		patchObject(ctx, k8sClient, &hostWithConditions, &hostWithConditionsPatch)
+		Eventually(func() corev1.ConditionStatus {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      hostWithConditions.Name,
+				Namespace: hostWithConditions.Namespace},
+				&hostWithConditions)).Should(Succeed())
+			condition := conditions.Get(&hostWithConditions, v1beta1.BootstrapReady)
+			if condition == nil {
+				return corev1.ConditionUnknown
+			}
+			return condition.Status
+		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionTrue), "BootstrapReady condition should be true")
+		Expect(conditions.Get(&hostWithConditions, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
+		Expect(conditions.Get(&hostWithConditions, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionTrue), "Conditions summary should be true")
 	})
 })
 
