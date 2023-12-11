@@ -21,8 +21,8 @@ github.com/emicklei/go-restful/v3/log
 # github.com/evanphx/json-patch/v5 v5.7.0
 ## explicit; go 1.18
 github.com/evanphx/json-patch/v5
-# github.com/fsnotify/fsnotify v1.6.0
-## explicit; go 1.16
+# github.com/fsnotify/fsnotify v1.7.0
+## explicit; go 1.17
 github.com/fsnotify/fsnotify
 # github.com/go-logr/logr v1.3.0
 ## explicit; go 1.18
@@ -153,7 +153,7 @@ github.com/modern-go/concurrent
 # github.com/modern-go/reflect2 v1.0.2
 ## explicit; go 1.12
 github.com/modern-go/reflect2
-# github.com/mudler/yip v1.4.5
+# github.com/mudler/yip v1.4.6
 ## explicit; go 1.18
 github.com/mudler/yip/pkg/schema
 github.com/mudler/yip/pkg/schema/cloudinit
@@ -223,7 +223,7 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# github.com/sagikazarmark/locafero v0.3.0
+# github.com/sagikazarmark/locafero v0.4.0
 ## explicit; go 1.20
 github.com/sagikazarmark/locafero
 # github.com/sagikazarmark/slog-shim v0.1.0
@@ -235,13 +235,13 @@ github.com/sourcegraph/conc
 github.com/sourcegraph/conc/internal/multierror
 github.com/sourcegraph/conc/iter
 github.com/sourcegraph/conc/panics
-# github.com/spf13/afero v1.10.0
-## explicit; go 1.16
+# github.com/spf13/afero v1.11.0
+## explicit; go 1.19
 github.com/spf13/afero
 github.com/spf13/afero/internal/common
 github.com/spf13/afero/mem
-# github.com/spf13/cast v1.5.1
-## explicit; go 1.18
+# github.com/spf13/cast v1.6.0
+## explicit; go 1.19
 github.com/spf13/cast
 # github.com/spf13/cobra v1.8.0
 ## explicit; go 1.15
@@ -249,7 +249,7 @@ github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
 ## explicit; go 1.12
 github.com/spf13/pflag
-# github.com/spf13/viper v1.17.0
+# github.com/spf13/viper v1.18.1
 ## explicit; go 1.18
 github.com/spf13/viper
 github.com/spf13/viper/internal/encoding
@@ -266,7 +266,7 @@ github.com/subosito/gotenv
 # github.com/swaggest/jsonschema-go v0.3.64
 ## explicit; go 1.18
 github.com/swaggest/jsonschema-go
-# github.com/swaggest/openapi-go v0.2.43
+# github.com/swaggest/openapi-go v0.2.44
 ## explicit; go 1.18
 github.com/swaggest/openapi-go
 github.com/swaggest/openapi-go/internal
@@ -274,13 +274,13 @@ github.com/swaggest/openapi-go/openapi3
 # github.com/swaggest/refl v1.3.0
 ## explicit; go 1.17
 github.com/swaggest/refl
-# github.com/swaggest/rest v0.2.59
+# github.com/swaggest/rest v0.2.60
 ## explicit; go 1.17
 github.com/swaggest/rest
 github.com/swaggest/rest/gorillamux
 github.com/swaggest/rest/nethttp
 github.com/swaggest/rest/openapi
-# github.com/swaggest/usecase v1.2.1
+# github.com/swaggest/usecase v1.3.0
 ## explicit; go 1.18
 github.com/swaggest/usecase
 github.com/swaggest/usecase/status
@@ -311,7 +311,7 @@ go.uber.org/zap/internal/exit
 go.uber.org/zap/internal/pool
 go.uber.org/zap/internal/stacktrace
 go.uber.org/zap/zapcore
-# golang.org/x/exp v0.0.0-20231127185646-65229373498e
+# golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb
 ## explicit; go 1.20
 golang.org/x/exp/constraints
 golang.org/x/exp/maps
@@ -329,7 +329,7 @@ golang.org/x/net/http/httpguts
 golang.org/x/net/http2
 golang.org/x/net/http2/hpack
 golang.org/x/net/idna
-# golang.org/x/oauth2 v0.14.0
+# golang.org/x/oauth2 v0.15.0
 ## explicit; go 1.18
 golang.org/x/oauth2
 golang.org/x/oauth2/internal
@@ -363,8 +363,8 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# golang.org/x/time v0.3.0
-## explicit
+# golang.org/x/time v0.5.0
+## explicit; go 1.18
 golang.org/x/time/rate
 # golang.org/x/tools v0.16.0
 ## explicit; go 1.18
