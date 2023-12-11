@@ -461,7 +461,7 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 			Status:   corev1.ConditionFalse,
 			Severity: infrastructurev1beta1.MissingAvailableHostsReasonSeverity,
 			Reason:   infrastructurev1beta1.MissingAvailableHostsReason,
-			Message:  fmt.Sprintf("No ElementalHosts available for association."),
+			Message:  "No ElementalHosts available for association.",
 		})
 		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
 	}
