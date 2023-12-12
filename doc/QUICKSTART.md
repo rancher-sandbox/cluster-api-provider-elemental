@@ -83,13 +83,13 @@
     cat << EOF > $HOME/.cluster-api/clusterctl.yaml
     providers:
     - name: "elemental"
-      url: "https://github.com/rancher-sandbox/cluster-api-provider-elemental/releases/v0.3.0/infrastructure-components.yaml"
+      url: "https://github.com/rancher-sandbox/cluster-api-provider-elemental/releases/latest/infrastructure-components.yaml"
       type: "InfrastructureProvider"
     - name: "k3s"
-      url: "https://github.com/cluster-api-provider-k3s/cluster-api-k3s/releases/v0.1.8/bootstrap-components.yaml"
+      url: "https://github.com/cluster-api-provider-k3s/cluster-api-k3s/releases/latest/bootstrap-components.yaml"
       type: "BootstrapProvider"
     - name: "k3s"
-      url: "https://github.com/cluster-api-provider-k3s/cluster-api-k3s/releases/v0.1.8/control-plane-components.yaml"
+      url: "https://github.com/cluster-api-provider-k3s/cluster-api-k3s/releases/latest/control-plane-components.yaml"
       type: "ControlPlaneProvider"
     EOF
     ```
@@ -101,7 +101,7 @@
     ELEMENTAL_API_ENDPOINT="192.168.122.10.sslip.io" \
     ELEMENTAL_API_ENABLE_TLS="\"true\"" \
     ELEMENTAL_ENABLE_DEFAULT_CA="\"true\"" \
-    clusterctl init --bootstrap k3s:v0.1.8 --control-plane k3s:v0.1.8 --infrastructure elemental:v0.3.0
+    clusterctl init --bootstrap k3s --control-plane k3s --infrastructure elemental
     ```
 
 1. Expose the Elemental API server:  
@@ -129,7 +129,7 @@
 
     ```bash
     CONTROL_PLANE_ENDPOINT_IP=192.168.122.100 clusterctl generate cluster \
-    --infrastructure elemental:v0.3.0 \
+    --infrastructure elemental \
     --flavor k3s-single-node \
     --kubernetes-version v1.28.2 \
     elemental-cluster-k3s > $HOME/elemental-cluster-k3s.yaml

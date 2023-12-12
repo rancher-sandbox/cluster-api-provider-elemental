@@ -32,7 +32,7 @@ export ELEMENTAL_ENABLE_DEBUG="\"true\""
 export ELEMENTAL_API_ENDPOINT="192.168.122.10.sslip.io"
 export ELEMENTAL_API_ENABLE_TLS="\"true\""
 export ELEMENTAL_ENABLE_DEFAULT_CA="\"true\""
-clusterctl init --bootstrap k3s:v0.1.8 --control-plane k3s:v0.1.8 --infrastructure elemental:v0.0.0
+clusterctl init --bootstrap k3s:v0.1.9 --control-plane k3s:v0.1.9 --infrastructure elemental:v0.0.0
 
 cat << EOF | kubectl apply -f -
 apiVersion: v1
