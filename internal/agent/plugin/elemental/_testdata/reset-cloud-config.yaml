@@ -1,6 +1,6 @@
 name: Elemental Reset
 stages:
-    network.after:
+    network:
         - commands:
             - elemental-agent --debug --reset --config /oem/elemental/agent/config.yaml
             - elemental-agent --debug --register --install --config /oem/elemental/agent/config.yaml

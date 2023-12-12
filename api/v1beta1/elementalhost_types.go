@@ -19,6 +19,7 @@ package v1beta1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
 // ElementalHostSpec defines the desired state of ElementalHost.
@@ -37,7 +38,21 @@ type ElementalHostSpec struct {
 }
 
 // ElementalHostStatus defines the observed state of ElementalHost.
-type ElementalHostStatus struct{}
+type ElementalHostStatus struct {
+	// Conditions defines current service state of the ElementalHost.
+	// +optional
+	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
+}
+
+// GetConditions returns the set of conditions for this object.
+func (h *ElementalHost) GetConditions() clusterv1.Conditions {
+	return h.Status.Conditions
+}
+
+// SetConditions sets the conditions on this object.
+func (h *ElementalHost) SetConditions(conditions clusterv1.Conditions) {
+	h.Status.Conditions = conditions
+}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status

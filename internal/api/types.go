@@ -1,14 +1,18 @@
 package api
 
 import (
-	"fmt"
+	"errors"
 
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"golang.org/x/exp/maps"
-	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+
+	"sigs.k8s.io/cluster-api/util/conditions"
 )
+
+var ErrBootstrapSecretNoConfig = errors.New("CAPI bootstrap secret does not contain any config")
 
 type HostCreateRequest struct {
 	Auth    string `header:"Authorization"`
@@ -57,6 +61,18 @@ type HostPatchRequest struct {
 	Bootstrapped *bool             `json:"bootstrapped,omitempty"`
 	Installed    *bool             `json:"installed,omitempty"`
 	Reset        *bool             `json:"reset,omitempty"`
+
+	Condition *clusterv1.Condition `json:"condition,omitempty"`
+}
+
+func (h *HostPatchRequest) SetCondition(conditionType clusterv1.ConditionType, status corev1.ConditionStatus, severity clusterv1.ConditionSeverity, reason string, message string) {
+	h.Condition = &clusterv1.Condition{
+		Type:     conditionType,
+		Status:   status,
+		Severity: severity,
+		Reason:   reason,
+		Message:  message,
+	}
 }
 
 func (h *HostPatchRequest) applyToElementalHost(elementalHost *infrastructurev1beta1.ElementalHost) {
@@ -78,6 +94,13 @@ func (h *HostPatchRequest) applyToElementalHost(elementalHost *infrastructurev1b
 	if h.Reset != nil {
 		elementalHost.Labels[infrastructurev1beta1.LabelElementalHostReset] = "true"
 	}
+	if elementalHost.Status.Conditions == nil {
+		elementalHost.Status.Conditions = clusterv1.Conditions{}
+	}
+	// Set the patch condition to the ElementalHost object.
+	conditions.Set(elementalHost, h.Condition)
+	// Always update the Summary after conditions change
+	conditions.SetSummary(elementalHost)
 }
 
 type HostResponse struct {
@@ -144,8 +167,8 @@ type BootstrapGetRequest struct {
 }
 
 type BootstrapResponse struct {
-	Files    []WriteFile `json:"write_files" yaml:"write_files"` //nolint:tagliatelle //Matching cloud-init schema
-	Commands []string    `json:"runcmd" yaml:"runcmd"`
+	Format string `json:"format"`
+	Config string `json:"config"`
 }
 
 type WriteFile struct {
@@ -156,9 +179,13 @@ type WriteFile struct {
 }
 
 func (b *BootstrapResponse) fromSecret(secret *corev1.Secret) error {
-	data := secret.Data["value"]
-	if err := yaml.Unmarshal(data, b); err != nil {
-		return fmt.Errorf("unmarshalling bootstrap secret value: %w", err)
+	b.Format = "cloud-config" // Assume 'cloud-config' by default.
+	if format, found := secret.Data["format"]; found {
+		b.Format = string(format)
 	}
-	return nil
+	if config, found := secret.Data["value"]; found {
+		b.Config = string(config)
+		return nil
+	}
+	return ErrBootstrapSecretNoConfig
 }

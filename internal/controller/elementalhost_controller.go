@@ -21,8 +21,11 @@ import (
 	"errors"
 	"fmt"
 
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -79,6 +82,9 @@ func (r *ElementalHostReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
 	}
 	defer func() {
+		// Reconcile Summary Condition
+		conditions.SetSummary(host)
+		// Patch the resource
 		if err := patchHelper.Patch(ctx, host); err != nil {
 			rerr = errors.Join(rerr, fmt.Errorf("patching ElementalHost: %w", err))
 		}
@@ -121,6 +127,30 @@ func (r *ElementalHostReconciler) reconcileNormal(ctx context.Context, host *inf
 		WithValues(ilog.KeyNamespace, host.Namespace).
 		WithValues(ilog.KeyElementalHost, host.Name)
 	logger.Info("Normal ElementalHost reconcile")
+
+	// Reconcile Registered/Installed Condition (if the host is installed, assume it is registered as well)
+	if value, found := host.Labels[infrastructurev1beta1.LabelElementalHostInstalled]; found && value == "true" {
+		conditions.Set(host, &v1beta1.Condition{
+			Type:     infrastructurev1beta1.RegistrationReady,
+			Status:   v1.ConditionTrue,
+			Severity: v1beta1.ConditionSeverityInfo,
+		})
+		conditions.Set(host, &v1beta1.Condition{
+			Type:     infrastructurev1beta1.InstallationReady,
+			Status:   v1.ConditionTrue,
+			Severity: v1beta1.ConditionSeverityInfo,
+		})
+	}
+
+	// Reconcile Bootstrapped Condition
+	if value, found := host.Labels[infrastructurev1beta1.LabelElementalHostBootstrapped]; found && value == "true" {
+		conditions.Set(host, &v1beta1.Condition{
+			Type:     infrastructurev1beta1.BootstrapReady,
+			Status:   v1.ConditionTrue,
+			Severity: v1beta1.ConditionSeverityInfo,
+		})
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -133,12 +163,24 @@ func (r *ElementalHostReconciler) reconcileDelete(ctx context.Context, host *inf
 	if value, found := host.Labels[infrastructurev1beta1.LabelElementalHostReset]; found && value == "true" {
 		logger.Info("ElementalHost reset successful")
 		controllerutil.RemoveFinalizer(host, infrastructurev1beta1.FinalizerElementalMachine)
+		conditions.Set(host, &v1beta1.Condition{
+			Type:     infrastructurev1beta1.ResetReady,
+			Status:   v1.ConditionTrue,
+			Severity: v1beta1.ConditionSeverityInfo,
+		})
 		return ctrl.Result{}, nil
 	}
 
 	if value, found := host.Labels[infrastructurev1beta1.LabelElementalHostNeedsReset]; !found || value != "true" {
 		logger.Info("Triggering reset for to-be-deleted ElementalHost")
 		host.Labels[infrastructurev1beta1.LabelElementalHostNeedsReset] = "true"
+		conditions.Set(host, &v1beta1.Condition{
+			Type:     infrastructurev1beta1.ResetReady,
+			Status:   v1.ConditionFalse,
+			Severity: infrastructurev1beta1.WaitingForResetReasonSeverity,
+			Reason:   infrastructurev1beta1.WaitingForResetReason,
+			Message:  "Waiting for remote host to reset",
+		})
 		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
 	}
 

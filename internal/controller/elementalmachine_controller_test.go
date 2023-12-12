@@ -8,10 +8,12 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/conditions"
 )
 
 var (
@@ -327,5 +329,366 @@ var _ = Describe("ElementalMachine controller", Label("controller", "elemental-m
 			return *updatedMachine.Spec.HostRef
 		}).WithTimeout(time.Minute).Should(Equal(wantHostRef), "HostRef must be updated")
 	})
+})
 
+var _ = Describe("ElementalMachine controller conditions", Label("controller", "elemental-machine", "conditions"), Ordered, func() {
+	ctx := context.Background()
+	namespace := corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "elementalmachine-test-conditions",
+		},
+	}
+	cluster := clusterv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: namespace.Name,
+		},
+	}
+	machine := clusterv1.Machine{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: namespace.Name,
+			Labels:    map[string]string{clusterv1.ClusterNameLabel: cluster.Name},
+		},
+		Spec: clusterv1.MachineSpec{
+			ClusterName: "test",
+			InfrastructureRef: corev1.ObjectReference{
+				Kind:       "ElementalMachine",
+				APIVersion: "infrastructure.cluster.x-k8s.io/v1beta1",
+				Name:       "test",
+				Namespace:  namespace.Name,
+			},
+		},
+	}
+	elementalMachine := v1beta1.ElementalMachine{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: namespace.Name,
+			Labels:    map[string]string{"cluster.x-k8s.io/cluster-name": cluster.Name},
+		},
+	}
+	host := v1beta1.ElementalHost{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: namespace.Name,
+		},
+	}
+	// Add one installed host
+	installedHost := host
+	installedHost.ObjectMeta.Name = "test-installed"
+	installedHost.Labels = map[string]string{v1beta1.LabelElementalHostInstalled: "true"}
+	// New host is used after installedHost deletion
+	newHost := host
+	installedHost.ObjectMeta.Name = "test-new"
+	newHost.Labels = map[string]string{infrastructurev1beta1.LabelElementalHostInstalled: "true"}
+	BeforeAll(func() {
+		// Create namespace
+		Expect(k8sClient.Create(ctx, &namespace)).Should(Succeed())
+		// Create ElementalMachine
+		Expect(k8sClient.Create(ctx, &elementalMachine)).Should(Succeed())
+	})
+	AfterAll(func() {
+		Expect(k8sClient.Delete(ctx, &namespace)).Should(Succeed())
+	})
+	It("should have MissingMachineOwnerReason", func() {
+		Eventually(func() string {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachine.Name,
+				Namespace: elementalMachine.Namespace},
+				&elementalMachine)).Should(Succeed())
+			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady)
+			if condition == nil {
+				return ""
+			}
+			return condition.Reason
+		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1beta1.MissingMachineOwnerReason))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady).Status).Should(Equal(corev1.ConditionFalse), "AssociationReady condition must be false")
+		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
+		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionFalse), "Conditions summary should be false")
+	})
+	It("should have MissingAssociatedClusterReason", func() {
+		// Create CAPI Machine and link ElementalMachine through ownership
+		Expect(k8sClient.Create(ctx, &machine)).Should(Succeed())
+		elementalMachinePatch := elementalMachine
+		elementalMachinePatch.ObjectMeta.OwnerReferences = []metav1.OwnerReference{{
+			APIVersion: "cluster.x-k8s.io/v1beta1",
+			Kind:       "Machine",
+			Name:       machine.Name,
+			UID:        machine.UID,
+		}}
+		patchObject(ctx, k8sClient, &elementalMachine, &elementalMachinePatch)
+		// Next failure reason should be MissingAssociatedClusterReason
+		Eventually(func() string {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachine.Name,
+				Namespace: elementalMachine.Namespace},
+				&elementalMachine)).Should(Succeed())
+			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady)
+			if condition == nil {
+				return ""
+			}
+			return condition.Reason
+		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1beta1.MissingAssociatedClusterReason))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady).Status).Should(Equal(corev1.ConditionFalse), "AssociationReady condition must be false")
+		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
+		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionFalse), "Conditions summary should be false")
+	})
+	It("should have MissingClusterInfrastructureReadyReason", func() {
+		// Create the associated cluster
+		Expect(k8sClient.Create(ctx, &cluster)).Should(Succeed())
+		// Next failure reason should be MissingClusterInfrastructureReadyReason
+		Eventually(func() string {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachine.Name,
+				Namespace: elementalMachine.Namespace},
+				&elementalMachine)).Should(Succeed())
+			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady)
+			if condition == nil {
+				return ""
+			}
+			return condition.Reason
+		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1beta1.MissingClusterInfrastructureReadyReason))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady).Status).Should(Equal(corev1.ConditionFalse), "AssociationReady condition must be false")
+		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
+		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionFalse), "Conditions summary should be false")
+	})
+	It("should have MissingBootstrapSecretReason", func() {
+		// Patch the cluster as InfrastructureReady
+		clusterStatusPatch := cluster
+		clusterStatusPatch.Status = clusterv1.ClusterStatus{
+			InfrastructureReady: true,
+		}
+		patchObject(ctx, k8sClient, &cluster, &clusterStatusPatch)
+		// Next failure reason should be MissingClusterInfrastructureReadyReason
+		Eventually(func() string {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachine.Name,
+				Namespace: elementalMachine.Namespace},
+				&elementalMachine)).Should(Succeed())
+			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady)
+			if condition == nil {
+				return ""
+			}
+			return condition.Reason
+		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1beta1.MissingBootstrapSecretReason))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady).Status).Should(Equal(corev1.ConditionFalse), "AssociationReady condition must be false")
+		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
+		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionFalse), "Conditions summary should be false")
+	})
+	It("should have MissingAvailableHostsReason", func() {
+		// Patch the machine to reference any bootstrap secret
+		machinePatch := machine
+		machinePatch.Spec.Bootstrap = clusterv1.Bootstrap{
+			DataSecretName: &testBootstrapSecretName,
+		}
+		patchObject(ctx, k8sClient, &machine, &machinePatch)
+		// Next failure reason should be MissingAvailableHostsReason
+		Eventually(func() string {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachine.Name,
+				Namespace: elementalMachine.Namespace},
+				&elementalMachine)).Should(Succeed())
+			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady)
+			if condition == nil {
+				return ""
+			}
+			return condition.Reason
+		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1beta1.MissingAvailableHostsReason))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady).Status).Should(Equal(corev1.ConditionFalse), "AssociationReady condition must be false")
+		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady).Severity).Should(Equal(clusterv1.ConditionSeverityWarning), "Severity should be warning")
+		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
+		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionFalse), "Conditions summary should be false")
+	})
+	It("should have AssociationReady true", func() {
+		// Create one installed host
+		Expect(k8sClient.Create(ctx, &installedHost)).Should(Succeed())
+		Eventually(func() corev1.ConditionStatus {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachine.Name,
+				Namespace: elementalMachine.Namespace},
+				&elementalMachine)).Should(Succeed())
+			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady)
+			if condition == nil {
+				return corev1.ConditionUnknown
+			}
+			return condition.Status
+		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionTrue), "AssociationReady condition must be true")
+		// After association, we should be awaiting for the Host to be bootstrapped
+		Eventually(func() corev1.ConditionStatus {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachine.Name,
+				Namespace: elementalMachine.Namespace},
+				&elementalMachine)).Should(Succeed())
+			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady)
+			if condition == nil {
+				return corev1.ConditionUnknown
+			}
+			return condition.Status
+		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionFalse), "HostReady condition must be false")
+		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady).Reason).Should(Equal(infrastructurev1beta1.HostWaitingForBootstrapReason))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady).Severity).Should(Equal(infrastructurev1beta1.HostWaitingForBootstrapReasonSeverity))
+		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
+		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionFalse), "Conditions summary should be false")
+	})
+	It("should have HostReady true", func() {
+		// Patch the host as bootstrapped
+		Expect(k8sClient.Get(ctx, types.NamespacedName{
+			Name:      installedHost.Name,
+			Namespace: installedHost.Namespace},
+			&installedHost)).Should(Succeed())
+		installedHost.Labels[infrastructurev1beta1.LabelElementalHostBootstrapped] = "true"
+		Expect(k8sClient.Update(ctx, &installedHost)).Should(Succeed())
+		Eventually(func() corev1.ConditionStatus {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachine.Name,
+				Namespace: elementalMachine.Namespace},
+				&elementalMachine)).Should(Succeed())
+			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady)
+			if condition == nil {
+				return corev1.ConditionUnknown
+			}
+			return condition.Status
+		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionTrue), "HostReady condition must be true")
+		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
+		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionTrue), "Conditions summary should be true")
+		Expect(k8sClient.Get(ctx, types.NamespacedName{
+			Name:      elementalMachine.Name,
+			Namespace: elementalMachine.Namespace},
+			&elementalMachine)).Should(Succeed())
+		Expect(elementalMachine.Status.Ready).Should(BeTrue())
+	})
+	It("should have HostReady false if host was uninstalled", func() {
+		// Remove host installed label. This should not be a possible scenario in normal circumstances.
+		Expect(k8sClient.Get(ctx, types.NamespacedName{
+			Name:      installedHost.Name,
+			Namespace: installedHost.Namespace},
+			&installedHost)).Should(Succeed())
+		delete(installedHost.Labels, infrastructurev1beta1.LabelElementalHostInstalled)
+		Expect(k8sClient.Update(ctx, &installedHost)).Should(Succeed())
+		Eventually(func() corev1.ConditionStatus {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachine.Name,
+				Namespace: elementalMachine.Namespace},
+				&elementalMachine)).Should(Succeed())
+			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady)
+			if condition == nil {
+				return corev1.ConditionUnknown
+			}
+			return condition.Status
+		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionFalse), "HostReady condition must be false")
+		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady).Reason).Should(Equal(infrastructurev1beta1.HostWaitingForInstallReason))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady).Severity).Should(Equal(clusterv1.ConditionSeverityError))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady)).ShouldNot(BeNil(), "AssociationReady condition must be present")
+		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady).Status).Should(Equal(corev1.ConditionTrue), "AssociationReady condition must be true")
+		Eventually(func() corev1.ConditionStatus {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachine.Name,
+				Namespace: elementalMachine.Namespace},
+				&elementalMachine)).Should(Succeed())
+			condition := conditions.Get(&elementalMachine, clusterv1.ReadyCondition)
+			if condition == nil {
+				return corev1.ConditionUnknown
+			}
+			return condition.Status
+		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionFalse), "Conditions summary should be false")
+		Expect(k8sClient.Get(ctx, types.NamespacedName{
+			Name:      elementalMachine.Name,
+			Namespace: elementalMachine.Namespace},
+			&elementalMachine)).Should(Succeed())
+		Expect(elementalMachine.Status.Ready).Should(BeFalse())
+	})
+	It("should have AssociationReady false if host was deleted", func() {
+		// Delete the host
+		Expect(k8sClient.Get(ctx, types.NamespacedName{
+			Name:      installedHost.Name,
+			Namespace: installedHost.Namespace},
+			&installedHost)).Should(Succeed())
+		installedHost.Labels[infrastructurev1beta1.LabelElementalHostReset] = "true" // Mark it as already reset
+		Expect(k8sClient.Update(ctx, &installedHost)).Should(Succeed())
+		Expect(k8sClient.Delete(ctx, &installedHost)).Should(Succeed())
+		Eventually(func() corev1.ConditionStatus {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachine.Name,
+				Namespace: elementalMachine.Namespace},
+				&elementalMachine)).Should(Succeed())
+			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady)
+			if condition == nil {
+				return corev1.ConditionUnknown
+			}
+			return condition.Status
+		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionFalse), "AssociationReady condition must be false")
+		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady).Reason).Should(Equal(infrastructurev1beta1.AssociatedHostNotFoundReason))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady).Severity).Should(Equal(infrastructurev1beta1.AssociatedHostNotFoundReasonSeverity))
+		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
+		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionFalse), "Conditions summary should be false")
+		Expect(elementalMachine.Status.Ready).Should(BeFalse())
+	})
+	It("should have AssociationReady true if new host was provisioned", func() {
+		// Add a new host
+		Expect(k8sClient.Create(ctx, &newHost)).Should(Succeed())
+		Eventually(func() corev1.ConditionStatus {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachine.Name,
+				Namespace: elementalMachine.Namespace},
+				&elementalMachine)).Should(Succeed())
+			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady)
+			if condition == nil {
+				return corev1.ConditionUnknown
+			}
+			return condition.Status
+		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionTrue), "AssociationReady condition must be true")
+		// After association, we should be awaiting for the Host to be bootstrapped
+		Eventually(func() string {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachine.Name,
+				Namespace: elementalMachine.Namespace},
+				&elementalMachine)).Should(Succeed())
+			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady)
+			if condition == nil {
+				return ""
+			}
+			return condition.Reason
+		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1beta1.HostWaitingForBootstrapReason), "HostReady condition must have HostWaitingForBootstrapReason reason")
+		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady).Status).Should(Equal(corev1.ConditionFalse))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady).Severity).Should(Equal(infrastructurev1beta1.HostWaitingForBootstrapReasonSeverity))
+		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
+		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionFalse), "Conditions summary should be false")
+		Expect(elementalMachine.Status.Ready).Should(BeFalse())
+	})
+	It("should have HostReady true if new host was bootstrapped", func() {
+		// Patch the host as bootstrapped
+		Expect(k8sClient.Get(ctx, types.NamespacedName{
+			Name:      newHost.Name,
+			Namespace: newHost.Namespace},
+			&newHost)).Should(Succeed())
+		newHost.Labels[infrastructurev1beta1.LabelElementalHostBootstrapped] = "true"
+		Expect(k8sClient.Update(ctx, &newHost)).Should(Succeed())
+		Eventually(func() corev1.ConditionStatus {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachine.Name,
+				Namespace: elementalMachine.Namespace},
+				&elementalMachine)).Should(Succeed())
+			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady)
+			if condition == nil {
+				return corev1.ConditionUnknown
+			}
+			return condition.Status
+		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionTrue), "HostReady condition must be true")
+		Eventually(func() corev1.ConditionStatus {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachine.Name,
+				Namespace: elementalMachine.Namespace},
+				&elementalMachine)).Should(Succeed())
+			condition := conditions.Get(&elementalMachine, clusterv1.ReadyCondition)
+			if condition == nil {
+				return corev1.ConditionUnknown
+			}
+			return condition.Status
+		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionTrue), "Conditions summary should be true")
+		Expect(k8sClient.Get(ctx, types.NamespacedName{
+			Name:      elementalMachine.Name,
+			Namespace: elementalMachine.Namespace},
+			&elementalMachine)).Should(Succeed())
+		Expect(elementalMachine.Status.Ready).Should(BeTrue())
+	})
 })

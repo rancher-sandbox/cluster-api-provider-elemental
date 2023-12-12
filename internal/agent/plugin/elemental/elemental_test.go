@@ -78,7 +78,7 @@ var _ = Describe("Elemental Plugin", Label("agent", "plugin", "elemental"), func
 	})
 	It("should apply cloud-init by dumping info to file", func() {
 		cloudInit := []byte(`{"users":[{"name":"root","passwd":"root"}]}`)
-		Expect(plugin.ApplyCloudInit(cloudInit)).Should(Succeed())
+		Expect(plugin.InstallCloudInit(cloudInit)).Should(Succeed())
 		compareFiles(fs, cloudConfigInitPath, "_testdata/set-cloud-config.yaml")
 	})
 	It("should return current hostname", func() {
@@ -90,13 +90,13 @@ var _ = Describe("Elemental Plugin", Label("agent", "plugin", "elemental"), func
 	})
 	It("should write a set-hostname.yaml file", func() {
 		wantHostname := "just a test hostname to set"
-		Expect(plugin.PersistHostname(wantHostname)).Should(Succeed())
+		Expect(plugin.InstallHostname(wantHostname)).Should(Succeed())
 		compareFiles(fs, hostnameInitPath, "_testdata/set-hostname.yaml")
 	})
 	It("should write file", func() {
 		content := []byte("Just a test file")
 		wantPath := "/any/location/should/be.fine"
-		Expect(plugin.PersistFile(content, wantPath, 0640, 0, 0)).Should(Succeed())
+		Expect(plugin.InstallFile(content, wantPath, 0640, 0, 0)).Should(Succeed())
 		wantSetPath := fmt.Sprintf("%s/set-be-fine.yaml", cloudConfigDir)
 		compareFiles(fs, wantSetPath, "_testdata/set-file.yaml")
 	})
@@ -143,6 +143,15 @@ var _ = Describe("Elemental Plugin", Label("agent", "plugin", "elemental"), func
 	It("should reboot", func() {
 		hostManager.EXPECT().Reboot().Return(nil)
 		Expect(plugin.Reboot()).Should(Succeed())
+	})
+	It("should bootstrap cloud-init", func() {
+		capiBootstrap, err := os.ReadFile("_testdata/capi-bootstrap.yaml")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(plugin.Bootstrap("cloud-config", capiBootstrap)).Should(Succeed())
+		compareFiles(fs, bootstrapPath, "_testdata/capi-yipified.yaml")
+	})
+	It("should fail bootstrap on unsupported format", func() {
+		Expect(plugin.Bootstrap("ignition", []byte(""))).ShouldNot(Succeed())
 	})
 })
 

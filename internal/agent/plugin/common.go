@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v3"
 )
 
 func UnmarshalRawJSONToYaml(input []byte) ([]byte, error) {

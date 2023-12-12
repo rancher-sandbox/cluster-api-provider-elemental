@@ -20,9 +20,15 @@ const (
 	installFile             = "install.yaml"
 	resetFile               = "reset.yaml"
 	sentinelFileResetNeeded = "reset.needed"
+	bootstrapCloudInitPath  = "/etc/cloud/cloud.cfg.d/elemental-capi-bootstrap.cfg"
+	bootstrapIgnitionPath   = "/usr/local/bin/ignition/data/elemental-capi-bootstrap.conf"
 )
 
-var ErrUnmanagedOSNotReset = errors.New("unmanaged OS reset sentinel file still exists")
+var (
+	ErrUnmanagedOSNotReset        = errors.New("unmanaged OS reset sentinel file still exists")
+	ErrUnsupportedBootstrapFormat = errors.New("unsupported bootstrap format")
+	ErrBootstrapAlreadyApplied    = errors.New("bootstrap already applied")
+)
 
 type DummyPlugin struct {
 	fs          vfs.FS
@@ -54,7 +60,7 @@ func (p *DummyPlugin) Init(context osplugin.PluginContext) error {
 	return nil
 }
 
-func (p *DummyPlugin) ApplyCloudInit(input []byte) error {
+func (p *DummyPlugin) InstallCloudInit(input []byte) error {
 	path := fmt.Sprintf("%s/%s", p.workDir, cloudInitFile)
 	cloudInitBytes := []byte("#cloud-config\n")
 	cloudInitContentBytes, err := plugin.UnmarshalRawJSONToYaml(input)
@@ -76,7 +82,7 @@ func (p *DummyPlugin) GetHostname() (string, error) {
 	return hostname, nil
 }
 
-func (p *DummyPlugin) PersistHostname(hostname string) error {
+func (p *DummyPlugin) InstallHostname(hostname string) error {
 	log.Debugf("Setting hostname %s", hostname)
 	if err := p.hostManager.SetHostname(hostname); err != nil {
 		return fmt.Errorf("setting hostname '%s': %w", hostname, err)
@@ -84,7 +90,7 @@ func (p *DummyPlugin) PersistHostname(hostname string) error {
 	return nil
 }
 
-func (p *DummyPlugin) PersistFile(content []byte, path string, _ uint32, _ int, _ int) error {
+func (p *DummyPlugin) InstallFile(content []byte, path string, _ uint32, _ int, _ int) error {
 	log.Debugf("Writing file %s", path)
 	if err := utils.WriteFile(p.fs, api.WriteFile{
 		Path:    path,
@@ -104,6 +110,34 @@ func (p *DummyPlugin) Install(input []byte) error {
 	}
 	if err := p.fs.WriteFile(path, installBytes, os.ModePerm); err != nil {
 		return fmt.Errorf("writing install config: %w", err)
+	}
+	return nil
+}
+
+func (p *DummyPlugin) Bootstrap(format string, input []byte) error {
+	switch format {
+	case "cloud-config":
+		if _, err := p.fs.Stat(bootstrapCloudInitPath); err == nil {
+			return fmt.Errorf("applying cloud-config bootstrap: %w", ErrBootstrapAlreadyApplied)
+		}
+		if err := vfs.MkdirAll(p.fs, filepath.Dir(bootstrapCloudInitPath), os.ModePerm); err != nil {
+			return fmt.Errorf("creating directory '%s': %w", filepath.Dir(bootstrapCloudInitPath), err)
+		}
+		if err := p.fs.WriteFile(bootstrapCloudInitPath, input, os.ModePerm); err != nil {
+			return fmt.Errorf("writing bootstrap file '%s': %w", bootstrapCloudInitPath, err)
+		}
+	case "ignition":
+		if _, err := p.fs.Stat(bootstrapIgnitionPath); err == nil {
+			return fmt.Errorf("applying ignition bootstrap: %w", ErrBootstrapAlreadyApplied)
+		}
+		if err := vfs.MkdirAll(p.fs, filepath.Dir(bootstrapIgnitionPath), os.ModePerm); err != nil {
+			return fmt.Errorf("creating directory '%s': %w", filepath.Dir(bootstrapIgnitionPath), err)
+		}
+		if err := p.fs.WriteFile(bootstrapIgnitionPath, input, os.ModePerm); err != nil {
+			return fmt.Errorf("writing bootstrap file '%s': %w", bootstrapIgnitionPath, err)
+		}
+	default:
+		return fmt.Errorf("using bootstrapping format '%s': %w", format, ErrUnsupportedBootstrapFormat)
 	}
 	return nil
 }

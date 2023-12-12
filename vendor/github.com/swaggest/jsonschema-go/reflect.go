@@ -127,10 +127,24 @@ func checkSchemaSetup(params InterceptSchemaParams) (bool, error) {
 		vi = reflect.New(v.Type().Elem()).Interface()
 	}
 
+	vpi := reflect.New(v.Type()).Interface()
+
 	reflectEnum(s, "", vi)
 
-	if exposer, ok := v.Interface().(Exposer); ok {
-		schema, err := exposer.JSONSchema()
+	var e Exposer
+
+	if exposer, ok := vi.(Exposer); ok {
+		e = exposer
+	}
+
+	if exposer, ok := vi.(Exposer); ok {
+		e = exposer
+	} else if exposer, ok := vpi.(Exposer); ok {
+		e = exposer
+	}
+
+	if e != nil {
+		schema, err := e.JSONSchema()
 		if err != nil {
 			return true, err
 		}
@@ -140,8 +154,17 @@ func checkSchemaSetup(params InterceptSchemaParams) (bool, error) {
 		return true, nil
 	}
 
-	if exposer, ok := v.Interface().(RawExposer); ok {
-		schemaBytes, err := exposer.JSONSchemaBytes()
+	var re RawExposer
+
+	// Checking if RawExposer is defined on a current value.
+	if exposer, ok := vi.(RawExposer); ok {
+		re = exposer
+	} else if exposer, ok := vpi.(RawExposer); ok { // Checking if RawExposer is defined on a pointer to current value.
+		re = exposer
+	}
+
+	if re != nil {
+		schemaBytes, err := re.JSONSchemaBytes()
 		if err != nil {
 			return true, err
 		}
@@ -244,7 +267,7 @@ func (r *Reflector) Reflect(i interface{}, options ...func(rc *ReflectContext)) 
 	rc.DefinitionsPrefix = "#/definitions/"
 	rc.PropertyNameTag = "json"
 	rc.Path = []string{"#"}
-	rc.typeCycles = make(map[refl.TypeString]bool)
+	rc.typeCycles = make(map[refl.TypeString]*Schema)
 
 	InterceptSchema(checkSchemaSetup)(&rc)
 
@@ -444,18 +467,20 @@ func (r *Reflector) reflect(i interface{}, rc *ReflectContext, keepType bool, pa
 		}
 	}
 
+	sp := &schema
+
 	if rc.interceptSchema != nil {
 		if ret, err := rc.interceptSchema(InterceptSchemaParams{
 			Context:   rc,
 			Value:     v,
-			Schema:    &schema,
+			Schema:    sp,
 			Processed: false,
 		}); err != nil || ret {
 			return schema, err
 		}
 	}
 
-	if r.isWellKnownType(t, &schema) {
+	if r.isWellKnownType(t, sp) {
 		return schema, nil
 	}
 
@@ -468,21 +493,21 @@ func (r *Reflector) reflect(i interface{}, rc *ReflectContext, keepType bool, pa
 		return ref.Schema(), nil
 	}
 
-	if rc.typeCycles[typeString] && !rc.InlineRefs {
-		return schema, nil
+	if rc.typeCycles[typeString] != nil && !rc.InlineRefs {
+		return *rc.typeCycles[typeString], nil
 	}
 
 	if t.PkgPath() != "" && len(rc.Path) > 1 && defName != "" && !r.inlineDefinition[typeString] {
-		rc.typeCycles[typeString] = true
+		rc.typeCycles[typeString] = sp
 	}
 
-	r.checkTitle(v, s, &schema)
+	r.checkTitle(v, s, sp)
 
-	if err := r.applySubSchemas(v, rc, &schema); err != nil {
+	if err := r.applySubSchemas(v, rc, sp); err != nil {
 		return schema, err
 	}
 
-	if err = r.kindSwitch(t, v, &schema, rc); err != nil {
+	if err = r.kindSwitch(t, v, sp, rc); err != nil {
 		return schema, err
 	}
 
@@ -490,7 +515,7 @@ func (r *Reflector) reflect(i interface{}, rc *ReflectContext, keepType bool, pa
 		if ret, err := rc.interceptSchema(InterceptSchemaParams{
 			Context:   rc,
 			Value:     v,
-			Schema:    &schema,
+			Schema:    sp,
 			Processed: true,
 		}); err != nil || ret {
 			return schema, err
@@ -498,7 +523,7 @@ func (r *Reflector) reflect(i interface{}, rc *ReflectContext, keepType bool, pa
 	}
 
 	if preparer, ok := v.Interface().(Preparer); ok {
-		err := preparer.PrepareJSONSchema(&schema)
+		err := preparer.PrepareJSONSchema(sp)
 
 		return schema, err
 	}
@@ -831,7 +856,7 @@ func (r *Reflector) propertyTag(rc *ReflectContext, field reflect.StructField) (
 
 func (r *Reflector) makeFields(v reflect.Value) ([]reflect.StructField, []reflect.Value) {
 	t := v.Type()
-	if t.Kind() == reflect.Ptr {
+	for t.Kind() == reflect.Ptr {
 		t = t.Elem()
 
 		if refl.IsZero(v) {

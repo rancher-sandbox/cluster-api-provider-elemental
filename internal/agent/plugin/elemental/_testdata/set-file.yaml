@@ -1,6 +1,6 @@
 name: Write File
 stages:
-    boot.after:
+    boot:
         - files:
             - path: /any/location/should/be.fine
               permissions: 416
