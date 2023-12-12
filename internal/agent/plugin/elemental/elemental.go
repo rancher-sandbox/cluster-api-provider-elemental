@@ -261,7 +261,8 @@ func (p *ElementalPlugin) convertBootstrapToYip(input []byte) ([]byte, error) {
 	// See: https://cluster-api.sigs.k8s.io/developer/providers/bootstrap.html#sentinel-file
 	config.Stages["network.after"] = []schema.Stage{
 		{
-			Commands: []string{fmt.Sprintf("if [ -f %s ]; then rm %s; fi", bootstrapSentinelPath, bootstrapPath)},
+			If:       fmt.Sprintf("[ -f \"%s\" ]", bootstrapSentinelPath),
+			Commands: []string{fmt.Sprintf("rm %s", bootstrapPath)},
 		},
 	}
 

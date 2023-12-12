@@ -140,4 +140,5 @@ stages:
               ownerstring: root:root
     network.after:
         - commands:
-            - if [ -f /run/cluster-api/bootstrap-success.complete ]; then rm /oem/bootstrap-cloud-config.yaml; fi
+            - rm /oem/bootstrap-cloud-config.yaml
+          if: '[ -f "/run/cluster-api/bootstrap-success.complete" ]'

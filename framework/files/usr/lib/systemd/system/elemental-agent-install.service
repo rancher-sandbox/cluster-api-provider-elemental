@@ -5,7 +5,7 @@ Wants=network-online.target
 After=network-online.target
 
 [Service]
-Type=oneshot
+Type=simple
 ExecStart=/usr/sbin/elemental-agent --debug --register --install --config /oem/elemental/agent/config.yaml
 Restart=on-failure
 RestartSec=5
