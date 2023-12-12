@@ -106,19 +106,10 @@ CGO_ENABLED=1 go build -buildmode=plugin -o dummy.so internal/agent/plugin/dummy
 
 The Elemental plugin leverages the [elemental-toolkit](https://rancher.github.io/elemental-toolkit/) to offer a fully managed OS experience.  
 This plugin supports automated workflows to install, operate, and reset any underlying host.  
-If you want to try it out, just follow the [quickstart](../../doc/QUICKSTART.md) and build your own iso.
+If you want to try it out, just follow the [quickstart](../../doc/QUICKSTART.md) and build your own iso.  
+For in-depth info and troubleshooting, please read the [documentation](./PLUGIN_ELEMENTAL.md)
 
 ### Dummy Plugin
 
 The Dummy plugin is a very simple plugin, as the name suggests, that can be exploited to automate OS management by external means.  
-For example, instead of installing a system when the agent is called with the `--install` argument, this plugin will output the install information from [ElementalRegistration's](../../api/v1beta1/elementalregistration_types.go) `spec.config.elemental.install` into an `install.yaml` file in the agent work directory.  
-No further action is taken by the plugin, once the file is created the system will be considered **installed** and ready to be bootstrapped.  
-An administrator can implement logic around this expected file, for example leveraging [Systemd's Path Units](https://www.freedesktop.org/software/systemd/man/latest/systemd.path.html).  
-
-When a reset is triggered, the plugin will create a `needs.reset` file in the agent work directory.  
-When this file is created, some logic can take place to prepare the machine for reset, delete the `needs.reset` file and start the agent with the `--reset` argument to mark the host as reset.  
-In this stage some host services may also be stopped or uninstalled, for example `k3s`.  
-
-Similarly to the installation, a `reset.yaml` in the agent work directory will be created when the agent is called with the `--reset` argument.  
-A host is considered successfully **reset** after the file is created.  
-The reset will fail if the `needs.reset` file exists. This highlight that the host was not prepared for reset first.  
+You can consult the [documentation](./PLUGIN_DUMMY.md) for more details.
