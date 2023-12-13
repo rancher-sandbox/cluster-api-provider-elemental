@@ -171,13 +171,6 @@ type BootstrapResponse struct {
 	Config string `json:"config"`
 }
 
-type WriteFile struct {
-	Path        string `json:"path" yaml:"path"`
-	Owner       string `json:"owner" yaml:"owner"`
-	Permissions string `json:"permissions" yaml:"permissions"`
-	Content     string `json:"content" yaml:"content"`
-}
-
 func (b *BootstrapResponse) fromSecret(secret *corev1.Secret) error {
 	b.Format = "cloud-config" // Assume 'cloud-config' by default.
 	if format, found := secret.Data["format"]; found {
