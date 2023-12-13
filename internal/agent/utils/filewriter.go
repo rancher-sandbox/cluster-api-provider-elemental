@@ -6,20 +6,12 @@ import (
 	"path/filepath"
 
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/twpayne/go-vfs"
 )
 
-// WriteFile writes the input file into the filesystem.
-//
-// TODO: This is meant to be an implementation of the `write_files` cloud init instruction.
-//
-//	See: https://cloudinit.readthedocs.io/en/latest/reference/modules.html#write-files
-//
-//	All the keys should be supported (for ex. owner, permissions, encoding, etc.)
-func WriteFile(fs vfs.FS, file api.WriteFile) error {
-	log.Infof("Writing file: %s", file.Path)
-	dir := filepath.Dir(file.Path)
+func WriteFile(fs vfs.FS, path string, content []byte) error {
+	log.Infof("Writing file: %s", path)
+	dir := filepath.Dir(path)
 	if _, err := fs.Stat(dir); os.IsNotExist(err) {
 		log.Infof("File dir '%s' does not exist. Creating now.", dir)
 		if err := vfs.MkdirAll(fs, dir, 0700); err != nil {
@@ -27,12 +19,12 @@ func WriteFile(fs vfs.FS, file api.WriteFile) error {
 		}
 	}
 
-	f, err := fs.Create(file.Path)
+	f, err := fs.Create(path)
 	if err != nil {
 		return fmt.Errorf("creating file: %w", err)
 	}
 
-	if n, err := f.WriteString(file.Content); err != nil {
+	if n, err := f.Write(content); err != nil {
 		return fmt.Errorf("writing file, wrote %d bytes: %w", n, err)
 	}
 

@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils"
 	"github.com/twpayne/go-vfs"
 )
 
@@ -48,7 +47,7 @@ func (m *manager) LoadSigningKeyOrCreateNew() (Identity, error) {
 	if err != nil {
 		return nil, fmt.Errorf("getting '%s' file info: %w", path, err)
 	}
-	key, err := utils.ReadFile(m.fs, path)
+	key, err := m.fs.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("reading '%s': %w", path, err)
 	}

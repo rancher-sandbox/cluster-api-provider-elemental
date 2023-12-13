@@ -10,7 +10,6 @@ import (
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/plugin"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/pkg/agent/osplugin"
 	"github.com/twpayne/go-vfs"
 )
@@ -92,10 +91,7 @@ func (p *DummyPlugin) InstallHostname(hostname string) error {
 
 func (p *DummyPlugin) InstallFile(content []byte, path string, _ uint32, _ int, _ int) error {
 	log.Debugf("Writing file %s", path)
-	if err := utils.WriteFile(p.fs, api.WriteFile{
-		Path:    path,
-		Content: string(content),
-	}); err != nil {
+	if err := utils.WriteFile(p.fs, path, content); err != nil {
 		return fmt.Errorf("writing file '%s': %w", path, err)
 	}
 	return nil
