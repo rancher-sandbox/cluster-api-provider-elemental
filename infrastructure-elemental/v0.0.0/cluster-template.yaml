@@ -123,7 +123,7 @@ spec:
               value: "1"
             - name: address
               value: ${CONTROL_PLANE_ENDPOINT_IP}
-            image: ghcr.io/kube-vip/kube-vip:v0.6.2
+            image: ghcr.io/kube-vip/kube-vip:v0.6.4
             imagePullPolicy: Always
             name: kube-vip
             resources: {}

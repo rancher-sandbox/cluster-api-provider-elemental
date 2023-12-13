@@ -79,7 +79,7 @@ spec:
   registrationMethod: "address"
   registrationAddress: "${CONTROL_PLANE_ENDPOINT_IP}"
   preRKE2Commands:
-  - mkdir -p /var/lib/rancher/rke2/server/manifests/ && ctr images pull ghcr.io/kube-vip/kube-vip:v0.6.0 && ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:v0.6.0 vip /kube-vip manifest daemonset --arp --interface $(ip -4 -j route list default | jq -r .[0].dev) --address ${CONTROL_PLANE_ENDPOINT_IP} --controlplane --leaderElection --taint --services --inCluster | tee /var/lib/rancher/rke2/server/manifests/kube-vip.yaml
+  - mkdir -p /var/lib/rancher/rke2/server/manifests/ && ctr images pull ghcr.io/kube-vip/kube-vip:v0.6.4 && ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:v0.6.4 vip /kube-vip manifest daemonset --arp --interface $(ip -4 -j route list default | jq -r .[0].dev) --address ${CONTROL_PLANE_ENDPOINT_IP} --controlplane --leaderElection --taint --services --inCluster | tee /var/lib/rancher/rke2/server/manifests/kube-vip.yaml
   files:
   - path: /var/lib/rancher/rke2/server/manifests/kube-vip-rbac.yaml
     content: |
