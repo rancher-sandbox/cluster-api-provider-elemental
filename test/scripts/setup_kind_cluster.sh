@@ -28,6 +28,7 @@ make kind-load
 
 make generate-infra-yaml
 
+export CLUSTER_TOPOLOGY=true
 export ELEMENTAL_ENABLE_DEBUG="\"true\""
 export ELEMENTAL_API_ENDPOINT="192.168.122.10.sslip.io"
 export ELEMENTAL_API_ENABLE_TLS="\"true\""
