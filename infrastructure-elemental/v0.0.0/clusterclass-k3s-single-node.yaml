@@ -6,7 +6,7 @@ spec:
   controlPlane:
     ref:
       apiVersion: controlplane.cluster.x-k8s.io/v1beta1
-      kind: KThreesControlPlane
+      kind: KThreesControlPlaneTemplate
       name: k3s-single-node-v0.5.0-control-plane
     machineInfrastructure:
       ref:
@@ -53,16 +53,16 @@ spec:
               path: "/spec/template/spec/controlPlaneEndpoint/port"
               valueFrom:
                 variable: controlPlaneEndpointPort
-    - name: kThreesControlPlane
+    - name: kThreesControlPlaneTemplate
       definitions:
         - selector:
             apiVersion: controlplane.cluster.x-k8s.io/v1beta1
-            kind: KThreesControlPlane
+            kind: KThreesControlPlaneTemplate
             matchResources:
               controlPlane: true
           jsonPatches:
             - op: add
-              path: "/spec/version"
+              path: "/spec/template/spec/version"
               valueFrom:
                 variable: k3sVersion
 ---
@@ -75,13 +75,15 @@ spec:
     spec: {}
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1beta1
-kind: KThreesControlPlane
+kind: KThreesControlPlaneTemplate
 metadata:
   name: k3s-single-node-v0.5.0-control-plane
 spec:
-  kthreesConfigSpec:
-    serverConfig:
-      disableExternalCloudProvider: true
+  template:
+    spec:
+      kthreesConfigSpec:
+        serverConfig:
+          disableExternalCloudProvider: true
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: ElementalMachineTemplate
