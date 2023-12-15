@@ -14,7 +14,7 @@ spec:
       cidrBlocks: ${POD_CIDR:=["10.244.0.0/16"]}
     serviceDomain: ${SERVICE_DOMAIN:="cluster.local"}
   topology:
-    class: k3s-single-node
+    class: k3s-single-node-v0.5.0
     controlPlane:
       metadata: {}
       replicas: 1
