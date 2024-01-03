@@ -14,14 +14,14 @@ spec:
       cidrBlocks: ${POD_CIDR:=["10.244.0.0/16"]}
     serviceDomain: ${SERVICE_DOMAIN:="cluster.local"}
   topology:
-    class: kubeadm-v0.5.0
+    class: kubeadm
     version: ${KUBERNETES_VERSION:="1.28.4"}
     controlPlane:
       metadata: {}
       replicas: ${CONTROL_PLANE_MACHINE_COUNT}
     workers:
       machineDeployments:
-      - class: kubeadm-v0.5.0-default-worker
+      - class: kubeadm-default-worker
         name: md-0
         replicas: ${WORKER_MACHINE_COUNT}
     variables:
