@@ -262,7 +262,7 @@ endif
 		--entrypoint /usr/bin/elemental docker.io/library/elemental-iso:latest --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
 		--local --squash-no-compression -o /iso docker.io/library/elemental-iso:latest
 
-CAPI_VERSION=v1.5.3
+CAPI_VERSION=v1.6.0
 .PHONY: update-test-capi-crds
 update-test-capi-crds: 
 # These files can not be included when vendoring, but we need them to start the controller test suite
