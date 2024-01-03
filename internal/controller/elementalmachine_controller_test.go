@@ -226,8 +226,8 @@ var _ = Describe("ElementalMachine controller", Label("controller", "elemental-m
 			}, updatedHost)).Should(Succeed())
 			updatedHost.Labels[v1beta1.LabelElementalHostReset] = "true"
 			return k8sClient.Update(ctx, updatedHost) == nil
-		}).WithTimeout(time.Minute).Should(BeNil())
-		Expect(k8sClient.Delete(ctx, updatedHost)).Should(BeTrue(), "Labels update should succeed")
+		}).WithTimeout(time.Minute).Should(BeTrue(), "Labels update should succeed")
+		Expect(k8sClient.Delete(ctx, updatedHost)).Should(Succeed())
 
 		updatedMachine := &v1beta1.ElementalMachine{}
 		Eventually(func() *string {
