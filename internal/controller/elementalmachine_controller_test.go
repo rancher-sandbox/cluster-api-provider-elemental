@@ -190,14 +190,14 @@ var _ = Describe("ElementalMachine controller", Label("controller", "elemental-m
 			Name:      installedHost.Name,
 			Namespace: installedHost.Namespace,
 		}, updatedHost)).Should(Succeed())
-		Eventually(func() error {
+		Eventually(func() bool {
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
 				Name:      installedHost.Name,
 				Namespace: installedHost.Namespace,
 			}, updatedHost)).Should(Succeed())
 			updatedHost.Labels[v1beta1.LabelElementalHostBootstrapped] = "true"
-			return k8sClient.Update(ctx, updatedHost)
-		}).WithTimeout(time.Minute).Should(BeNil())
+			return k8sClient.Update(ctx, updatedHost) == nil
+		}).WithTimeout(time.Minute).Should(BeTrue(), "Labels update should succeed")
 		Eventually(func() bool {
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
 				Name:      elementalMachine.Name,
@@ -219,15 +219,15 @@ var _ = Describe("ElementalMachine controller", Label("controller", "elemental-m
 	It("should remove association if host is deleted", func() {
 		// Mark the host as reset to remove finalized and enable deletion
 		updatedHost := &v1beta1.ElementalHost{}
-		Eventually(func() error {
+		Eventually(func() bool {
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
 				Name:      alreadyAssociatedHost.Name,
 				Namespace: alreadyAssociatedHost.Namespace,
 			}, updatedHost)).Should(Succeed())
 			updatedHost.Labels[v1beta1.LabelElementalHostReset] = "true"
-			return k8sClient.Update(ctx, updatedHost)
+			return k8sClient.Update(ctx, updatedHost) == nil
 		}).WithTimeout(time.Minute).Should(BeNil())
-		Expect(k8sClient.Delete(ctx, updatedHost)).Should(Succeed())
+		Expect(k8sClient.Delete(ctx, updatedHost)).Should(BeTrue(), "Labels update should succeed")
 
 		updatedMachine := &v1beta1.ElementalMachine{}
 		Eventually(func() *string {
