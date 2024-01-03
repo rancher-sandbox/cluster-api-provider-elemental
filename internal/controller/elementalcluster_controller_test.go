@@ -110,6 +110,12 @@ var _ = Describe("ElementalCluster controller", Label("controller", "elemental-c
 		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionTrue), "ControlPlaneEndpointReady condition should be true")
 		Expect(conditions.Get(&cluster, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
 		Expect(conditions.Get(&cluster, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionTrue), "Conditions summary should be true")
-		Expect(cluster.Status.Ready).Should(BeTrue())
+		Eventually(func() bool {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      cluster.Name,
+				Namespace: cluster.Namespace},
+				&cluster)).Should(Succeed())
+			return cluster.Status.Ready
+		}).WithTimeout(time.Minute).Should(BeTrue())
 	})
 })

@@ -190,8 +190,14 @@ var _ = Describe("ElementalMachine controller", Label("controller", "elemental-m
 			Name:      installedHost.Name,
 			Namespace: installedHost.Namespace,
 		}, updatedHost)).Should(Succeed())
-		updatedHost.Labels[v1beta1.LabelElementalHostBootstrapped] = "true"
-		Expect(k8sClient.Update(ctx, updatedHost)).Should(Succeed())
+		Eventually(func() error {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      installedHost.Name,
+				Namespace: installedHost.Namespace,
+			}, updatedHost)).Should(Succeed())
+			updatedHost.Labels[v1beta1.LabelElementalHostBootstrapped] = "true"
+			return k8sClient.Update(ctx, updatedHost)
+		}).WithTimeout(time.Minute).Should(BeNil())
 		Eventually(func() bool {
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
 				Name:      elementalMachine.Name,
@@ -213,12 +219,14 @@ var _ = Describe("ElementalMachine controller", Label("controller", "elemental-m
 	It("should remove association if host is deleted", func() {
 		// Mark the host as reset to remove finalized and enable deletion
 		updatedHost := &v1beta1.ElementalHost{}
-		Expect(k8sClient.Get(ctx, types.NamespacedName{
-			Name:      alreadyAssociatedHost.Name,
-			Namespace: alreadyAssociatedHost.Namespace,
-		}, updatedHost)).Should(Succeed())
-		updatedHost.Labels[v1beta1.LabelElementalHostReset] = "true"
-		Expect(k8sClient.Update(ctx, updatedHost)).Should(Succeed())
+		Eventually(func() error {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      alreadyAssociatedHost.Name,
+				Namespace: alreadyAssociatedHost.Namespace,
+			}, updatedHost)).Should(Succeed())
+			updatedHost.Labels[v1beta1.LabelElementalHostReset] = "true"
+			return k8sClient.Update(ctx, updatedHost)
+		}).WithTimeout(time.Minute).Should(BeNil())
 		Expect(k8sClient.Delete(ctx, updatedHost)).Should(Succeed())
 
 		updatedMachine := &v1beta1.ElementalMachine{}
@@ -551,11 +559,13 @@ var _ = Describe("ElementalMachine controller conditions", Label("controller", "
 		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionTrue), "HostReady condition must be true")
 		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
 		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionTrue), "Conditions summary should be true")
-		Expect(k8sClient.Get(ctx, types.NamespacedName{
-			Name:      elementalMachine.Name,
-			Namespace: elementalMachine.Namespace},
-			&elementalMachine)).Should(Succeed())
-		Expect(elementalMachine.Status.Ready).Should(BeTrue())
+		Eventually(func() bool {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachine.Name,
+				Namespace: elementalMachine.Namespace},
+				&elementalMachine)).Should(Succeed())
+			return elementalMachine.Status.Ready
+		}).WithTimeout(time.Minute).Should(BeTrue(), "ElementalMachine status should be true")
 	})
 	It("should have HostReady false if host was uninstalled", func() {
 		// Remove host installed label. This should not be a possible scenario in normal circumstances.
