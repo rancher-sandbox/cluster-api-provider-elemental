@@ -5,7 +5,7 @@ metadata:
   namespace: ${NAMESPACE}
 spec:
   template:
-    spec:
+    spec: {}
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
@@ -18,10 +18,10 @@ metadata:
 spec:
   clusterNetwork:
     services:
-      cidrBlocks: ["10.96.0.0/12"]
+      cidrBlocks: ${SERVICE_CIDR:=["10.96.0.0/12"]}
     pods:
-      cidrBlocks: ["10.244.0.0/16"]
-    serviceDomain: cluster.local
+      cidrBlocks: ${POD_CIDR:=["10.244.0.0/16"]}
+    serviceDomain: ${SERVICE_DOMAIN:="cluster.local"}
   controlPlaneRef:
     apiVersion: controlplane.cluster.x-k8s.io/v1beta1
     kind: KThreesControlPlane
@@ -38,7 +38,7 @@ metadata:
   namespace: ${NAMESPACE}
 spec:
   clusterName: ${CLUSTER_NAME}
-  replicas: ${WORKER_MACHINE_COUNT}
+  replicas: ${WORKER_MACHINE_COUNT:=1}
   selector:
     matchLabels: null
   template:
@@ -56,20 +56,20 @@ spec:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: ElementalMachineTemplate
         name: ${CLUSTER_NAME}-md-0
-      version: ${KUBERNETES_VERSION}+k3s1
+      version: "v${KUBERNETES_VERSION:="1.28.5"}+k3s2"
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1beta1
 kind: KThreesControlPlane
 metadata:
   name: ${CLUSTER_NAME}-control-plane
-  namespace: default
+  namespace: ${NAMESPACE}
 spec:
   infrastructureTemplate:
     apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
     kind: ElementalMachineTemplate
     name: ${CLUSTER_NAME}-control-plane
-  replicas: 1
-  version: ${KUBERNETES_VERSION}+k3s1
+  replicas: ${CONTROL_PLANE_MACHINE_COUNT:=1}
+  version: "v${KUBERNETES_VERSION:="1.28.5"}+k3s2"
   kthreesConfigSpec:
     serverConfig:
       disableExternalCloudProvider: true
@@ -81,8 +81,8 @@ metadata:
   namespace: ${NAMESPACE}
 spec:
   controlPlaneEndpoint:
-    host: ${CONTROL_PLANE_ENDPOINT_IP}
-    port: 6443
+    host: ${CONTROL_PLANE_ENDPOINT_HOST}
+    port: ${CONTROL_PLANE_ENDPOINT_PORT:=6443}
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: ElementalMachineTemplate

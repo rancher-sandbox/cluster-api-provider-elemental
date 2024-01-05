@@ -1,23 +1,37 @@
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: ClusterClass
 metadata:
-  name: k3s-single-node-v0.5.0
+  name: k3s
 spec:
   controlPlane:
     ref:
       apiVersion: controlplane.cluster.x-k8s.io/v1beta1
       kind: KThreesControlPlaneTemplate
-      name: k3s-single-node-v0.5.0-control-plane
+      name: k3s-control-plane
     machineInfrastructure:
       ref:
         kind: ElementalMachineTemplate
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-        name: k3s-single-node-v0.5.0-control-plane
+        name: k3s-control-plane
   infrastructure:
     ref:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       kind: ElementalClusterTemplate
-      name: k3s-single-node-v0.5.0-cluster
+      name: k3s-cluster
+  workers:
+    machineDeployments:
+      - class: k3s-default-worker
+        template:
+          bootstrap:
+            ref:
+              apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+              kind: KThreesConfigTemplate
+              name: k3s-default-worker-bootstrap
+          infrastructure:
+            ref:
+              apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+              kind: ElementalMachineTemplate
+              name: k3s-default-worker
   variables:
     - name: controlPlaneEndpointHost
       required: true
@@ -35,7 +49,7 @@ spec:
       schema:
         openAPIV3Schema:
           type: string
-          default: "v1.28.4+k3s2"
+          default: "v1.28.5+k3s2"
   patches:
     - name: elementalClusterTemplate
       definitions:
@@ -69,15 +83,18 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: ElementalClusterTemplate
 metadata:
-  name: k3s-single-node-v0.5.0-cluster
+  name: k3s-cluster
 spec:
   template:
-    spec: {}
+    spec:
+      controlPlaneEndpoint: 
+        host: ""
+        port: 6443
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1beta1
 kind: KThreesControlPlaneTemplate
 metadata:
-  name: k3s-single-node-v0.5.0-control-plane
+  name: k3s-control-plane
 spec:
   template:
     spec:
@@ -88,7 +105,23 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: ElementalMachineTemplate
 metadata:
-  name: k3s-single-node-v0.5.0-control-plane
+  name: k3s-control-plane
+spec:
+  template:
+    spec: {}
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+kind: KThreesConfigTemplate
+metadata:
+  name: k3s-default-worker-bootstrap
+spec:
+  template:
+    spec: {}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: ElementalMachineTemplate
+metadata:
+  name: k3s-default-worker
 spec:
   template:
     spec: {}

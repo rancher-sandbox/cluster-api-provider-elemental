@@ -14,20 +14,20 @@ spec:
       cidrBlocks: ${POD_CIDR:=["10.244.0.0/16"]}
     serviceDomain: ${SERVICE_DOMAIN:="cluster.local"}
   topology:
-    class: kubeadm
-    version: ${KUBERNETES_VERSION:="1.28.4"}
+    class: k3s
+    version: ${KUBERNETES_VERSION:="1.28.5"}
     controlPlane:
       metadata: {}
-      replicas: ${CONTROL_PLANE_MACHINE_COUNT}
+      replicas: ${CONTROL_PLANE_MACHINE_COUNT:=1}
     workers:
       machineDeployments:
-      - class: kubeadm-default-worker
+      - class: k3s-default-worker
         name: md-0
-        replicas: ${WORKER_MACHINE_COUNT}
+        replicas: ${WORKER_MACHINE_COUNT:=1}
     variables:
     - name: controlPlaneEndpointHost
       value: "${CONTROL_PLANE_ENDPOINT_HOST:=""}"
     - name: controlPlaneEndpointPort
       value: ${CONTROL_PLANE_ENDPOINT_PORT:=6443}
-    - name: vipInterface
-      value: "${VIP_INTERFACE:="eth0"}"
+    - name: k3sVersion
+      value: "v${KUBERNETES_VERSION:="1.28.5"}+k3s2"

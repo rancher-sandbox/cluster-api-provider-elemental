@@ -13,16 +13,46 @@ spec:
     pods:
       cidrBlocks: ${POD_CIDR:=["10.244.0.0/16"]}
     serviceDomain: ${SERVICE_DOMAIN:="cluster.local"}
-  topology:
-    class: k3s-single-node-v0.5.0
-    controlPlane:
-      metadata: {}
-      replicas: 1
-    version: ${KUBERNETES_VERSION:="v1.28.4"}
-    variables:
-    - name: controlPlaneEndpointHost
-      value: "${CONTROL_PLANE_ENDPOINT_HOST:=""}"
-    - name: controlPlaneEndpointPort
-      value: "${CONTROL_PLANE_ENDPOINT_PORT:=6443}"
-    - name: k3sVersion
-      value: "${KUBERNETES_VERSION:="v1.28.4"}+k3s2"
+  controlPlaneRef:
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+    kind: KThreesControlPlane
+    name: ${CLUSTER_NAME}-control-plane
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: ElementalCluster
+    name: ${CLUSTER_NAME}
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+kind: KThreesControlPlane
+metadata:
+  name: ${CLUSTER_NAME}-control-plane
+  namespace: ${NAMESPACE}
+spec:
+  infrastructureTemplate:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: ElementalMachineTemplate
+    name: ${CLUSTER_NAME}-control-plane
+  replicas: 1
+  version: "v${KUBERNETES_VERSION:="1.28.5"}+k3s2"
+  kthreesConfigSpec:
+    serverConfig:
+      disableExternalCloudProvider: true
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: ElementalCluster
+metadata:
+  name: ${CLUSTER_NAME}
+  namespace: ${NAMESPACE}
+spec:
+  controlPlaneEndpoint:
+    host: ${CONTROL_PLANE_ENDPOINT_HOST}
+    port: ${CONTROL_PLANE_ENDPOINT_PORT:=6443}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: ElementalMachineTemplate
+metadata:
+  name: ${CLUSTER_NAME}-control-plane
+  namespace: ${NAMESPACE}
+spec:
+  template:
+    spec: {}
