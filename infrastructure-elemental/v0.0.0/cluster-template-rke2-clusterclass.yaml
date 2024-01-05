@@ -15,7 +15,7 @@ spec:
     serviceDomain: ${SERVICE_DOMAIN:="cluster.local"}
   topology:
     class: rke2
-    version: ${KUBERNETES_VERSION:="1.28.5"}
+    version: ${KUBERNETES_VERSION:=1.28.5}
     controlPlane:
       metadata: {}
       replicas: ${CONTROL_PLANE_MACHINE_COUNT:=1}
@@ -26,10 +26,10 @@ spec:
         replicas: ${WORKER_MACHINE_COUNT:=1}
     variables:
     - name: controlPlaneEndpointHost
-      value: "${CONTROL_PLANE_ENDPOINT_HOST:=""}"
+      value: ${CONTROL_PLANE_ENDPOINT_HOST:=""}
     - name: controlPlaneEndpointPort
       value: ${CONTROL_PLANE_ENDPOINT_PORT:=6443}
     - name: rke2Version
-      value: "v${KUBERNETES_VERSION:="1.28.5"}+k3s2"
+      value: "v${KUBERNETES_VERSION:=1.28.5}+rke2r1"
     - name: vipInterface
-      value: "${VIP_INTERFACE:="eth0"}"
+      value: ${VIP_INTERFACE:=eth0}

@@ -164,7 +164,7 @@ metadata:
   namespace: ${NAMESPACE}
 spec:
   controlPlaneEndpoint:
-    host: ${${CONTROL_PLANE_ENDPOINT_HOST}}
+    host: ${CONTROL_PLANE_ENDPOINT_HOST}
     port: ${CONTROL_PLANE_ENDPOINT_PORT:=6443}
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1

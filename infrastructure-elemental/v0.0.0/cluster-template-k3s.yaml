@@ -56,7 +56,7 @@ spec:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: ElementalMachineTemplate
         name: ${CLUSTER_NAME}-md-0
-      version: "v${KUBERNETES_VERSION:="1.28.5"}+k3s2"
+      version: "v${KUBERNETES_VERSION:=1.28.5}+k3s2"
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1beta1
 kind: KThreesControlPlane
@@ -69,7 +69,7 @@ spec:
     kind: ElementalMachineTemplate
     name: ${CLUSTER_NAME}-control-plane
   replicas: ${CONTROL_PLANE_MACHINE_COUNT:=1}
-  version: "v${KUBERNETES_VERSION:="1.28.5"}+k3s2"
+  version: "v${KUBERNETES_VERSION:=1.28.5}+k3s2"
   kthreesConfigSpec:
     serverConfig:
       disableExternalCloudProvider: true

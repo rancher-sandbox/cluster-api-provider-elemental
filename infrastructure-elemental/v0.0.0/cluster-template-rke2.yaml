@@ -7,7 +7,7 @@ spec:
   template:
     spec:
       agentConfig:
-        version: ${KUBERNETES_VERSION}+rke2r1
+        version: "v${KUBERNETES_VERSION:=1.28.5}+rke2r1"
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
@@ -58,7 +58,7 @@ spec:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: ElementalMachineTemplate
         name: ${CLUSTER_NAME}-md-0
-      version: "v${KUBERNETES_VERSION:="1.28.5"}+k3s2"
+      version: "v${KUBERNETES_VERSION:=1.28.5}+rke2r1"
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
 kind: RKE2ControlPlane
@@ -68,7 +68,7 @@ metadata:
 spec: 
   replicas: 1
   agentConfig:
-    version: "v${KUBERNETES_VERSION:="1.28.5"}+k3s2"
+    version: "v${KUBERNETES_VERSION:=1.28.5}+rke2r1"
   serverConfig:
     cni: calico
   infrastructureRef:
