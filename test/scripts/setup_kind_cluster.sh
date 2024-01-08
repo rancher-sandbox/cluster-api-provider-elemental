@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 cat << EOF | kind create cluster --name elemental-capi-management --config -
 kind: Cluster
@@ -24,16 +25,60 @@ nodes:
     protocol: TCP
 EOF
 
+# Build the Elemental provider docker image and load it to the kind cluster
 make kind-load
 
+# Generate infrastructure manifest
 make generate-infra-yaml
 
+# Create a dummy clusterctl config in a tmp folder
+CONFIG_DIR="/tmp/cluster-api"
+CONFIG_FILE="$CONFIG_DIR/clusterctl.yaml"
+cd "$(dirname "$0")/../../"
+REPO_DIR="$(pwd)"
+mkdir -p $CONFIG_DIR
+cat << EOF > $CONFIG_FILE
+providers:
+- name: "elemental"
+  url: "file:///$REPO_DIR/infrastructure-elemental/v0.0.0/infrastructure-components.yaml"
+  type: "InfrastructureProvider"
+- name: "k3s"
+  url: "https://github.com/cluster-api-provider-k3s/cluster-api-k3s/releases/latest/bootstrap-components.yaml"
+  type: "BootstrapProvider"
+- name: "k3s"
+  url: "https://github.com/cluster-api-provider-k3s/cluster-api-k3s/releases/latest/control-plane-components.yaml"
+  type: "ControlPlaneProvider"
+- name: "rke2"
+  url: "https://github.com/rancher-sandbox/cluster-api-provider-rke2/releases/latest/bootstrap-components.yaml"
+  type: "BootstrapProvider"
+- name: "rke2"
+  url: "https://github.com/rancher-sandbox/cluster-api-provider-rke2/releases/latest/control-plane-components.yaml"
+  type: "ControlPlaneProvider"
+EOF
+
+# Determine the public IP address of this host
+# This is used to expose the Elemental API
+DEFAULT_HOST=$(ip addr show $(ip route | awk '/default/ { print $5 }') | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
+
+# Enable Experimental cluster topology support (Cluster classes)
+export CLUSTER_TOPOLOGY=true
+# Level 5 is highest for debugging
+export CLUSTERCTL_LOG_LEVEL=4
+
+# Elemental provider variables
 export ELEMENTAL_ENABLE_DEBUG="\"true\""
-export ELEMENTAL_API_ENDPOINT="192.168.122.10.sslip.io"
+export ELEMENTAL_API_ENDPOINT="$DEFAULT_HOST.sslip.io"
 export ELEMENTAL_API_ENABLE_TLS="\"true\""
 export ELEMENTAL_ENABLE_DEFAULT_CA="\"true\""
-clusterctl init --bootstrap k3s:v0.1.9 --control-plane k3s:v0.1.9 --infrastructure elemental:v0.0.0
 
+# Install kubeadm, k3s, and rke2 providers for testing
+clusterctl init --config $CONFIG_FILE \
+                --bootstrap kubeadm --control-plane kubeadm \
+                --bootstrap k3s --control-plane k3s \
+                --bootstrap rke2 --control-plane rke2 \
+                --infrastructure elemental:v0.0.0
+
+# Expose the Elemental API through a nodeport
 cat << EOF | kubectl apply -f -
 apiVersion: v1
 kind: Service
@@ -51,6 +96,7 @@ spec:
     targetPort: 9090    
 EOF
 
+# Create a test registration
 cat << EOF | kubectl apply -f -
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: ElementalRegistration
@@ -65,7 +111,7 @@ spec:
           passwd: root
     elemental:
       registration:
-        uri: https://192.168.122.10.sslip.io:30009/elemental/v1/namespaces/default/registrations/my-registration
+        uri: https://$DEFAULT_HOST.sslip.io:30009/elemental/v1/namespaces/default/registrations/my-registration
       agent:
         hostname:
           useExisting: false

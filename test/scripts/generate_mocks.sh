@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 
 go install go.uber.org/mock/mockgen@v0.3.0
 

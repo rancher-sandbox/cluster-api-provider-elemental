@@ -116,6 +116,10 @@ var _ = Describe("ElementalHost controller", Label("controller", "elemental-host
 		Expect(conditions.Get(&hostWithConditions, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
 		Expect(conditions.Get(&hostWithConditions, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionTrue), "Conditions summary should be true")
 		// Set one unready condition and expect summary to be false
+		Expect(k8sClient.Get(ctx, types.NamespacedName{
+			Name:      hostWithConditions.Name,
+			Namespace: hostWithConditions.Namespace},
+			&hostWithConditions)).Should(Succeed())
 		hostWithConditionsPatch := hostWithConditions
 		conditions.Set(&hostWithConditionsPatch, &clusterv1.Condition{
 			Type:     v1beta1.BootstrapReady,
@@ -137,8 +141,16 @@ var _ = Describe("ElementalHost controller", Label("controller", "elemental-host
 			return condition.Status
 		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionTrue), "Conditions summary should be false")
 		// Set bootstrapped label
-		hostWithConditionsPatch.Status.Conditions = clusterv1.Conditions{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{
+			Name:      hostWithConditions.Name,
+			Namespace: hostWithConditions.Namespace},
+			&hostWithConditions)).Should(Succeed())
+		hostWithConditionsPatch = hostWithConditions
 		hostWithConditionsPatch.Labels = map[string]string{v1beta1.LabelElementalHostBootstrapped: "true"}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{
+			Name:      hostWithConditions.Name,
+			Namespace: hostWithConditions.Namespace},
+			&hostWithConditions)).Should(Succeed())
 		patchObject(ctx, k8sClient, &hostWithConditions, &hostWithConditionsPatch)
 		Eventually(func() corev1.ConditionStatus {
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
