@@ -1,6 +1,6 @@
 # Elemental CAPI Infrastructure Provider
 
-This infrastructure provider brings the Elemental stack into the [Kubernete's Cluster API](cluster-api.sigs.k8s.io/).  
+This infrastructure provider brings the Elemental stack into the [Kubernetes Cluster API](https://cluster-api.sigs.k8s.io/).
 
 Elemental is a software stack enabling centralized, full cloud-native OS management with Kubernetes.  
 For more information about the current features, please read the [official documentation](https://elemental.docs.rancher.com/).  
