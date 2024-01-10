@@ -5,7 +5,7 @@ metadata:
 spec:
   controlPlane:
     ref:
-      apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+      apiVersion: controlplane.cluster.x-k8s.io/v1beta2
       kind: KThreesControlPlaneTemplate
       name: k3s-control-plane
     machineInfrastructure:
@@ -24,7 +24,7 @@ spec:
         template:
           bootstrap:
             ref:
-              apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+              apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
               kind: KThreesConfigTemplate
               name: k3s-default-worker-bootstrap
           infrastructure:
@@ -70,7 +70,7 @@ spec:
     - name: kThreesControlPlaneTemplate
       definitions:
         - selector:
-            apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+            apiVersion: controlplane.cluster.x-k8s.io/v1beta2
             kind: KThreesControlPlaneTemplate
             matchResources:
               controlPlane: true
@@ -91,7 +91,7 @@ spec:
         host: ""
         port: 6443
 ---
-apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
 kind: KThreesControlPlaneTemplate
 metadata:
   name: k3s-control-plane
@@ -110,7 +110,7 @@ spec:
   template:
     spec: {}
 ---
-apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KThreesConfigTemplate
 metadata:
   name: k3s-default-worker-bootstrap
