@@ -15,7 +15,7 @@ spec:
     serviceDomain: ${SERVICE_DOMAIN:="cluster.local"}
   topology:
     class: rke2
-    version: ${KUBERNETES_VERSION:=1.28.5}
+    version: "v${KUBERNETES_VERSION:=1.28.5}+rke2r1"
     controlPlane:
       metadata: {}
       replicas: ${CONTROL_PLANE_MACHINE_COUNT:=1}
