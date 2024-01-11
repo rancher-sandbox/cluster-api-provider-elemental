@@ -33,7 +33,7 @@ spec:
     kind: ElementalMachineTemplate
     name: ${CLUSTER_NAME}-control-plane
   replicas: 1
-  version: "v${KUBERNETES_VERSION:=1.28.5}+k3s2"
+  version: "v${KUBERNETES_VERSION:=1.28.5}+k3s1"
   kthreesConfigSpec:
     serverConfig:
       disableExternalCloudProvider: true
