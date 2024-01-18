@@ -184,7 +184,7 @@ spec:
                         hostNetwork: true
                         volumes:
                         - hostPath:
-                            path: /etc/kubernetes/admin.conf
+                            path: /etc/rancher/rke2/rke2.yaml
                           name: kubeconfig
                       status: {}
                     owner: root:root
