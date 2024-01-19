@@ -24,10 +24,12 @@ stages:
         RW_PATHS: "/var /etc /srv"
         PERSISTENT_STATE_PATHS: >-
           /etc/systemd
+          /etc/kubernetes
           /etc/rancher
           /etc/ssh
           /etc/iscsi 
           /etc/cni
+          /etc/conntrackd
           /home
           /opt
           /root
@@ -40,6 +42,9 @@ stages:
           /var/lib/longhorn
           /var/lib/cni
           /var/lib/calico
+          /var/lib/containers
+          /var/lib/crio
+          /var/lib/etcd
         PERSISTENT_STATE_BIND: "true"
     - if: '[ -f "/run/cos/recovery_mode" ]'
       # omit the persistent partition on recovery mode
