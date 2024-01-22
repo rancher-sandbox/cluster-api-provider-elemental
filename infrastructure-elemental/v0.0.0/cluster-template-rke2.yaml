@@ -22,7 +22,7 @@ spec:
     services:
       cidrBlocks: ${SERVICE_CIDR:=["10.96.0.0/12"]}
     pods:
-      cidrBlocks: ${POD_CIDR:=["192.168.0.0/16"]}
+      cidrBlocks: [${POD_CIDR:="10.244.0.0/16"}]
     serviceDomain: ${SERVICE_DOMAIN:="cluster.local"}
   controlPlaneRef:
     apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
@@ -179,6 +179,18 @@ spec:
             path: /etc/rancher/rke2/rke2.yaml 
           name: kubeconfig
       status: {}
+    owner: root:root
+  - path: /var/lib/rancher/rke2/server/manifests/rke2-calico-config.yaml
+    content: |
+      apiVersion: helm.cattle.io/v1
+      kind: HelmChartConfig
+      metadata:
+        name: rke2-calico
+        namespace: kube-system
+      spec:
+        valuesContent: |-
+          global:
+            clusterCIDRv4: ${POD_CIDR:="10.244.0.0/16"}
     owner: root:root
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
