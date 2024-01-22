@@ -11,7 +11,7 @@ spec:
     services:
       cidrBlocks: ${SERVICE_CIDR:=["10.96.0.0/12"]}
     pods:
-      cidrBlocks: ${POD_CIDR:=["10.244.0.0/16"]}
+      cidrBlocks: [${POD_CIDR:="10.244.0.0/16"}]
     serviceDomain: ${SERVICE_DOMAIN:="cluster.local"}
   topology:
     class: rke2
@@ -33,3 +33,5 @@ spec:
       value: "v${KUBERNETES_VERSION:=1.28.5}+rke2r1"
     - name: vipInterface
       value: ${VIP_INTERFACE:=eth0}
+    - name: clusterCIDRv4
+      value: ${POD_CIDR:="10.244.0.0/16"}

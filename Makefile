@@ -262,6 +262,21 @@ endif
 		--entrypoint /usr/bin/elemental docker.io/library/elemental-iso:latest --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
 		--local --squash-no-compression -o /iso docker.io/library/elemental-iso:latest
 
+.PHONY: build-iso-kubeadm
+build-iso-kubeadm: 
+ifeq ($(AGENT_CONFIG_FILE),"iso/config/example-config.yaml")
+	@echo "No AGENT_CONFIG_FILE set, using the default one at ${AGENT_CONFIG_FILE}"
+endif
+	$(CONTAINER_TOOL) build \
+		--build-arg "TAG=${GIT_TAG}" \
+		--build-arg "COMMIT=${GIT_COMMIT}" \
+		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
+		--build-arg "AGENT_CONFIG_FILE=${AGENT_CONFIG_FILE}" \
+		-t elemental-iso:latest -f Dockerfile.kubeadm.iso .
+	$(CONTAINER_TOOL) run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ./iso:/iso \
+		--entrypoint /usr/bin/elemental docker.io/library/elemental-iso:latest --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
+		--local --squash-no-compression -o /iso docker.io/library/elemental-iso:latest
+
 CAPI_VERSION=v1.6.0
 .PHONY: update-test-capi-crds
 update-test-capi-crds: 

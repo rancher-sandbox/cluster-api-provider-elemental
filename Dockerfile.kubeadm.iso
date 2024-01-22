@@ -45,7 +45,7 @@ RUN CGO_ENABLED=1 go build \
 FROM  ghcr.io/rancher/elemental-toolkit/elemental-cli:v1.1.0 as TOOLKIT
 
 # OS base image of our choice
-FROM opensuse/leap:15.5 as OS
+FROM opensuse/tumbleweed:latest as OS
 
 ARG AGENT_CONFIG_FILE=iso/config/example-config.yaml
 
@@ -60,7 +60,6 @@ RUN ARCH=$(uname -m); \
       dracut \
       grub2 \
       grub2-${ARCH}-efi \
-      shim \
       haveged \
       systemd \
       NetworkManager \
@@ -85,7 +84,22 @@ RUN ARCH=$(uname -m); \
       sudo \
       curl \
       sed \
-      iptables
+      patch \
+      iproute2 \
+      shim 
+
+# Install kubeadm stack
+RUN ARCH=$(uname -m); \
+    if [[ $ARCH == "aarch64" ]]; then ARCH="arm64"; fi; \
+    zypper --non-interactive install -- \
+      kubernetes-kubeadm \
+      kubernetes-kubelet \
+      kubernetes-client \
+      cri-o \
+      conntrackd \
+      conntrack-tools \
+      iptables \
+      fuse-overlayfs
 
 # Add the elemental cli
 COPY --from=TOOLKIT /usr/bin/elemental /usr/bin/elemental
@@ -100,19 +114,24 @@ COPY framework/files/ /
 # Add agent config
 COPY $AGENT_CONFIG_FILE /oem/elemental/agent/config.yaml
 
-# Enable essential services
-RUN systemctl enable NetworkManager.service sshd
+# Configure cri-o overlayfs
+COPY iso/crio-overlay-storage.conf /etc/crio/crio.conf.d/99-storage.conf
 
-# Enable /tmp to be on tmpfs
-RUN cp /usr/share/systemd/tmp.mount /etc/systemd/system
+# Enable essential services
+RUN systemctl enable NetworkManager.service sshd conntrackd kubelet crio
+
+# This is for automatic testing purposes, do not do this in production.
+RUN echo "PermitRootLogin yes" > /etc/ssh/sshd_config.d/rootlogin.conf
+
+# This is patches are fix upstream dracut, see https://github.com/dracutdevs/dracut/pull/2525
+ADD iso/patches /
+RUN cd /usr/lib/dracut && \
+    patch -p 1 -f -i /0001-fix-dmsquash-live-restore-compatibility-with-earlier.patch && \
+    patch -p 1 -f -i /0001-fix-overlayfs-split-overlayfs-mount-in-two-steps.patch && \
+    rm /*.patch
 
 # Generate initrd with required elemental services
-RUN elemental init -f && \
-    kernel=$(ls /boot/Image-* | head -n1) && \
-    if [ -e "$kernel" ]; then ln -sf "${kernel#/boot/}" /boot/vmlinuz; fi && \
-    rm -rf /var/log/update* && \
-    >/var/log/lastlog && \
-    rm -rf /boot/vmlinux*
+RUN elemental --debug init --force
 
 # Update os-release file with some metadata
 RUN echo TIMESTAMP="`date +'%Y%m%d%H%M%S'`" >> /etc/os-release && \
