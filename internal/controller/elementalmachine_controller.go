@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -299,7 +298,7 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			return ctrl.Result{}, nil
 		}
 		// Reconciliation step #7: Reconcile provider-specific machine infrastructure
-		result, err := r.reconcileNormal(ctx, elementalMachine, *machine)
+		result, err := r.reconcileNormal(ctx, cluster, elementalMachine, *machine)
 		if err != nil {
 			// Reconciliation step #7-1: If they are terminal failures, set status.failureReason and status.failureMessage
 			// TODO: Consider implementing status.failureReason and status.failureMessage
@@ -320,7 +319,7 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	return ctrl.Result{}, nil
 }
 
-func (r *ElementalMachineReconciler) reconcileNormal(ctx context.Context, elementalMachine *infrastructurev1beta1.ElementalMachine, machine clusterv1.Machine) (ctrl.Result, error) {
+func (r *ElementalMachineReconciler) reconcileNormal(ctx context.Context, cluster *clusterv1.Cluster, elementalMachine *infrastructurev1beta1.ElementalMachine, machine clusterv1.Machine) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).
 		WithValues(ilog.KeyNamespace, elementalMachine.Namespace).
 		WithValues(ilog.KeyElementalMachine, elementalMachine.Name)
@@ -331,8 +330,8 @@ func (r *ElementalMachineReconciler) reconcileNormal(ctx context.Context, elemen
 	// Reconciliation step #7-2: If this is a control plane machine, register the instance with the provider’s control plane load balancer (optional)
 	// TODO: Not implemented yet.
 
-	// elementalMachine.Spec.ProviderID is used to mark a link between the ElementalMachine and an ElementalHost
-	if elementalMachine.Spec.ProviderID == nil {
+	// elementalMachine.Spec.HostRef is used to mark a link between the ElementalMachine and an ElementalHost
+	if elementalMachine.Spec.HostRef == nil {
 		return r.associateElementalHost(ctx, elementalMachine, machine)
 	}
 
@@ -385,7 +384,7 @@ func (r *ElementalMachineReconciler) reconcileNormal(ctx context.Context, elemen
 			Reason:   infrastructurev1beta1.HostWaitingForInstallReason,
 			Message:  fmt.Sprintf("ElementalHost '%s' is not installed.", host.Name),
 		})
-		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
+		return ctrl.Result{}, nil
 	}
 	if value, found := host.Labels[infrastructurev1beta1.LabelElementalHostBootstrapped]; !found || value != "true" {
 		logger.Info("Waiting for ElementalHost to be bootstrapped")
@@ -396,16 +395,32 @@ func (r *ElementalMachineReconciler) reconcileNormal(ctx context.Context, elemen
 			Reason:   infrastructurev1beta1.HostWaitingForBootstrapReason,
 			Message:  fmt.Sprintf("Waiting for ElementalHost '%s' to be bootstrapped", host.Name),
 		})
-		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
+		return ctrl.Result{}, nil
 	}
 
-	// Mark the ElementalMachine as ready
-	elementalMachine.Status.Ready = true
+	// Mark the HostReady condition true.
+	// This is different than setting the elementalMachine.Status.Ready flag.
+	// It just highlights that there is nothing to do anymore on the host side.
 	conditions.Set(elementalMachine, &clusterv1.Condition{
 		Type:     infrastructurev1beta1.HostReady,
 		Status:   corev1.ConditionTrue,
 		Severity: clusterv1.ConditionSeverityInfo,
 	})
+
+	// Wait for the Cluster's ControlPlane to be initialized before setting the ProviderID
+	// This controller will need to set the `node.spec.providerID` on the downstream cluster,
+	// therefore we need a working control plane to access it.
+	if cluster.Spec.ControlPlaneRef != nil &&
+		!conditions.IsTrue(cluster, clusterv1.ControlPlaneInitializedCondition) {
+		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
+	}
+
+	// Reconciliation step #8: Set spec.providerID to the provider-specific identifier for the provider’s machine instance
+	providerID := fmt.Sprintf("elemental://%s/%s", host.Namespace, host.Name)
+	elementalMachine.Spec.ProviderID = &providerID
+
+	// Mark the ElementalMachine as ready
+	elementalMachine.Status.Ready = true
 
 	// Reconciliation step #11: Set spec.failureDomain to the provider-specific failure domain the instance is running in (optional)
 	// TODO: Not implemented yet.
@@ -472,9 +487,13 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 	logger = logger.WithValues(ilog.KeyElementalHost, elementalHostCandidate.Name)
 	logger.Info("Associating ElementalMachine to ElementalHost")
 
-	// Reconciliation step #8: Set spec.providerID to the provider-specific identifier for the provider’s machine instance
-	providerID := fmt.Sprintf("elemental://%s/%s", elementalHostCandidate.Namespace, elementalHostCandidate.Name)
-	elementalMachine.Spec.ProviderID = &providerID
+	// Create the patch helper.
+	patchHelper, err := patch.NewHelper(&elementalHostCandidate, r.Client)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
+	}
+
+	// Link the ElementalMachine to ElementalHost
 	elementalMachine.Spec.HostRef = &corev1.ObjectReference{
 		APIVersion: elementalHostCandidate.APIVersion,
 		Kind:       elementalHostCandidate.Kind,
@@ -483,13 +502,7 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 		UID:        elementalHostCandidate.UID,
 	}
 
-	// Create the patch helper.
-	patchHelper, err := patch.NewHelper(&elementalHostCandidate, r.Client)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
-	}
-
-	// Link the ElementalMachine to ElementalHost
+	// Link the ElementalHost to ElementalMachine
 	elementalHostCandidate.Labels[infrastructurev1beta1.LabelElementalHostMachineName] = elementalMachine.Name
 	elementalHostCandidate.Spec.MachineRef = &corev1.ObjectReference{
 		APIVersion: elementalMachine.APIVersion,
@@ -523,7 +536,17 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 		Severity: clusterv1.ConditionSeverityInfo,
 	})
 
-	return ctrl.Result{RequeueAfter: time.Second}, nil
+	// We already know the host is installed (from label selection) and the bootstrap secret is ready.
+	// Therefore we can already set this condition.
+	conditions.Set(elementalMachine, &clusterv1.Condition{
+		Type:     infrastructurev1beta1.HostReady,
+		Status:   corev1.ConditionFalse,
+		Severity: infrastructurev1beta1.HostWaitingForBootstrapReasonSeverity,
+		Reason:   infrastructurev1beta1.HostWaitingForBootstrapReason,
+		Message:  fmt.Sprintf("Waiting for ElementalHost '%s' to be bootstrapped", elementalHostCandidate.Name),
+	})
+
+	return ctrl.Result{}, nil
 }
 
 func (r *ElementalMachineReconciler) reconcileDelete(ctx context.Context, elementalMachine *infrastructurev1beta1.ElementalMachine) (ctrl.Result, error) {
