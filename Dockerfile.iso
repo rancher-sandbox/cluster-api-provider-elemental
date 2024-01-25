@@ -85,7 +85,8 @@ RUN ARCH=$(uname -m); \
       sudo \
       curl \
       sed \
-      iptables
+      iptables \
+      iproute2 
 
 # Add the elemental cli
 COPY --from=TOOLKIT /usr/bin/elemental /usr/bin/elemental
