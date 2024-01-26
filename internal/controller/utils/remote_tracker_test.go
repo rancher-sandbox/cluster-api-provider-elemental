@@ -67,5 +67,6 @@ var _ = Describe("Remote Tracker", Label("utils", "remote tracker"), func() {
 			node.Name,
 			wantProviderID)).Should(Succeed())
 		Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(node), node)).Should(Succeed())
+		Expect(node.Spec.ProviderID).Should(Equal(wantProviderID))
 	})
 })
