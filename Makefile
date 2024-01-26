@@ -38,7 +38,7 @@ LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/interna
 ABS_TOOLS_DIR :=  $(abspath bin/)
 GO_INSTALL := ./test/scripts/go_install.sh
 
-GINKGO_VER := v2.13.2
+GINKGO_VER := v2.14.0
 GINKGO := $(ABS_TOOLS_DIR)/ginkgo-$(GINKGO_VER)
 GINKGO_PKG := github.com/onsi/ginkgo/v2/ginkgo
 

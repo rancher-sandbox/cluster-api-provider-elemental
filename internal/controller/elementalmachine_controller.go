@@ -41,13 +41,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/controller/utils"
 	ilog "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/log"
+)
+
+var (
+	ErrMissingHostReference = errors.New("missing host reference")
 )
 
 // ElementalMachineReconciler reconciles a ElementalMachine object.
 type ElementalMachineReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme  *runtime.Scheme
+	Tracker utils.RemoteTracker
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -322,7 +328,8 @@ func (r *ElementalMachineReconciler) Reconcile(ctx context.Context, req ctrl.Req
 func (r *ElementalMachineReconciler) reconcileNormal(ctx context.Context, cluster *clusterv1.Cluster, elementalMachine *infrastructurev1beta1.ElementalMachine, machine clusterv1.Machine) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).
 		WithValues(ilog.KeyNamespace, elementalMachine.Namespace).
-		WithValues(ilog.KeyElementalMachine, elementalMachine.Name)
+		WithValues(ilog.KeyElementalMachine, elementalMachine.Name).
+		WithValues(ilog.KeyCluster, cluster.Name)
 	logger.Info("Normal ElementalMachine reconcile")
 	// Always assume Ready false
 	elementalMachine.Status.Ready = false
@@ -347,14 +354,14 @@ func (r *ElementalMachineReconciler) reconcileNormal(ctx context.Context, cluste
 			Status:   corev1.ConditionFalse,
 			Severity: infrastructurev1beta1.AssociatedHostNotFoundReasonSeverity,
 			Reason:   infrastructurev1beta1.AssociatedHostNotFoundReason,
-			Message:  fmt.Sprintf("Previously associated host not found: %s", *elementalMachine.Spec.ProviderID),
+			Message:  fmt.Sprintf("Previously associated host not found: %s", elementalMachine.Spec.HostRef.Name),
 		})
 		elementalMachine.Spec.ProviderID = nil
 		elementalMachine.Spec.HostRef = nil
 		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
 	}
 	if err != nil {
-		err := fmt.Errorf("fetching associated ElementalHost '%s': %w", *elementalMachine.Spec.ProviderID, err)
+		err := fmt.Errorf("fetching associated ElementalHost '%s': %w", elementalMachine.Spec.HostRef.Name, err)
 		conditions.Set(elementalMachine, &clusterv1.Condition{
 			Type:     infrastructurev1beta1.AssociationReady,
 			Status:   corev1.ConditionFalse,
@@ -410,21 +417,92 @@ func (r *ElementalMachineReconciler) reconcileNormal(ctx context.Context, cluste
 	// Wait for the Cluster's ControlPlane to be initialized before setting the ProviderID
 	// This controller will need to set the `node.spec.providerID` on the downstream cluster,
 	// therefore we need a working control plane to access it.
-	if cluster.Spec.ControlPlaneRef != nil &&
-		!conditions.IsTrue(cluster, clusterv1.ControlPlaneInitializedCondition) {
+	if cluster.Spec.ControlPlaneRef == nil ||
+		(cluster.Spec.ControlPlaneRef != nil && !conditions.IsTrue(cluster, clusterv1.ControlPlaneInitializedCondition)) {
+		logger.Info("Cluster's control plane is not initialized yet")
+		conditions.Set(elementalMachine, &clusterv1.Condition{
+			Type:     infrastructurev1beta1.ProviderIDReady,
+			Status:   corev1.ConditionFalse,
+			Severity: infrastructurev1beta1.WaitingForControlPlaneReasonSeverity,
+			Reason:   infrastructurev1beta1.WaitingForControlPlaneReason,
+			Message:  fmt.Sprintf("Waiting for downstream cluster '%s' control plane initialized.", cluster.Name),
+		})
 		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
 	}
 
-	// Reconciliation step #8: Set spec.providerID to the provider-specific identifier for the provider’s machine instance
-	providerID := fmt.Sprintf("elemental://%s/%s", host.Namespace, host.Name)
-	elementalMachine.Spec.ProviderID = &providerID
+	// Set the ProviderID on both ElementalMachine and downstream node
+	if err := r.setProviderID(ctx, elementalMachine, cluster); err != nil {
+		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, fmt.Errorf("setting ProviderID: %w", err)
+	}
 
 	// Mark the ElementalMachine as ready
+	logger.Info("ElementalMachine is ready")
 	elementalMachine.Status.Ready = true
 
 	// Reconciliation step #11: Set spec.failureDomain to the provider-specific failure domain the instance is running in (optional)
 	// TODO: Not implemented yet.
 	return ctrl.Result{}, nil
+}
+
+// setProviderID updates the ProviderID on the ElementalMachine and on the equivalent downstream cluster node.
+//
+// See: https://cluster-api.sigs.k8s.io/developer/providers/machine-infrastructure
+//
+// providerID (string): the identifier for the provider’s machine instance.
+// This field is expected to match the value set by the KCM cloud provider in the Nodes.
+// The Machine controller bubbles it up to the Machine CR, and it’s used to find the matching Node.
+// Any other consumers can use the providerID as the source of truth to match both Machines and Nodes.
+func (r *ElementalMachineReconciler) setProviderID(ctx context.Context, elementalMachine *infrastructurev1beta1.ElementalMachine, cluster *clusterv1.Cluster) error {
+	logger := log.FromContext(ctx).
+		WithValues(ilog.KeyNamespace, elementalMachine.Namespace).
+		WithValues(ilog.KeyElementalMachine, elementalMachine.Name).
+		WithValues(ilog.KeyCluster, cluster.Name)
+	logger.Info("Setting ProviderID")
+	if elementalMachine.Spec.HostRef == nil {
+		logger.Error(ErrMissingHostReference, "ElementalMachine HostRef not set yet")
+		return ErrMissingHostReference
+	}
+	logger = logger.WithValues(ilog.KeyElementalHost, elementalMachine.Spec.HostRef.Name)
+
+	providerID := fmt.Sprintf("elemental://%s/%s", elementalMachine.Spec.HostRef.Namespace, elementalMachine.Spec.HostRef.Name)
+
+	// If the same ProviderID was already set on the ElementalMachine, assume there is nothing to do.
+	if elementalMachine.Spec.ProviderID != nil && *elementalMachine.Spec.ProviderID == providerID {
+		logger.V(ilog.DebugLevel).Info("ProviderID already set, nothing to do.", "providerID", providerID)
+		return nil
+	}
+
+	// Set the ProviderID on the downstream cluster node
+	logger.Info("Setting providerID on downstream node")
+	err := r.Tracker.SetProviderID(ctx,
+		client.ObjectKeyFromObject(cluster),
+		elementalMachine.Spec.HostRef.Name,
+		providerID)
+	if errors.Is(err, utils.ErrRemoteNodeNotFound) {
+		logger.Error(err, "Remote Node not found")
+		conditions.Set(elementalMachine, &clusterv1.Condition{
+			Type:     infrastructurev1beta1.ProviderIDReady,
+			Status:   corev1.ConditionFalse,
+			Severity: clusterv1.ConditionSeverityError,
+			Reason:   infrastructurev1beta1.NodeNotFoundReason,
+			Message:  fmt.Sprintf("Downstream cluster node '%s' is not found.", elementalMachine.Spec.HostRef.Name),
+		})
+		return fmt.Errorf("setting provider ID on remote node '%s': %w", elementalMachine.Spec.HostRef.Name, err)
+	}
+	if err != nil {
+		logger.Error(err, "Could not access remote Node")
+		return fmt.Errorf("setting provider ID on remote node '%s': %w", elementalMachine.Spec.HostRef.Name, err)
+	}
+
+	// Reconciliation step #8: Set spec.providerID to the provider-specific identifier for the provider’s machine instance
+	elementalMachine.Spec.ProviderID = &providerID
+	conditions.Set(elementalMachine, &clusterv1.Condition{
+		Type:     infrastructurev1beta1.ProviderIDReady,
+		Status:   corev1.ConditionTrue,
+		Severity: clusterv1.ConditionSeverityInfo,
+	})
+	logger.Info("ProviderID set successfully")
+	return nil
 }
 
 func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context, elementalMachine *infrastructurev1beta1.ElementalMachine, machine clusterv1.Machine) (ctrl.Result, error) {
@@ -566,6 +644,7 @@ func (r *ElementalMachineReconciler) reconcileDelete(ctx context.Context, elemen
 			Name:      elementalMachine.Spec.HostRef.Name,
 		}, host); err != nil {
 			if apierrors.IsNotFound(err) {
+				// If the ElementalHost is not found, assume it's already deleted. Nothing to do.
 				return ctrl.Result{}, nil
 			}
 			return ctrl.Result{}, fmt.Errorf("fetching ElementalHost: %w", err)

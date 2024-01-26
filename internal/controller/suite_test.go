@@ -38,6 +38,7 @@ import (
 
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/controller/utils"
 
 	//+kubebuilder:scaffold:imports
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -52,18 +53,18 @@ const (
 )
 
 var (
-	cfg       *rest.Config
-	k8sClient client.Client
-	testEnv   *envtest.Environment
-	ctx       context.Context
-	cancel    context.CancelFunc
-	server    *api.Server
-	serverURL = fmt.Sprintf("http://localhost:%d", elementalAPIPort)
+	cfg               *rest.Config
+	k8sClient         client.Client
+	testEnv           *envtest.Environment
+	ctx               context.Context
+	cancel            context.CancelFunc
+	server            *api.Server
+	serverURL         = fmt.Sprintf("http://localhost:%d", elementalAPIPort)
+	remoteTrackerMock *utils.RemoteTrackerMock
 )
 
 func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
-
 	RunSpecs(t, "Controller Suite")
 }
 
@@ -124,6 +125,7 @@ var _ = BeforeSuite(func() {
 func setupAllWithManager(k8sManager manager.Manager) {
 	apiEndpoint, err := url.Parse(serverURL)
 	Expect(err).ToNot(HaveOccurred(), "failed to parse test url")
+
 	err = (&ElementalRegistrationReconciler{
 		Client:        k8sManager.GetClient(),
 		Scheme:        k8sManager.GetScheme(),
@@ -131,16 +133,21 @@ func setupAllWithManager(k8sManager manager.Manager) {
 		DefaultCACert: testCAValue,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
+
+	remoteTrackerMock = utils.NewRemoteTrackerMock()
 	err = (&ElementalMachineReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
+		Client:  k8sManager.GetClient(),
+		Scheme:  k8sManager.GetScheme(),
+		Tracker: remoteTrackerMock,
 	}).SetupWithManager(ctx, k8sManager)
 	Expect(err).ToNot(HaveOccurred())
+
 	err = (&ElementalHostReconciler{
 		Client: k8sManager.GetClient(),
 		Scheme: k8sManager.GetScheme(),
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
+
 	err = (&ElementalClusterReconciler{
 		Client: k8sManager.GetClient(),
 		Scheme: k8sManager.GetScheme(),

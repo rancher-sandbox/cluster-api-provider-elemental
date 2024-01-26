@@ -107,6 +107,18 @@ const (
 	// and the provider is waiting for success confirmation.
 	HostWaitingForBootstrapReason                                     = "HostWaitingForBootstrap"
 	HostWaitingForBootstrapReasonSeverity clusterv1.ConditionSeverity = clusterv1.ConditionSeverityInfo
+
+	// ProviderIDReady describes the ElementalMachine to downstream cluster node link status.
+	ProviderIDReady clusterv1.ConditionType = "ProviderIDReady"
+	// NodeNotFoundReason indicates that the downstream cluster node associated to this ElementalMachine is not found.
+	// This can happen if the node was manually deleted from the downstream cluster.
+	// This error is not recoverable, but it is possible to delete this ElementalMachine to rollout a new one.
+	NodeNotFoundReason = "NodeNotFound"
+	// WaitingForControlPlaneReason indicates that the downstream cluster has no initialized control plane.
+	// This can happen if no CNI is running on the cluster
+	// or if there is any other problem initializing the control plane.
+	WaitingForControlPlaneReason                                     = "WaitingForControlPlaneInitialized"
+	WaitingForControlPlaneReasonSeverity clusterv1.ConditionSeverity = clusterv1.ConditionSeverityInfo
 )
 
 // ElementalCluster Conditions and Reasons.
