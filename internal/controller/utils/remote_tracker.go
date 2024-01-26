@@ -18,7 +18,7 @@ var (
 	ErrRemoteNodeNotFound = errors.New("remote node not found")
 )
 
-// RemoteTracker wraps a remote.ClusterCacheTracker for easier testing
+// RemoteTracker wraps a remote.ClusterCacheTracker for easier testing.
 type RemoteTracker interface {
 	SetProviderID(ctx context.Context, cluster types.NamespacedName, nodeName string, providerID string) error
 }

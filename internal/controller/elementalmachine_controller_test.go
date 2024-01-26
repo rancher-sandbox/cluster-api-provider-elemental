@@ -346,7 +346,7 @@ var _ = Describe("ElementalMachine controller association with selector", Label(
 	})
 })
 
-// This test sets up an "already provisioned environment" and breaks the association between ElementalMachine and ElementalHost
+// This test sets up an "already provisioned environment" and breaks the association between ElementalMachine and ElementalHost.
 var _ = Describe("ElementalMachine controller association break", Label("controller", "elemental-machine"), Ordered, func() {
 	ctx := context.Background()
 
