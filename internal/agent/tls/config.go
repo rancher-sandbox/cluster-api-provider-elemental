@@ -7,8 +7,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 
+	"github.com/twpayne/go-vfs/v4"
+
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
-	"github.com/twpayne/go-vfs"
 )
 
 var ErrUnparsableCert = errors.New("could not parse certificate")

@@ -6,12 +6,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/twpayne/go-vfs/v4"
+
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/host"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/plugin"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/pkg/agent/osplugin"
-	"github.com/twpayne/go-vfs"
 )
 
 const (

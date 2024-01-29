@@ -24,12 +24,13 @@ import (
 
 	"github.com/google/shlex"
 
-	config "github.com/mudler/yip/pkg/schema/cloudinit"
 	"github.com/pkg/errors"
+
+	config "github.com/rancher/yip/pkg/schema/cloudinit"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/itchyny/gojq"
-	"github.com/twpayne/go-vfs"
+	"github.com/twpayne/go-vfs/v4"
 	"gopkg.in/yaml.v2"
 )
 

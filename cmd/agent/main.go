@@ -7,6 +7,15 @@ import (
 	"os"
 	"time"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"github.com/twpayne/go-vfs/v4"
+	"github.com/twpayne/go-vfsafero/v4"
+	"gopkg.in/yaml.v3"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
@@ -17,14 +26,6 @@ import (
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/pkg/agent/osplugin"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"github.com/twpayne/go-vfs"
-	"github.com/twpayne/go-vfsafero"
-	"gopkg.in/yaml.v3"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
 const (

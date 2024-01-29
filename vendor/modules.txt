@@ -153,10 +153,6 @@ github.com/modern-go/concurrent
 # github.com/modern-go/reflect2 v1.0.2
 ## explicit; go 1.12
 github.com/modern-go/reflect2
-# github.com/mudler/yip v1.4.6
-## explicit; go 1.18
-github.com/mudler/yip/pkg/schema
-github.com/mudler/yip/pkg/schema/cloudinit
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 ## explicit
 github.com/munnerz/goautoneg
@@ -223,6 +219,10 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
+# github.com/rancher/yip v1.4.8
+## explicit; go 1.20
+github.com/rancher/yip/pkg/schema
+github.com/rancher/yip/pkg/schema/cloudinit
 # github.com/sagikazarmark/locafero v0.4.0
 ## explicit; go 1.20
 github.com/sagikazarmark/locafero
@@ -284,13 +284,13 @@ github.com/swaggest/rest/openapi
 ## explicit; go 1.18
 github.com/swaggest/usecase
 github.com/swaggest/usecase/status
-# github.com/twpayne/go-vfs v1.7.2
-## explicit; go 1.13
-github.com/twpayne/go-vfs
-github.com/twpayne/go-vfs/vfst
-# github.com/twpayne/go-vfsafero v1.0.0
-## explicit
-github.com/twpayne/go-vfsafero
+# github.com/twpayne/go-vfs/v4 v4.3.0
+## explicit; go 1.19
+github.com/twpayne/go-vfs/v4
+github.com/twpayne/go-vfs/v4/vfst
+# github.com/twpayne/go-vfsafero/v4 v4.0.0
+## explicit; go 1.20
+github.com/twpayne/go-vfsafero/v4
 # go.uber.org/goleak v1.3.0
 ## explicit; go 1.20
 # go.uber.org/mock v0.3.0

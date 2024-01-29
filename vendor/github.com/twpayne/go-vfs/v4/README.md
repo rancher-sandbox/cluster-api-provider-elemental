@@ -3,13 +3,13 @@
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/twpayne/go-vfs)](https://pkg.go.dev/github.com/twpayne/go-vfs)
 [![Report Card](https://goreportcard.com/badge/github.com/twpayne/go-vfs)](https://goreportcard.com/report/github.com/twpayne/go-vfs)
 
-Package `vfs` provides an abstraction of the `os` and `ioutil` packages that is
-easy to test.
+Package `vfs` provides an abstraction of the `os` and `io` packages that is easy
+to test.
 
 ## Key features
 
-* File system abstraction layer for commonly-used `os` and `ioutil` functions
-  from the standard library.
+* File system abstraction layer for commonly-used `os` and `io` functions from
+  the standard library.
 
 * Powerful and easy-to-use declarative testing framework, `vfst`. You declare
   the desired state of the filesystem after your code has run, and `vfst` tests
@@ -26,31 +26,32 @@ easy to test.
 `vfs` provides implementations of the `FS` interface:
 
 ```go
-// An FS is an abstraction over commonly-used functions in the os and ioutil
+// An FS is an abstraction over commonly-used functions in the os and io
 // packages.
 type FS interface {
-    Chmod(name string, mode os.FileMode) error
+    Chmod(name string, mode fs.FileMode) error
     Chown(name string, uid, git int) error
     Chtimes(name string, atime, mtime time.Time) error
     Create(name string) (*os.File, error)
-    FileSeparator() rune
     Glob(pattern string) ([]string, error)
     Lchown(name string, uid, git int) error
-    Lstat(name string) (os.FileInfo, error)
-    Mkdir(name string, perm os.FileMode) error
-    Open(name string) (*os.File, error)
-    OpenFile(name string, flag int, perm os.ModePerm) (*os.File, error)
+    Link(oldname, newname string) error
+    Lstat(name string) (fs.FileInfo, error)
+    Mkdir(name string, perm fs.FileMode) error
+    Open(name string) (fs.File, error)
+    OpenFile(name string, flag int, perm fs.FileMode) (*os.File, error)
+    PathSeparator() rune
     RawPath(name string) (string, error)
-    ReadDir(dirname string) ([]os.FileInfo, error)
+    ReadDir(dirname string) ([]fs.DirEntry, error)
     ReadFile(filename string) ([]byte, error)
     Readlink(name string) (string, error)
     Remove(name string) error
     RemoveAll(name string) error
     Rename(oldpath, newpath string) error
-    Stat(name string) (os.FileInfo, error)
+    Stat(name string) (fs.FileInfo, error)
     Symlink(oldname, newname string) error
     Truncate(name string, size int64) error
-    WriteFile(filename string, data []byte, perm os.FileMode) error
+    WriteFile(filename string, data []byte, perm fs.FileMode) error
 }
 ```
 
@@ -63,7 +64,7 @@ To use `vfs`, you write your code to use the `FS` interface, and then use
 
 The implementations of `FS` provided are:
 
-* `OSFS` which calls the underlying `os` and `ioutil` functions directly.
+* `OSFS` which calls the underlying `os` and `io` functions directly.
 
 * `PathFS` which transforms all paths to provide a poor-man's `chroot`.
 
@@ -76,15 +77,15 @@ Example usage:
 
 ```go
 // writeConfigFile is the function we're going to test. It can make arbitrary
-// changes to the filesystem through fs.
-func writeConfigFile(fs vfs.FS) error {
-    return fs.WriteFile("/home/user/app.conf", []byte(`app config`), 0644)
+// changes to the filesystem through fileSystem.
+func writeConfigFile(fileSystem vfs.FS) error {
+    return fileSystem.WriteFile("/home/user/app.conf", []byte(`app config`), 0644)
 }
 
 // TestWriteConfigFile is our test function.
 func TestWriteConfigFile(t *testing.T) {
     // Create and populate an temporary directory with a home directory.
-    fs, cleanup, err := vfst.NewTestFS(map[string]interface{}{
+    fileSystem, cleanup, err := vfst.NewTestFS(map[string]interface{}{
         "/home/user/.bashrc": "# contents of user's .bashrc\n",
     })
 
@@ -97,13 +98,13 @@ func TestWriteConfigFile(t *testing.T) {
     defer cleanup()
 
     // Call the function we want to test.
-    if err := writeConfigFile(fs); err != nil {
+    if err := writeConfigFile(fileSystem); err != nil {
         t.Error(err)
     }
 
     // Check properties of the filesystem after our function has modified it.
-    vfst.RunTest(t, fs, "app_conf",
-        vfst.PathTest("/home/user/app.conf",
+    vfst.RunTests(t, fileSystem, "app_conf",
+        vfst.TestPath("/home/user/app.conf",
             vfst.TestModeIsRegular,
             vfst.TestModePerm(0644),
             vfst.TestContentsString("app config"),
@@ -141,7 +142,7 @@ example.
   implementation `MemMapFs`, to the point that it is unusable for non-trivial
   test cases. `vfs` does not attempt to implement an in-memory mock filesystem,
   and instead only provides a thin layer around the standard library's `os` and
-  `ioutil` packages, and as such should have fewer bugs.
+  `io` packages, and as such should have fewer bugs.
 
 * `afero` does not support creating or reading symbolic links, and its
   `LstatIfPossible` interface is clumsy to use as it is not part of the

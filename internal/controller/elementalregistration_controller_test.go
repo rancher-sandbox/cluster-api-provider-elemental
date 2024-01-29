@@ -8,19 +8,20 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
-	"github.com/twpayne/go-vfs"
-	"github.com/twpayne/go-vfs/vfst"
+	"github.com/twpayne/go-vfs/v4"
+	"github.com/twpayne/go-vfs/v4/vfst"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
 )
 
 var _ = Describe("ElementalRegistration controller", Label("controller", "elemental-registration"), Ordered, func() {

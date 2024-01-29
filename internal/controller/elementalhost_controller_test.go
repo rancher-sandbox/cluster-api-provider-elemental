@@ -7,19 +7,20 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
-	"github.com/twpayne/go-vfs"
-	"github.com/twpayne/go-vfs/vfst"
+	"github.com/twpayne/go-vfs/v4"
+	"github.com/twpayne/go-vfs/v4/vfst"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/conditions"
+
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
 )
 
 var _ = Describe("ElementalHost controller", Label("controller", "elemental-host"), Ordered, func() {
