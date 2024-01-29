@@ -12,6 +12,16 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"github.com/twpayne/go-vfs/v4"
+	"github.com/twpayne/go-vfs/v4/vfst"
+	"go.uber.org/mock/gomock"
+	"gopkg.in/yaml.v3"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
@@ -19,15 +29,6 @@ import (
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/pkg/agent/osplugin"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"github.com/twpayne/go-vfs"
-	"github.com/twpayne/go-vfs/vfst"
-	"go.uber.org/mock/gomock"
-	"gopkg.in/yaml.v3"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
 func TestRegister(t *testing.T) {

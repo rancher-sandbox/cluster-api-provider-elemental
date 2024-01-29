@@ -7,11 +7,12 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/twpayne/go-vfs/v4"
+	"github.com/twpayne/go-vfs/v4/vfst"
+	"go.uber.org/mock/gomock"
+
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/host"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/pkg/agent/osplugin"
-	"github.com/twpayne/go-vfs"
-	"github.com/twpayne/go-vfs/vfst"
-	"go.uber.org/mock/gomock"
 )
 
 func TestControllers(t *testing.T) {

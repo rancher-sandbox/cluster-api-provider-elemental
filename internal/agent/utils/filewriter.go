@@ -5,8 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/twpayne/go-vfs/v4"
+
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
-	"github.com/twpayne/go-vfs"
 )
 
 func WriteFile(fs vfs.FS, path string, content []byte) error {

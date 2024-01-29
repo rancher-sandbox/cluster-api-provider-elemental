@@ -5,11 +5,12 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/twpayne/go-vfs/v4"
+	"github.com/twpayne/go-vfs/v4/vfst"
+
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
-	"github.com/twpayne/go-vfs"
-	"github.com/twpayne/go-vfs/vfst"
 )
 
 func TestControllers(t *testing.T) {

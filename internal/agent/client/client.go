@@ -12,12 +12,13 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/twpayne/go-vfs/v4"
+
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/tls"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
-	"github.com/twpayne/go-vfs"
 )
 
 var (

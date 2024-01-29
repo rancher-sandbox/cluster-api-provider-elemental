@@ -1,7 +1,7 @@
 package vfs
 
 import (
-	"io/ioutil"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
@@ -9,12 +9,11 @@ import (
 
 type osfs struct{}
 
-// OSFS is the FS that calls os and ioutil functions directly.
-//nolint:gochecknoglobals
+// OSFS is the FS that calls os and io functions directly.
 var OSFS = &osfs{}
 
 // Chmod implements os.Chmod.
-func (osfs) Chmod(name string, mode os.FileMode) error {
+func (osfs) Chmod(name string, mode fs.FileMode) error {
 	return os.Chmod(name, mode)
 }
 
@@ -43,23 +42,28 @@ func (osfs) Lchown(name string, uid, gid int) error {
 	return os.Lchown(name, uid, gid)
 }
 
+// Link implements os.Link.
+func (osfs) Link(oldname, newname string) error {
+	return os.Link(oldname, newname)
+}
+
 // Lstat implements os.Lstat.
-func (osfs) Lstat(name string) (os.FileInfo, error) {
+func (osfs) Lstat(name string) (fs.FileInfo, error) {
 	return os.Lstat(name)
 }
 
 // Mkdir implements os.Mkdir.
-func (osfs) Mkdir(name string, perm os.FileMode) error {
+func (osfs) Mkdir(name string, perm fs.FileMode) error {
 	return os.Mkdir(name, perm)
 }
 
 // Open implements os.Open.
-func (osfs) Open(name string) (*os.File, error) {
+func (osfs) Open(name string) (fs.File, error) {
 	return os.Open(name)
 }
 
 // OpenFile implements os.OpenFile.
-func (osfs) OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
+func (osfs) OpenFile(name string, flag int, perm fs.FileMode) (*os.File, error) {
 	return os.OpenFile(name, flag, perm)
 }
 
@@ -73,17 +77,17 @@ func (osfs) RawPath(path string) (string, error) {
 	return path, nil
 }
 
-// ReadDir implements ioutil.ReadDir.
-func (osfs) ReadDir(dirname string) ([]os.FileInfo, error) {
-	return ioutil.ReadDir(dirname)
+// ReadDir implements os.ReadDir.
+func (osfs) ReadDir(dirname string) ([]fs.DirEntry, error) {
+	return os.ReadDir(dirname)
 }
 
-// ReadFile implements ioutil.ReadFile.
-func (osfs) ReadFile(dirname string) ([]byte, error) {
-	return ioutil.ReadFile(dirname)
+// ReadFile implements os.ReadFile.
+func (osfs) ReadFile(name string) ([]byte, error) {
+	return os.ReadFile(name)
 }
 
-// Readlink implments os.Readlink.
+// Readlink implements os.Readlink.
 func (osfs) Readlink(name string) (string, error) {
 	return os.Readlink(name)
 }
@@ -104,7 +108,7 @@ func (osfs) Rename(oldpath, newpath string) error {
 }
 
 // Stat implements os.Stat.
-func (osfs) Stat(name string) (os.FileInfo, error) {
+func (osfs) Stat(name string) (fs.FileInfo, error) {
 	return os.Stat(name)
 }
 
@@ -118,7 +122,7 @@ func (osfs) Truncate(name string, size int64) error {
 	return os.Truncate(name, size)
 }
 
-// WriteFile implements ioutil.WriteFile.
-func (osfs) WriteFile(filename string, data []byte, perm os.FileMode) error {
-	return ioutil.WriteFile(filename, data, perm)
+// WriteFile implements os.WriteFile.
+func (osfs) WriteFile(filename string, data []byte, perm fs.FileMode) error {
+	return os.WriteFile(filename, data, perm)
 }

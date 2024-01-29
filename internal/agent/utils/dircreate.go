@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/twpayne/go-vfs/v4"
+
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
-	"github.com/twpayne/go-vfs"
 )
 
 var ErrNotADirectory = errors.New("path exists but it's not a directory")

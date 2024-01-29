@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/spf13/afero"
-	vfs "github.com/twpayne/go-vfs"
+	vfs "github.com/twpayne/go-vfs/v4"
 )
 
 // An AferoFS implements github.com/spf13/afero.Fs.
@@ -44,7 +44,12 @@ func (a *AferoFS) Name() string {
 
 // Open implements afero.Fs.Open.
 func (a *AferoFS) Open(name string) (afero.File, error) {
-	return a.FS.Open(name)
+	f, err := a.FS.Open(name)
+	if err != nil {
+		return nil, err
+	}
+
+	return f.(*os.File), nil
 }
 
 // OpenFile implements afero.Fs.OpenFile.

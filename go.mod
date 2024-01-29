@@ -8,15 +8,15 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/mux v1.8.1
-	github.com/mudler/yip v1.4.6
 	github.com/onsi/ginkgo/v2 v2.13.2
 	github.com/onsi/gomega v1.30.0
+	github.com/rancher/yip v1.4.8
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.1
 	github.com/swaggest/openapi-go v0.2.44
 	github.com/swaggest/rest v0.2.60
-	github.com/twpayne/go-vfs v1.7.2
-	github.com/twpayne/go-vfsafero v1.0.0
+	github.com/twpayne/go-vfs/v4 v4.3.0
+	github.com/twpayne/go-vfsafero/v4 v4.0.0
 	go.uber.org/mock v0.3.0
 	go.uber.org/zap v1.26.0
 	golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb

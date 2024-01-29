@@ -31,7 +31,7 @@ import (
 	config "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
 	api "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	identity "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
-	vfs "github.com/twpayne/go-vfs"
+	vfs "github.com/twpayne/go-vfs/v4"
 	gomock "go.uber.org/mock/gomock"
 )
 

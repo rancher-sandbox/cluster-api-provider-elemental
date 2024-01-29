@@ -8,15 +8,16 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mudler/yip/pkg/schema"
+	"github.com/rancher/yip/pkg/schema"
+	"github.com/twpayne/go-vfs/v4"
+	"gopkg.in/yaml.v3"
+
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/elementalcli"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/host"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/plugin"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/pkg/agent/osplugin"
-	"github.com/twpayne/go-vfs"
-	"gopkg.in/yaml.v3"
 )
 
 const (
