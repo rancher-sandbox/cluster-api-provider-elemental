@@ -29,7 +29,9 @@ import (
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
@@ -52,6 +54,13 @@ type ElementalClusterReconciler struct {
 func (r *ElementalClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
 	if err := ctrl.NewControllerManagedBy(mgr).
 		For(&infrastructurev1beta1.ElementalCluster{}).
+		Watches(
+			&clusterv1.Cluster{},
+			handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, infrastructurev1beta1.GroupVersion.WithKind("ElementalCluster"), mgr.GetClient(), &infrastructurev1beta1.ElementalCluster{})),
+			builder.WithPredicates(
+				predicates.ClusterUnpaused(ctrl.LoggerFrom(ctx)),
+			),
+		).
 		// Reconciliation step #1: If the resource is externally managed, exit the reconciliation
 		WithEventFilter(predicates.ResourceIsNotExternallyManaged(log.FromContext(ctx))).
 		Complete(r); err != nil {
