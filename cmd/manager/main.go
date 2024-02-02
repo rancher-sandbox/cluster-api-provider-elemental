@@ -32,7 +32,9 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/controllers/remote"
 	ctrl "sigs.k8s.io/controller-runtime"
+	k8scontroller "sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -40,6 +42,7 @@ import (
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/controller"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/controller/utils"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -162,13 +165,38 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ElementalHost")
 		os.Exit(1)
 	}
+
+	// Setup a ClusterCacheTracker to access the downstream clusters.
+	// This is going to be used to set the Node.spec.ProviderID.
+	var tracker *remote.ClusterCacheTracker
+	if tracker, err = remote.NewClusterCacheTracker(
+		mgr,
+		remote.ClusterCacheTrackerOptions{
+			ControllerName: "elemental-controller-manager",
+			Log:            &ctrl.Log,
+		},
+	); err != nil {
+		setupLog.Error(err, "unable to setup ClusterCacheTracker")
+		os.Exit(1)
+	}
+	if err := (&remote.ClusterCacheReconciler{
+		Client:  mgr.GetClient(),
+		Tracker: tracker,
+	}).SetupWithManager(ctx, mgr, k8scontroller.Options{}); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ClusterCacheReconciler")
+		os.Exit(1)
+	}
+	remoteTracker := utils.NewRemoteTracker(tracker)
+
 	if err = (&controller.ElementalMachineReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:  mgr.GetClient(),
+		Scheme:  mgr.GetScheme(),
+		Tracker: remoteTracker,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ElementalMachine")
 		os.Exit(1)
 	}
+
 	if err = (&controller.ElementalMachineTemplateReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),

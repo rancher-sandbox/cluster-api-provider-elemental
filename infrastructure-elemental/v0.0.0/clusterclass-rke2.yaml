@@ -50,12 +50,6 @@ spec:
         openAPIV3Schema:
           type: string
           default: "v1.28.5+rke2r1"
-    - name: clusterCIDRv4
-      required: true
-      schema:
-        openAPIV3Schema:
-          type: string
-          default: "10.244.0.0/16"
   patches:
     - name: elementalClusterTemplate
       definitions:
@@ -195,23 +189,6 @@ spec:
                       status: {}
                     owner: root:root
                     path: /var/lib/rancher/rke2/server/manifests/kube-vip.yaml
-            - op: add
-              path: "/spec/template/spec/kubeadmConfigSpec/files"
-              valueFrom:
-                template: |
-                  - content: |
-                      content: |
-                        apiVersion: helm.cattle.io/v1
-                        kind: HelmChartConfig
-                        metadata:
-                          name: rke2-calico
-                          namespace: kube-system
-                        spec:
-                          valuesContent: |-
-                            global:
-                              clusterCIDRv4: {{ .clusterCIDRv4 }}
-                      owner: root:root
-                      path: /var/lib/rancher/rke2/server/manifests/rke2-calico-config.yaml
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: ElementalClusterTemplate

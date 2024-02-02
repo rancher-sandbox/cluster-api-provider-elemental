@@ -181,9 +181,9 @@ func (r *ElementalHostReconciler) reconcileDelete(ctx context.Context, host *inf
 			Reason:   infrastructurev1beta1.WaitingForResetReason,
 			Message:  "Waiting for remote host to reset",
 		})
-		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
+		return ctrl.Result{}, nil
 	}
 
 	logger.Info("Waiting for host to be reset")
-	return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
+	return ctrl.Result{}, nil
 }
