@@ -86,8 +86,7 @@ RUN ARCH=$(uname -m); \
       sed \
       patch \
       iproute2 \
-      shim \
-      iproute2
+      shim 
 
 # Install kubeadm stack
 RUN ARCH=$(uname -m); \
