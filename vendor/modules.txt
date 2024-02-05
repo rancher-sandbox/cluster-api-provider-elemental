@@ -15,8 +15,6 @@ github.com/blang/semver/v4
 # github.com/cespare/xxhash/v2 v2.2.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/coredns/caddy v1.1.1
-## explicit; go 1.13
 # github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 ## explicit
 github.com/davecgh/go-spew/spew
@@ -736,6 +734,11 @@ k8s.io/kube-openapi/pkg/schemaconv
 k8s.io/kube-openapi/pkg/spec3
 k8s.io/kube-openapi/pkg/util/proto
 k8s.io/kube-openapi/pkg/validation/spec
+# k8s.io/kubernetes v1.29.1
+## explicit; go 1.21
+k8s.io/kubernetes/pkg/apis/core
+k8s.io/kubernetes/pkg/apis/core/helper
+k8s.io/kubernetes/pkg/util/taints
 # k8s.io/utils v0.0.0-20231127182322-b307cd553661
 ## explicit; go 1.18
 k8s.io/utils/buffer
