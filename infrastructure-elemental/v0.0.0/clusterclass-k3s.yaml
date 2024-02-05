@@ -97,10 +97,7 @@ metadata:
   name: k3s-control-plane
 spec:
   template:
-    spec:
-      kthreesConfigSpec:
-        serverConfig:
-          disableExternalCloudProvider: true
+    spec: {}
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: ElementalMachineTemplate
