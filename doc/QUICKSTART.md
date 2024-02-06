@@ -131,7 +131,7 @@
     CONTROL_PLANE_ENDPOINT_HOST=192.168.122.100 clusterctl generate cluster \
     --infrastructure elemental \
     --flavor k3s-single-node \
-    --kubernetes-version v1.28.5 \
+    --kubernetes-version 1.28.5 \
     elemental-cluster-k3s > $HOME/elemental-cluster-k3s.yaml
     ```
 
