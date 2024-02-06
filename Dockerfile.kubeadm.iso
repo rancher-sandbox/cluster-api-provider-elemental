@@ -93,7 +93,7 @@ RUN ARCH=$(uname -m); \
     if [[ $ARCH == "aarch64" ]]; then ARCH="arm64"; fi; \
     zypper --non-interactive install -- \
       kubernetes1.28-kubeadm \
-      kubernetes1.28-kubelet  \
+      kubernetes1.28-kubelet \
       kubernetes1.28-client \
       cri-o \
       conntrackd \
