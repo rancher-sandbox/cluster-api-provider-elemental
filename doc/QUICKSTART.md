@@ -5,7 +5,7 @@
 1. This setup uses two machines. One to deploy the CAPI management cluster and one to deploy a single node k3s cluster.  
    The machines must be able to reach each other on the network.  
    The setup assumes `192.168.122.10` will be used for the CAPI management cluster (and to expose the Elemental API).  
-   `192.168.122.100` will be used by the host and used as `CONTROL_PLANE_ENDPOINT_IP` of the downstream k3s cluster.  
+   `192.168.122.100` will be used by the host and used as `CONTROL_PLANE_ENDPOINT_HOST` of the downstream k3s cluster.  
 
 1. On the **management** machine, [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) is used to bootstrap a CAPI management cluster.  
    The ElementalAPI will be exposed using a `NodePort` on `30009`. This port needs to be free and not blocked by any firewall.  
