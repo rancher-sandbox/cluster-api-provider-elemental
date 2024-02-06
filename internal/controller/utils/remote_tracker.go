@@ -9,13 +9,19 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/kubernetes/pkg/util/taints"
 	"sigs.k8s.io/cluster-api/controllers/remote"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// Errors.
 var (
 	ErrRemoteNodeNotFound = errors.New("remote node not found")
+)
+
+var (
+	uninitializedTaint = corev1.Taint{Key: "node.cloudprovider.kubernetes.io/uninitialized", Effect: corev1.TaintEffectNoSchedule}
 )
 
 // RemoteTracker wraps a remote.ClusterCacheTracker for easier testing.
@@ -50,12 +56,22 @@ func (r *remoteTracker) SetProviderID(ctx context.Context, cluster types.Namespa
 	if err != nil {
 		return fmt.Errorf("getting downstream cluster node '%s': %w", nodeKey.Name, err)
 	}
-	// Set the spec.providerID on the node
+
+	// Initialize Node patch helper
 	patchHelper, err := patch.NewHelper(node, remoteClient)
 	if err != nil {
 		return fmt.Errorf("initializing node patch helper: %w", err)
 	}
+
+	// Set the spec.providerID on the node
 	node.Spec.ProviderID = providerID
+
+	// Remove taint if needed
+	node, _, err = taints.RemoveTaint(node, &uninitializedTaint)
+	if err != nil {
+		return fmt.Errorf("removing '%s' taint from node: %w", &uninitializedTaint, err)
+	}
+
 	if err := patchHelper.Patch(ctx, node); err != nil {
 		return fmt.Errorf("patching downstream cluster node: %w", err)
 	}

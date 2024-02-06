@@ -34,9 +34,6 @@ spec:
     name: ${CLUSTER_NAME}-control-plane
   replicas: 1
   version: "v${KUBERNETES_VERSION:=1.28.5}+k3s1"
-  kthreesConfigSpec:
-    serverConfig:
-      disableExternalCloudProvider: true
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: ElementalCluster

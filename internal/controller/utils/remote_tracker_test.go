@@ -22,7 +22,7 @@ func TestRegister(t *testing.T) {
 	RunSpecs(t, "Remote Tracker Suite")
 }
 
-var _ = Describe("Remote Tracker", Label("utils", "remote tracker"), func() {
+var _ = Describe("Remote Tracker", Label("utils", "remote tracker"), Ordered, func() {
 	ctx := context.TODO()
 
 	cluster := &clusterv1.Cluster{
@@ -38,9 +38,18 @@ var _ = Describe("Remote Tracker", Label("utils", "remote tracker"), func() {
 		},
 	}
 
+	taintedNode := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-tainted",
+		},
+		Spec: corev1.NodeSpec{
+			Taints: []corev1.Taint{uninitializedTaint},
+		},
+	}
+
 	Expect(clusterv1.AddToScheme(scheme.Scheme)).Should(Succeed())
 	logger := zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true))
-	fakeClient := fake.NewClientBuilder().WithObjects(cluster, node).Build()
+	fakeClient := fake.NewClientBuilder().WithObjects(cluster, node, taintedNode).Build()
 	tracker := remote.NewTestClusterCacheTracker(logger, fakeClient, scheme.Scheme, types.NamespacedName{Namespace: cluster.Namespace, Name: cluster.Name})
 
 	remoteTracker := NewRemoteTracker(tracker)
@@ -68,5 +77,15 @@ var _ = Describe("Remote Tracker", Label("utils", "remote tracker"), func() {
 			wantProviderID)).Should(Succeed())
 		Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(node), node)).Should(Succeed())
 		Expect(node.Spec.ProviderID).Should(Equal(wantProviderID))
+	})
+	It("should patch ProviderID and remove taint on remote tainted node", func() {
+		wantProviderID := "elemental://testNamespace/testName"
+		Expect(remoteTracker.SetProviderID(ctx,
+			client.ObjectKeyFromObject(cluster),
+			taintedNode.Name,
+			wantProviderID)).Should(Succeed())
+		Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(taintedNode), taintedNode)).Should(Succeed())
+		Expect(taintedNode.Spec.ProviderID).Should(Equal(wantProviderID))
+		Expect(taintedNode.Spec.Taints).Should(BeEmpty())
 	})
 })
