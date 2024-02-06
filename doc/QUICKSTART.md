@@ -128,10 +128,10 @@
 1. Generate `cluster.yaml` config:
 
     ```bash
-    CONTROL_PLANE_ENDPOINT_IP=192.168.122.100 clusterctl generate cluster \
+    CONTROL_PLANE_ENDPOINT_HOST=192.168.122.100 clusterctl generate cluster \
     --infrastructure elemental \
     --flavor k3s-single-node \
-    --kubernetes-version v1.28.2 \
+    --kubernetes-version 1.28.5 \
     elemental-cluster-k3s > $HOME/elemental-cluster-k3s.yaml
     ```
 
