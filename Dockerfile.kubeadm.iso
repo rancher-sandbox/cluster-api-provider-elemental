@@ -1,9 +1,9 @@
 FROM opensuse/leap:15.5 as AGENT
 
-# Install Go 1.21
+# Install Go 1.22
 RUN zypper install -y wget tar gzip gcc
-RUN wget https://go.dev/dl/go1.21.3.linux-amd64.tar.gz
-RUN tar -C /usr/local -xzf go1.21.3.linux-amd64.tar.gz
+RUN wget https://go.dev/dl/go1.22.0.linux-amd64.tar.gz
+RUN tar -C /usr/local -xzf go1.22.0.linux-amd64.tar.gz
 ENV PATH "$PATH:/usr/local/go/bin"
 
 # Copy the Go Modules manifests

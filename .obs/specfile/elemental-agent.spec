@@ -31,7 +31,7 @@ Requires:       elemental-plugin
 
 BuildRequires:  make
 
-BuildRequires:  golang(API) >= 1.21
+BuildRequires:  golang(API) >= 1.22
 BuildRequires:  golang-packaging
 %{go_provides}
 
