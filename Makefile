@@ -8,7 +8,7 @@ IMG_TAG ?= latest
 IMG = ${IMG_NAME}:${IMG_TAG}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 # See: https://storage.googleapis.com/kubebuilder-tools
-ENVTEST_K8S_VERSION = 1.28.3
+ENVTEST_K8S_VERSION = 1.29.1
 
 AGENT_CONFIG_FILE?="iso/config/example-config.yaml"
 
