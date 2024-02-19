@@ -86,10 +86,10 @@
       url: "https://github.com/rancher-sandbox/cluster-api-provider-elemental/releases/latest/infrastructure-components.yaml"
       type: "InfrastructureProvider"
     - name: "k3s"
-      url: "https://github.com/cluster-api-provider-k3s/cluster-api-k3s/releases/latest/bootstrap-components.yaml"
+      url: "https://github.com/k3s-io/cluster-api-k3s/releases/latest/bootstrap-components.yaml"
       type: "BootstrapProvider"
     - name: "k3s"
-      url: "https://github.com/cluster-api-provider-k3s/cluster-api-k3s/releases/latest/control-plane-components.yaml"
+      url: "https://github.com/k3s-io/cluster-api-k3s/releases/latest/control-plane-components.yaml"
       type: "ControlPlaneProvider"
     EOF
     ```
