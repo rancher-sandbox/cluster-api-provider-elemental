@@ -7,7 +7,8 @@ IMG_NAME ?= ghcr.io/rancher-sandbox/cluster-api-provider-elemental
 IMG_TAG ?= latest
 IMG = ${IMG_NAME}:${IMG_TAG}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.28.3
+# See: https://storage.googleapis.com/kubebuilder-tools
+ENVTEST_K8S_VERSION = 1.29.1
 
 AGENT_CONFIG_FILE?="iso/config/example-config.yaml"
 
@@ -38,7 +39,7 @@ LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/interna
 ABS_TOOLS_DIR :=  $(abspath bin/)
 GO_INSTALL := ./test/scripts/go_install.sh
 
-GINKGO_VER := v2.14.0
+GINKGO_VER := v2.15.0
 GINKGO := $(ABS_TOOLS_DIR)/ginkgo-$(GINKGO_VER)
 GINKGO_PKG := github.com/onsi/ginkgo/v2/ginkgo
 
@@ -196,8 +197,8 @@ CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 
 ## Tool Versions
-KUSTOMIZE_VERSION ?= v5.2.1
-CONTROLLER_TOOLS_VERSION ?= v0.13.0
+KUSTOMIZE_VERSION ?= v5.3.0
+CONTROLLER_TOOLS_VERSION ?= v0.14.0
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
