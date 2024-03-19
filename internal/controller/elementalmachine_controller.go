@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -52,8 +53,9 @@ var (
 // ElementalMachineReconciler reconciles a ElementalMachine object.
 type ElementalMachineReconciler struct {
 	client.Client
-	Scheme  *runtime.Scheme
-	Tracker utils.RemoteTracker
+	Scheme        *runtime.Scheme
+	Tracker       utils.RemoteTracker
+	RequeuePeriod time.Duration
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -358,7 +360,7 @@ func (r *ElementalMachineReconciler) reconcileNormal(ctx context.Context, cluste
 		})
 		elementalMachine.Spec.ProviderID = nil
 		elementalMachine.Spec.HostRef = nil
-		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
+		return ctrl.Result{RequeueAfter: r.RequeuePeriod}, nil
 	}
 	if err != nil {
 		err := fmt.Errorf("fetching associated ElementalHost '%s': %w", elementalMachine.Spec.HostRef.Name, err)
@@ -370,7 +372,7 @@ func (r *ElementalMachineReconciler) reconcileNormal(ctx context.Context, cluste
 			Message:  err.Error(),
 		})
 		// Do not remove the association. Assume this is a recoverable error (for ex. permissions or i/o)
-		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, err
+		return ctrl.Result{RequeueAfter: r.RequeuePeriod}, err
 	}
 	// Since we invalidate AssociationReady when fetching the associated host and failing,
 	// we must restore AssociationReady true status after recovery.
@@ -427,12 +429,12 @@ func (r *ElementalMachineReconciler) reconcileNormal(ctx context.Context, cluste
 			Reason:   infrastructurev1beta1.WaitingForControlPlaneReason,
 			Message:  fmt.Sprintf("Waiting for downstream cluster '%s' control plane initialized.", cluster.Name),
 		})
-		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
+		return ctrl.Result{RequeueAfter: r.RequeuePeriod}, nil
 	}
 
 	// Set the ProviderID on both ElementalMachine and downstream node
 	if err := r.setProviderID(ctx, elementalMachine, cluster); err != nil {
-		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, fmt.Errorf("setting ProviderID: %w", err)
+		return ctrl.Result{RequeueAfter: r.RequeuePeriod}, fmt.Errorf("setting ProviderID: %w", err)
 	}
 
 	// Mark the ElementalMachine as ready
@@ -556,7 +558,7 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 			Reason:   infrastructurev1beta1.MissingAvailableHostsReason,
 			Message:  "No ElementalHosts available for association.",
 		})
-		return ctrl.Result{RequeueAfter: defaultRequeuePeriod}, nil
+		return ctrl.Result{RequeueAfter: r.RequeuePeriod}, nil
 	}
 
 	// Pick the first one available

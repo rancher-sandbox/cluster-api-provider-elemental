@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	defaultRequeuePeriod = 10 * time.Second
+	DefaultRequeuePeriod = 10 * time.Second
 )
 
 // Common Errors.
