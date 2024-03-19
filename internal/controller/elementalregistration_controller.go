@@ -106,14 +106,12 @@ func (r *ElementalRegistrationReconciler) Reconcile(ctx context.Context, req ctr
 		if err := r.setURI(registration); err != nil {
 			return ctrl.Result{}, fmt.Errorf("updating registration URI: %w", err)
 		}
-		return ctrl.Result{RequeueAfter: time.Second}, nil
 	}
 
 	// Set default CA Cert if not set already and if we have a default one to trust.
 	if len(registration.Spec.Config.Elemental.Registration.CACert) == 0 && len(r.DefaultCACert) > 0 {
 		logger.Info("Setting default CACert")
 		registration.Spec.Config.Elemental.Registration.CACert = r.DefaultCACert
-		return ctrl.Result{RequeueAfter: time.Second}, nil
 	}
 
 	// Generate new token signing key if secret does not exists yet.
@@ -122,7 +120,6 @@ func (r *ElementalRegistrationReconciler) Reconcile(ctx context.Context, req ctr
 		if err := r.generateNewIdentity(ctx, registration); err != nil {
 			return ctrl.Result{}, fmt.Errorf("generating new identity: %w", err)
 		}
-		return ctrl.Result{RequeueAfter: time.Second}, nil
 	}
 
 	// Generate new token if does not exist yet.
@@ -131,7 +128,6 @@ func (r *ElementalRegistrationReconciler) Reconcile(ctx context.Context, req ctr
 		if err := r.setNewToken(ctx, registration); err != nil {
 			return ctrl.Result{}, fmt.Errorf("refreshing registration token: %w", err)
 		}
-		return ctrl.Result{RequeueAfter: time.Second}, nil
 	}
 
 	return ctrl.Result{}, nil

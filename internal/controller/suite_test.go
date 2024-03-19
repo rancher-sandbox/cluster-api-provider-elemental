@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -136,9 +137,10 @@ func setupAllWithManager(k8sManager manager.Manager) {
 
 	remoteTrackerMock = utils.NewRemoteTrackerMock()
 	err = (&ElementalMachineReconciler{
-		Client:  k8sManager.GetClient(),
-		Scheme:  k8sManager.GetScheme(),
-		Tracker: remoteTrackerMock,
+		Client:        k8sManager.GetClient(),
+		Scheme:        k8sManager.GetScheme(),
+		Tracker:       remoteTrackerMock,
+		RequeuePeriod: time.Millisecond,
 	}).SetupWithManager(ctx, k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

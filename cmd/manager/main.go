@@ -189,9 +189,10 @@ func main() {
 	remoteTracker := utils.NewRemoteTracker(tracker)
 
 	if err = (&controller.ElementalMachineReconciler{
-		Client:  mgr.GetClient(),
-		Scheme:  mgr.GetScheme(),
-		Tracker: remoteTracker,
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		Tracker:       remoteTracker,
+		RequeuePeriod: controller.DefaultRequeuePeriod,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ElementalMachine")
 		os.Exit(1)
