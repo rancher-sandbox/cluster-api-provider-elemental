@@ -9,8 +9,13 @@ IMG = ${IMG_NAME}:${IMG_TAG}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 # See: https://storage.googleapis.com/kubebuilder-tools
 ENVTEST_K8S_VERSION = 1.29.1
-
-AGENT_CONFIG_FILE?="iso/config/example-config.yaml"
+# Install with: go install github.com/onsi/ginkgo/v2/ginkgo
+GINKGO_VER := v2.17.0
+# Tool Versions
+KUSTOMIZE_VERSION ?= v5.3.0
+CONTROLLER_TOOLS_VERSION ?= v0.14.0
+# CAPI version used for test CRDs
+CAPI_VERSION ?= v1.6.3
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -39,7 +44,6 @@ LDFLAGS += -X "github.com/rancher-sandbox/cluster-api-provider-elemental/interna
 ABS_TOOLS_DIR :=  $(abspath bin/)
 GO_INSTALL := ./test/scripts/go_install.sh
 
-GINKGO_VER := v2.15.0
 GINKGO := $(ABS_TOOLS_DIR)/ginkgo-$(GINKGO_VER)
 GINKGO_PKG := github.com/onsi/ginkgo/v2/ginkgo
 
@@ -196,10 +200,6 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 
-## Tool Versions
-KUSTOMIZE_VERSION ?= v5.3.0
-CONTROLLER_TOOLS_VERSION ?= v0.14.0
-
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
 $(KUSTOMIZE): $(LOCALBIN)
@@ -248,6 +248,8 @@ lint: ## See: https://golangci-lint.run/usage/linters/
 		-E revive \
 		-E wrapcheck 
 
+AGENT_CONFIG_FILE?="iso/config/example-config.yaml"
+
 .PHONY: build-iso
 build-iso: 
 ifeq ($(AGENT_CONFIG_FILE),"iso/config/example-config.yaml")
@@ -278,7 +280,6 @@ endif
 		--entrypoint /usr/bin/elemental docker.io/library/elemental-iso:latest --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
 		--local --squash-no-compression -o /iso docker.io/library/elemental-iso:latest
 
-CAPI_VERSION=v1.6.0
 .PHONY: update-test-capi-crds
 update-test-capi-crds: 
 # These files can not be included when vendoring, but we need them to start the controller test suite

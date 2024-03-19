@@ -128,20 +128,52 @@ func (o operationContext) SetTags(tags ...string) {
 	o.op.WithTags(tags...)
 }
 
+func (o operationContext) Tags() []string {
+	return o.op.Tags
+}
+
 func (o operationContext) SetIsDeprecated(isDeprecated bool) {
 	o.op.WithDeprecated(isDeprecated)
+}
+
+func (o operationContext) IsDeprecated() bool {
+	return o.op.Deprecated != nil && *o.op.Deprecated
 }
 
 func (o operationContext) SetSummary(summary string) {
 	o.op.WithSummary(summary)
 }
 
+func (o operationContext) Summary() string {
+	if o.op.Summary == nil {
+		return ""
+	}
+
+	return *o.op.Summary
+}
+
 func (o operationContext) SetDescription(description string) {
 	o.op.WithDescription(description)
 }
 
+func (o operationContext) Description() string {
+	if o.op.Description == nil {
+		return ""
+	}
+
+	return *o.op.Description
+}
+
 func (o operationContext) SetID(operationID string) {
 	o.op.WithID(operationID)
+}
+
+func (o operationContext) ID() string {
+	if o.op.ID == nil {
+		return ""
+	}
+
+	return *o.op.ID
 }
 
 func (o operationContext) UnknownParamsAreForbidden(in openapi.In) bool {
@@ -415,9 +447,10 @@ func (r *Reflector) parseParametersIn(
 				Content:     nil,
 			}
 
-			swg2CollectionFormat := ""
-			refl.ReadStringTag(field.Tag, "collectionFormat", &swg2CollectionFormat)
-			switch swg2CollectionFormat {
+			collectionFormat := ""
+			refl.ReadStringTag(field.Tag, "collectionFormat", &collectionFormat)
+
+			switch collectionFormat {
 			case "csv":
 				p.WithStyle(string(QueryParameterStyleForm)).WithExplode(false)
 			case "ssv":
@@ -430,7 +463,9 @@ func (r *Reflector) parseParametersIn(
 
 			// Check if parameter is an JSON encoded object.
 			property := reflect.New(field.Type).Interface()
-			if refl.HasTaggedFields(property, tagJSON) && !refl.HasTaggedFields(property, string(in)) {
+
+			if collectionFormat == "json" ||
+				(refl.HasTaggedFields(property, tagJSON) && !refl.HasTaggedFields(property, string(in))) {
 				propertySchema, err := r.Reflect(property,
 					openapi.WithOperationCtx(oc, false, in),
 					jsonschema.DefinitionsPrefix(componentsSchemas),
@@ -444,6 +479,7 @@ func (r *Reflector) parseParametersIn(
 
 				openapiSchema := SchemaOrRef{}
 				openapiSchema.FromJSONSchema(propertySchema.ToSchemaOrBool())
+
 				p.Schema = nil
 				p.WithContentItem("application/json", MediaType{Schema: &openapiSchema})
 			} else {
@@ -471,6 +507,7 @@ func (r *Reflector) parseParametersIn(
 			}
 
 			alreadyExists := false
+
 			for _, ep := range o.Parameters {
 				if ep.Parameter != nil && ep.Parameter.In == p.In && ep.Parameter.Name == p.Name {
 					alreadyExists = true
@@ -503,7 +540,7 @@ func (r *Reflector) parseParametersIn(
 var defNameSanitizer = regexp.MustCompile(`[^a-zA-Z0-9.\-_]+`)
 
 func sanitizeDefName(rc *jsonschema.ReflectContext) {
-	jsonschema.InterceptDefName(func(t reflect.Type, defaultDefName string) string {
+	jsonschema.InterceptDefName(func(_ reflect.Type, defaultDefName string) string {
 		return defNameSanitizer.ReplaceAllString(defaultDefName, "")
 	})(rc)
 }
