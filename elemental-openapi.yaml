@@ -368,6 +368,10 @@ components:
           type: string
         needsReset:
           type: boolean
+        osVersionManagement:
+          additionalProperties:
+            $ref: '#/components/schemas/RuntimeRawExtension'
+          type: object
       type: object
     ApiRegistrationResponse:
       properties:
