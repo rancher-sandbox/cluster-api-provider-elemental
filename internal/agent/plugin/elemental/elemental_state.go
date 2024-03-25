@@ -24,9 +24,9 @@ import (
 // In case of post-upgrade error, the identifier could be marked as failed instead, to prevent further attempts.
 type ElementalInstallState struct {
 	// LastAppliedURI can be used to determine if an upgrade needs to be triggered or not.
-	LastAppliedURI string `yaml:"lastAppliedURI" mapstructure:"lastAppliedURI"`
+	LastAppliedURI string `yaml:"lastAppliedUri" mapstructure:"lastAppliedUri"`
 	// LastOSReleaseHash is /etc/os-release hash. This is used to determine if we booted into the 'upgraded' system or not.
-	LastOSReleaseHash string `yaml:"lastOSReleaseHash" mapstructure:"lastOSReleaseHash"`
+	LastOSReleaseHash string `yaml:"lastOsReleaseHash" mapstructure:"lastOsReleaseHash"`
 }
 
 var ErrUpgradeFailed = errors.New("Upgrade failed")
@@ -57,11 +57,14 @@ func LoadInstallState(fs vfs.FS, workDir string) (*ElementalInstallState, error)
 }
 
 func WriteInstallState(fs vfs.FS, workDir string, state ElementalInstallState) error {
+	path := formatInstallStatePath(workDir)
 	bytes, err := yaml.Marshal(state)
 	if err != nil {
 		return fmt.Errorf("marshalling ElementalInstallState: %w", err)
 	}
-	utils.WriteFile(fs, formatInstallStatePath(workDir), bytes)
+	if err := utils.WriteFile(fs, path, bytes); err != nil {
+		return fmt.Errorf("writing install state file '%s': %w", path, err)
+	}
 	return nil
 }
 

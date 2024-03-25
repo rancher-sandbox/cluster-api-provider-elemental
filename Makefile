@@ -16,6 +16,8 @@ KUSTOMIZE_VERSION ?= v5.3.0
 CONTROLLER_TOOLS_VERSION ?= v0.14.0
 # CAPI version used for test CRDs
 CAPI_VERSION ?= v1.6.3
+# Linter version
+GOLANGCI_LINT_VERSION ?= v1.57.1
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -231,22 +233,8 @@ generate-infra-yaml:kustomize manifests # Generate infrastructure-components.yam
 
 .PHONY: lint
 lint: ## See: https://golangci-lint.run/usage/linters/
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.2
-	golangci-lint run -v --timeout 10m \
-		-E bodyclose \
-		-E contextcheck \
-		-E errname \
-		-E errorlint \
-		-E exhaustive \
-		-E exportloopref \
-		-E godot \
-		-E gofmt \
-		-E goimports \
-		-E gosec \
-		-E makezero \
-		-E tagliatelle \
-		-E revive \
-		-E wrapcheck 
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	golangci-lint run -v
 
 AGENT_CONFIG_FILE?="iso/config/example-config.yaml"
 

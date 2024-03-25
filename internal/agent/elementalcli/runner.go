@@ -34,7 +34,7 @@ type Reset struct {
 }
 
 type Upgrade struct {
-	ImageURI        string `json:"imageURI,omitempty" mapstructure:"imageURI"`
+	ImageURI        string `json:"imageUri,omitempty" mapstructure:"imageUri"`
 	UpgradeRecovery bool   `json:"upgradeRecovery,omitempty" mapstructure:"upgradeRecovery"`
 	Debug           bool   `json:"debug,omitempty" mapstructure:"debug"`
 }
