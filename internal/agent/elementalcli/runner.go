@@ -33,9 +33,16 @@ type Reset struct {
 	Debug           bool     `json:"debug,omitempty" mapstructure:"debug"`
 }
 
+type Upgrade struct {
+	ImageURI        string `json:"imageURI,omitempty" mapstructure:"imageURI"`
+	UpgradeRecovery bool   `json:"upgradeRecovery,omitempty" mapstructure:"upgradeRecovery"`
+	Debug           bool   `json:"debug,omitempty" mapstructure:"debug"`
+}
+
 type Runner interface {
 	Install(Install) error
 	Reset(Reset) error
+	Upgrade(Upgrade) error
 }
 
 func NewRunner() Runner {
@@ -48,7 +55,7 @@ type runner struct{}
 
 func (r *runner) Install(conf Install) error {
 	log.Debug("Running elemental install")
-	installerOpts := []string{"elemental"}
+	installerOpts := []string{}
 	// There are no env var bindings in elemental-cli for elemental root options
 	// so root flags should be passed within the command line
 	if conf.Debug {
@@ -76,7 +83,7 @@ func (r *runner) Install(conf Install) error {
 
 func (r *runner) Reset(conf Reset) error {
 	log.Debug("Running elemental reset")
-	installerOpts := []string{"elemental"}
+	installerOpts := []string{}
 	// There are no env var bindings in elemental-cli for elemental root options
 	// so root flags should be passed within the command line
 	if conf.Debug {
@@ -94,6 +101,30 @@ func (r *runner) Reset(conf Reset) error {
 	log.Debugf("running: %s\n with ENV:\n%s", strings.Join(installerOpts, " "), strings.Join(environmentVariables, "\n"))
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("running elemental reset: %w", err)
+	}
+	return nil
+}
+
+func (r *runner) Upgrade(conf Upgrade) error {
+	log.Debug("Running elemental upgrade")
+	installerOpts := []string{}
+	// There are no env var bindings in elemental-cli for elemental root options
+	// so root flags should be passed within the command line
+	if conf.Debug {
+		installerOpts = append(installerOpts, "--debug")
+	}
+	installerOpts = append(installerOpts, "upgrade")
+
+	cmd := exec.Command("elemental")
+	environmentVariables := mapToUpgradeEnv(conf)
+	cmd.Env = append(os.Environ(), environmentVariables...)
+	cmd.Stdout = os.Stdout
+	cmd.Args = installerOpts
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
+	log.Debugf("running: %s\n with ENV:\n%s", strings.Join(installerOpts, " "), strings.Join(environmentVariables, "\n"))
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("running elemental upgrade: %w", err)
 	}
 	return nil
 }
@@ -121,6 +152,14 @@ func mapToResetEnv(conf Reset) []string {
 	variables = append(variables, formatEV("ELEMENTAL_RESET_SYSTEM", conf.SystemURI))
 	variables = append(variables, formatEV("ELEMENTAL_RESET_PERSISTENT", strconv.FormatBool(conf.ResetPersistent)))
 	variables = append(variables, formatEV("ELEMENTAL_RESET_OEM", strconv.FormatBool(conf.ResetOEM)))
+	return variables
+}
+
+func mapToUpgradeEnv(conf Upgrade) []string {
+	var variables []string
+	// See GetUpgradeKeyEnvMap() in https://github.com/rancher/elemental-toolkit/blob/main/pkg/constants/constants.go
+	variables = append(variables, formatEV("ELEMENTAL_UPGRADE_RECOVERY", strconv.FormatBool(conf.UpgradeRecovery)))
+	variables = append(variables, formatEV("ELEMENTAL_UPGRADE_SYSTEM", conf.ImageURI))
 	return variables
 }
 

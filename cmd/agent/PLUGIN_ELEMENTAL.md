@@ -76,7 +76,7 @@ When the `elemental-agent` receives a reset trigger, for example because the CAP
     name: Elemental Reset
     stages:
         network:
-            - if: '[ -f /run/cos/recovery_mode ]'
+            - if: '[ -f /run/elemental/recovery_mode ]'
             name: Runs elemental reset and re-register the system
             commands:
                 - elemental-agent --debug --reset --config /oem/elemental/agent/config.yaml

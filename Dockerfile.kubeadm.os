@@ -1,3 +1,5 @@
+ARG ELEMENTAL_TOOLKIT=ghcr.io/rancher/elemental-toolkit/elemental-cli:v2.0.0
+
 FROM opensuse/leap:15.5 as AGENT
 
 # Install Go 1.22
@@ -35,14 +37,14 @@ RUN CGO_ENABLED=1 go build \
 # Build elemental-toolkit plugin
 RUN CGO_ENABLED=1 go build \
     -buildmode=plugin \
-    -o elemental.so internal/agent/plugin/elemental/elemental.go
+    -o elemental.so internal/agent/plugin/elemental/elemental.go internal/agent/plugin/elemental/elemental_state.go
 
 # Build dummy plugin
 RUN CGO_ENABLED=1 go build \
     -buildmode=plugin \
     -o dummy.so internal/agent/plugin/dummy/dummy.go
 
-FROM  ghcr.io/rancher/elemental-toolkit/elemental-cli:v1.1.0 as TOOLKIT
+FROM  ${ELEMENTAL_TOOLKIT} as TOOLKIT
 
 # OS base image of our choice
 FROM opensuse/tumbleweed:latest as OS

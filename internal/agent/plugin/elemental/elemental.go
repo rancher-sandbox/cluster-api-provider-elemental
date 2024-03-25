@@ -29,7 +29,7 @@ const (
 	agentConfigTempPath   = "/tmp/elemental-agent-config.yaml"
 	resetCloudConfigPath  = "/oem/reset-cloud-config.yaml"
 	bootstrapPath         = "/oem/bootstrap-cloud-config.yaml"
-	liveModeFile          = "/run/cos/live_mode"
+	liveModeFile          = "/run/elemental/live_mode"
 	bootstrapSentinelPath = "/run/cluster-api/bootstrap-success.complete"
 )
 
@@ -38,6 +38,11 @@ var (
 	ErrBootstrapAlreadyApplied    = errors.New("bootstrap already applied")
 	ErrUnsupportedCloudInitSchema = errors.New("unsupported cloud-init schema")
 )
+
+type OSVersionManagement struct {
+	OSVersion elementalcli.Upgrade `json:"osVersion,omitempty" mapstructure:"osVersion"`
+	Force     bool                 `json:"force,omitempty" mapstructure:"force"`
+}
 
 var _ osplugin.Plugin = (*ElementalPlugin)(nil)
 
@@ -287,7 +292,7 @@ func (p *ElementalPlugin) TriggerReset() error {
 		Stages: map[string][]schema.Stage{
 			"network": {
 				schema.Stage{
-					If:   "[ -f /run/cos/recovery_mode ]",
+					If:   "[ -f /run/elemental/recovery_mode ]",
 					Name: "Runs elemental reset and re-register the system",
 					Commands: []string{
 						"elemental-agent --debug --reset --config /oem/elemental/agent/config.yaml",
@@ -349,6 +354,53 @@ func (p *ElementalPlugin) Reset(input []byte) error {
 		return fmt.Errorf("running command '%s': %w", command, err)
 	}
 	return nil
+}
+
+var ErrFailedUpgrade = errors.New("Upgrade failed")
+
+func (p *ElementalPlugin) ReconcileOSVersion(input []byte) (bool, error) {
+	log.Debug("Reconciling Elemental OS Version")
+	oSVersionManagement := OSVersionManagement{}
+	if err := json.Unmarshal(input, &oSVersionManagement); err != nil {
+		return false, fmt.Errorf("unmarshalling oSVersionManagement config: %w", err)
+	}
+	installState, err := LoadInstallState(p.fs, p.workDir)
+	if err != nil {
+		return false, fmt.Errorf("loading install state: %w", err)
+	}
+	currentOSReleaseHash, err := GetCurrentOSReleaseHash(p.fs)
+	if err != nil {
+		return false, fmt.Errorf("evaluating current OS Release: %w", err)
+	}
+
+	// No version was defined, nothing to do.
+	if len(oSVersionManagement.OSVersion.ImageURI) == 0 {
+		return false, nil
+	}
+
+	// Last applied URI is equal, it means we have nothing do to anymore, or we just rebooted post upgrade.
+	if !installState.hostNeedsUpgrade(oSVersionManagement.OSVersion.ImageURI) {
+		// If LastOSReleaseHash does match, it means we invoked `elemental upgrade` before, but we somehow rebooted in the passive system.
+		// Or literally the /etc/os-release is equal on both images, though luck!
+		if installState.LastOSReleaseHash == currentOSReleaseHash {
+			return false, fmt.Errorf("checking if /etc/os-release was updated: %w", ErrFailedUpgrade)
+		}
+		// If /etc/os-release was updated, assume we rebooted into the upgraded system successfully.
+		// Nothing to do anymore.
+		return false, nil
+	}
+
+	if err := p.cliRunner.Upgrade(oSVersionManagement.OSVersion); err != nil {
+		return false, fmt.Errorf("invoking elemental upgrade: %w", err)
+	}
+
+	installState.LastAppliedURI = oSVersionManagement.OSVersion.ImageURI
+	installState.LastOSReleaseHash = currentOSReleaseHash
+	if err := WriteInstallState(p.fs, p.workDir, *installState); err != nil {
+		return false, fmt.Errorf("writing install state: %w", err)
+	}
+
+	return true, nil
 }
 
 func (p *ElementalPlugin) PowerOff() error {

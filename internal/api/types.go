@@ -7,6 +7,7 @@ import (
 	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	"sigs.k8s.io/cluster-api/util/conditions"
@@ -104,13 +105,14 @@ func (h *HostPatchRequest) applyToElementalHost(elementalHost *infrastructurev1b
 }
 
 type HostResponse struct {
-	Name           string            `json:"name,omitempty"`
-	Annotations    map[string]string `json:"annotations,omitempty"`
-	Labels         map[string]string `json:"labels,omitempty"`
-	BootstrapReady bool              `json:"bootstrapReady,omitempty"`
-	Bootstrapped   bool              `json:"bootstrapped,omitempty"`
-	Installed      bool              `json:"installed,omitempty"`
-	NeedsReset     bool              `json:"needsReset,omitempty"`
+	Name                string                          `json:"name,omitempty"`
+	Annotations         map[string]string               `json:"annotations,omitempty"`
+	Labels              map[string]string               `json:"labels,omitempty"`
+	BootstrapReady      bool                            `json:"bootstrapReady,omitempty"`
+	Bootstrapped        bool                            `json:"bootstrapped,omitempty"`
+	Installed           bool                            `json:"installed,omitempty"`
+	NeedsReset          bool                            `json:"needsReset,omitempty"`
+	OSVersionManagement map[string]runtime.RawExtension `json:"osVersionManagement,omitempty" yaml:"osVersionManagement,omitempty"`
 }
 
 func (h *HostResponse) fromElementalHost(elementalHost infrastructurev1beta1.ElementalHost) {
@@ -131,6 +133,7 @@ func (h *HostResponse) fromElementalHost(elementalHost infrastructurev1beta1.Ele
 	if value, found := elementalHost.Labels[infrastructurev1beta1.LabelElementalHostNeedsReset]; found && value == "true" {
 		h.NeedsReset = true
 	}
+	h.OSVersionManagement = elementalHost.Spec.OSVersionManagement
 }
 
 type RegistrationGetRequest struct {

@@ -172,6 +172,10 @@ func (p *DummyPlugin) Reset(input []byte) error {
 	return nil
 }
 
+func (p *DummyPlugin) ReconcileOSVersion(input []byte) (bool, error) {
+	return false, nil
+}
+
 func (p *DummyPlugin) PowerOff() error {
 	if err := p.hostManager.PowerOff(); err != nil {
 		return fmt.Errorf("powering off system: %w", err)

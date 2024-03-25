@@ -44,6 +44,9 @@ type Plugin interface {
 	// Reset should reset the machine to an installable state, given an input reset config (in JSON format).
 	// This is called by the agent on '--reset' argument.
 	Reset(input []byte) error
+	// ReconcileOSVersion should reconcile the OS version on the host according to the input (in JSON format).
+	// You can trigger a Reboot by returning a true value. Note that in case of error this is ignored.
+	ReconcileOSVersion(input []byte) (bool, error)
 	// PowerOff should poweroff the machine.
 	PowerOff() error
 	// Reboot should reboot the machine.

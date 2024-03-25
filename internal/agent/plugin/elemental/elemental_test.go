@@ -106,8 +106,8 @@ var _ = Describe("Elemental Plugin", Label("agent", "plugin", "elemental"), func
 		cliRunner.EXPECT().Install(gomock.Any()).Times(0)
 	})
 	It("should install invoking elemental install", func() {
-		Expect(vfs.MkdirAll(fs, "/run/cos", os.ModePerm)).Should(Succeed())
-		Expect(fs.WriteFile("/run/cos/live_mode", []byte{}, os.ModePerm)).Should(Succeed())
+		Expect(vfs.MkdirAll(fs, "/run/elemental", os.ModePerm)).Should(Succeed())
+		Expect(fs.WriteFile("/run/elemental/live_mode", []byte{}, os.ModePerm)).Should(Succeed())
 		installJSON, err := json.Marshal(install)
 		installWithSetFiles := install
 		installWithSetFiles.ConfigURLs = append(installWithSetFiles.ConfigURLs, hostnameInitPath, identityInitPath, agentConfigInitPath, cloudConfigInitPath)

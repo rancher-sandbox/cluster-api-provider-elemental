@@ -222,6 +222,88 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, client client.Client) *
 					return nil
 				}
 
+				if !host.Bootstrapped {
+					// Set OSVersionReady false condition to highlight the process started
+					patchRequest := api.HostPatchRequest{}
+					patchRequest.SetCondition(infrastructurev1beta1.OSVersionReady,
+						corev1.ConditionFalse,
+						infrastructurev1beta1.WaitingForOSVersionReconcileReasonSeverity,
+						infrastructurev1beta1.WaitingForOSVersionReconcileReason,
+						"Reconciling OS Version.")
+					if _, err := client.PatchHost(patchRequest, hostname); err != nil {
+						log.Error(err, "patching host with false OSVersionReady condition")
+						time.Sleep(conf.Agent.Reconciliation)
+						continue
+					}
+
+					// Serialize input to JSON
+					bytes, err := json.Marshal(host.OSVersionManagement)
+					if err != nil {
+						log.Error(err, "marshalling Host OSVersionManagement to JSON")
+						err := fmt.Errorf("marshalling Host OSVersionManagement to JSON: %w", err)
+						attemptConditionReporting(client, hostname, clusterv1.Condition{
+							Type:     infrastructurev1beta1.OSVersionReady,
+							Status:   corev1.ConditionFalse,
+							Severity: clusterv1.ConditionSeverityError,
+							Reason:   infrastructurev1beta1.OSVersionReconciliationFailedReason,
+							Message:  err.Error(),
+						})
+						time.Sleep(conf.Agent.Reconciliation)
+						continue
+					}
+
+					// Ask the OSPlugin to reconcile
+					reboot, err := osPlugin.ReconcileOSVersion(bytes)
+					if err != nil {
+						log.Error(err, "reconciling Host OS Version")
+						err := fmt.Errorf("reconciling Host OS Version: %w", err)
+						attemptConditionReporting(client, hostname, clusterv1.Condition{
+							Type:     infrastructurev1beta1.OSVersionReady,
+							Status:   corev1.ConditionFalse,
+							Severity: clusterv1.ConditionSeverityError,
+							Reason:   infrastructurev1beta1.OSVersionReconciliationFailedReason,
+							Message:  err.Error(),
+						})
+						time.Sleep(conf.Agent.Reconciliation)
+						continue
+					}
+
+					if reboot {
+						log.Info("Rebooting after OS Version reconciliation.")
+						attemptConditionReporting(client, hostname, clusterv1.Condition{
+							Type:     infrastructurev1beta1.OSVersionReady,
+							Status:   corev1.ConditionFalse,
+							Severity: infrastructurev1beta1.WaitingForPostReconcileRebootReasonSeverity,
+							Reason:   infrastructurev1beta1.WaitingForPostReconcileRebootReason,
+							Message:  "Waiting for Host to reboot after OS Version has been reconciled.",
+						})
+						if err := osPlugin.Reboot(); err != nil {
+							// Exit the program in case of reboot failures
+							// Assume this is not recoverable and requires manual intervention
+							return fmt.Errorf("rebooting system after OS Version reconciliation: %w", err)
+						}
+						return nil
+					}
+
+					// If we are here it means:
+					// 1. The OSVersion input was applied successfully by the plugin.
+					// 2. The Host does not need to reboot.
+					//
+					// We are almost ready to proceed with bootstrapping (or to continue operation in case of in-place upgrades)
+					// Last thing we need is to mark the OSVersionReady to tell the provider the process has finished.
+					// If this request fails we must re-try it until it succeeds before we bootstrap.
+					patchRequest = api.HostPatchRequest{}
+					patchRequest.SetCondition(infrastructurev1beta1.OSVersionReady,
+						corev1.ConditionTrue,
+						clusterv1.ConditionSeverityInfo,
+						"", "")
+					if _, err := client.PatchHost(patchRequest, hostname); err != nil {
+						log.Error(err, "patching host with successful OSVersionReady condition")
+						time.Sleep(conf.Agent.Reconciliation)
+						continue
+					}
+				}
+
 				// Handle bootstrap if needed
 				if host.BootstrapReady && !host.Bootstrapped {
 					log.Debug("Handling bootstrap application")
