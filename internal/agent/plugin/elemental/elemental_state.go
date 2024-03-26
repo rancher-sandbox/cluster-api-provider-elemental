@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
@@ -25,14 +24,12 @@ import (
 type ElementalInstallState struct {
 	// LastAppliedURI can be used to determine if an upgrade needs to be triggered or not.
 	LastAppliedURI string `yaml:"lastAppliedUri" mapstructure:"lastAppliedUri"`
-	// LastOSReleaseHash is /etc/os-release hash. This is used to determine if we booted into the 'upgraded' system or not.
-	LastOSReleaseHash string `yaml:"lastOsReleaseHash" mapstructure:"lastOsReleaseHash"`
 }
 
 var ErrUpgradeFailed = errors.New("Upgrade failed")
 
 const (
-	OSReleasePath = "/etc/os-release"
+	//OSReleasePath = "/etc/os-release" //nolint: godot.
 	StateFileName = "elemental-install-state.yaml"
 )
 
@@ -68,21 +65,21 @@ func WriteInstallState(fs vfs.FS, workDir string, state ElementalInstallState) e
 	return nil
 }
 
-func GetCurrentOSReleaseHash(fs vfs.FS) (string, error) {
-	bytes, err := fs.ReadFile(OSReleasePath)
-	if err != nil {
-		return "", fmt.Errorf("reading file '%s': %w", OSReleasePath, err)
-	}
+// func GetCurrentOSReleaseHash(fs vfs.FS) (string, error) {
+// 	bytes, err := fs.ReadFile(OSReleasePath)
+// 	if err != nil {
+// 		return "", fmt.Errorf("reading file '%s': %w", OSReleasePath, err)
+// 	}
 
-	hash := sha256.New()
-	if _, err := hash.Write(bytes); err != nil {
-		//This should never be the case, but let's make the linter happy.
-		return "", fmt.Errorf("writing hash of file '%s': %w", OSReleasePath, err)
-	}
+// 	hash := sha256.New()
+// 	if _, err := hash.Write(bytes); err != nil {
+// 		//This should never be the case, but let's make the linter happy.
+// 		return "", fmt.Errorf("writing hash of file '%s': %w", OSReleasePath, err)
+// 	}
 
-	result := hash.Sum(nil)
-	return string(result), nil
-}
+// 	result := hash.Sum(nil)
+// 	return string(result), nil
+// }
 
 func formatInstallStatePath(workDir string) string {
 	return fmt.Sprintf("%s/%s", workDir, StateFileName)

@@ -368,10 +368,6 @@ func (p *ElementalPlugin) ReconcileOSVersion(input []byte) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("loading install state: %w", err)
 	}
-	currentOSReleaseHash, err := GetCurrentOSReleaseHash(p.fs)
-	if err != nil {
-		return false, fmt.Errorf("evaluating current OS Release: %w", err)
-	}
 
 	// No version was defined, nothing to do.
 	if len(oSVersionManagement.OSVersion.ImageURI) == 0 {
@@ -380,13 +376,9 @@ func (p *ElementalPlugin) ReconcileOSVersion(input []byte) (bool, error) {
 
 	// Last applied URI is equal, it means we have nothing do to anymore, or we just rebooted post upgrade.
 	if !installState.hostNeedsUpgrade(oSVersionManagement.OSVersion.ImageURI) {
-		// If LastOSReleaseHash does match, it means we invoked `elemental upgrade` before, but we somehow rebooted in the passive system.
-		// Or literally the /etc/os-release is equal on both images, though luck!
-		if installState.LastOSReleaseHash == currentOSReleaseHash {
-			return false, fmt.Errorf("checking if /etc/os-release was updated: %w", ErrFailedUpgrade)
-		}
-		// If /etc/os-release was updated, assume we rebooted into the upgraded system successfully.
-		// Nothing to do anymore.
+		// TODO: We need to determine here if we rebooted into the passive system or not.
+		// If we booted into the passive system, then this should be highlighted as an error.
+		log.Infof("Image '%s' is already applied to this host. Nothing to do.", oSVersionManagement.OSVersion.ImageURI)
 		return false, nil
 	}
 
@@ -395,7 +387,6 @@ func (p *ElementalPlugin) ReconcileOSVersion(input []byte) (bool, error) {
 	}
 
 	installState.LastAppliedURI = oSVersionManagement.OSVersion.ImageURI
-	installState.LastOSReleaseHash = currentOSReleaseHash
 	if err := WriteInstallState(p.fs, p.workDir, *installState); err != nil {
 		return false, fmt.Errorf("writing install state: %w", err)
 	}
