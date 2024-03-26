@@ -55,7 +55,7 @@ type runner struct{}
 
 func (r *runner) Install(conf Install) error {
 	log.Debug("Running elemental install")
-	installerOpts := []string{}
+	installerOpts := []string{"elemental"}
 	// There are no env var bindings in elemental-cli for elemental root options
 	// so root flags should be passed within the command line
 	if conf.Debug {
@@ -83,7 +83,7 @@ func (r *runner) Install(conf Install) error {
 
 func (r *runner) Reset(conf Reset) error {
 	log.Debug("Running elemental reset")
-	installerOpts := []string{}
+	installerOpts := []string{"elemental"}
 	// There are no env var bindings in elemental-cli for elemental root options
 	// so root flags should be passed within the command line
 	if conf.Debug {
@@ -107,7 +107,7 @@ func (r *runner) Reset(conf Reset) error {
 
 func (r *runner) Upgrade(conf Upgrade) error {
 	log.Debug("Running elemental upgrade")
-	installerOpts := []string{}
+	installerOpts := []string{"elemental"}
 	// There are no env var bindings in elemental-cli for elemental root options
 	// so root flags should be passed within the command line
 	if conf.Debug {
