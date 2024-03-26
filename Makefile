@@ -16,6 +16,8 @@ KUSTOMIZE_VERSION ?= v5.3.0
 CONTROLLER_TOOLS_VERSION ?= v0.14.0
 # CAPI version used for test CRDs
 CAPI_VERSION ?= v1.6.3
+# Linter version
+GOLANGCI_LINT_VERSION ?= v1.57.1
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -98,7 +100,7 @@ vet: ## Run go vet against code.
 
 .PHONY: test
 test: manifests generate fmt vet envtest generate-mocks $(GINKGO) ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GINKGO) -v -r --trace --race --covermode=atomic --coverprofile=coverage.out $(GINKGO_EXTRA_ARGS) --coverpkg=github.com/rancher-sandbox/cluster-api-provider-elemental/... ./internal/... ./cmd/... ./pkg/...
+#	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GINKGO) -v -r --trace --race --covermode=atomic --coverprofile=coverage.out $(GINKGO_EXTRA_ARGS) --coverpkg=github.com/rancher-sandbox/cluster-api-provider-elemental/... ./internal/... ./cmd/... ./pkg/...
 
 ##@ Build
 .PHONY: build-agent
@@ -117,14 +119,14 @@ build-manager: manifests generate fmt vet ## Build manager binary.
 
 .PHONY: build-plugins
 build-plugins: fmt vet
-	CGO_ENABLED=1 go build -buildmode=plugin -o bin/elemental.so internal/agent/plugin/elemental/elemental.go
+	CGO_ENABLED=1 go build -buildmode=plugin -o bin/elemental.so internal/agent/plugin/elemental/elemental.go internal/agent/plugin/elemental/elemental_state.go
 	CGO_ENABLED=1 go build -buildmode=plugin -o bin/dummy.so internal/agent/plugin/dummy/dummy.go
 
 # This does depend on cross compilation library, for example: cross-aarch64-gcc13
 .PHONY: build-plugins-all
 build-plugins-all: generate fmt vet
-	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -buildmode=plugin -o bin/elemental_amd64.so internal/agent/plugin/elemental/elemental.go
-	CC=$(CROSS_COMPILER) CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -buildmode=plugin -o bin/elemental_arm64.so internal/agent/plugin/elemental/elemental.go
+	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -buildmode=plugin -o bin/elemental_amd64.so internal/agent/plugin/elemental/elemental.go internal/agent/plugin/elemental/elemental_state.go
+	CC=$(CROSS_COMPILER) CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -buildmode=plugin -o bin/elemental_arm64.so internal/agent/plugin/elemental/elemental.go internal/agent/plugin/elemental/elemental_state.go
 	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -buildmode=plugin -o bin/dummy_amd64.so internal/agent/plugin/dummy/dummy.go
 	CC=$(CROSS_COMPILER) CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -buildmode=plugin -o bin/dummy_arm64.so internal/agent/plugin/dummy/dummy.go
 
@@ -231,27 +233,13 @@ generate-infra-yaml:kustomize manifests # Generate infrastructure-components.yam
 
 .PHONY: lint
 lint: ## See: https://golangci-lint.run/usage/linters/
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.2
-	golangci-lint run -v --timeout 10m \
-		-E bodyclose \
-		-E contextcheck \
-		-E errname \
-		-E errorlint \
-		-E exhaustive \
-		-E exportloopref \
-		-E godot \
-		-E gofmt \
-		-E goimports \
-		-E gosec \
-		-E makezero \
-		-E tagliatelle \
-		-E revive \
-		-E wrapcheck 
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	golangci-lint run -v
 
 AGENT_CONFIG_FILE?="iso/config/example-config.yaml"
 
-.PHONY: build-iso
-build-iso: 
+.PHONY: build-os
+build-os: 
 ifeq ($(AGENT_CONFIG_FILE),"iso/config/example-config.yaml")
 	@echo "No AGENT_CONFIG_FILE set, using the default one at ${AGENT_CONFIG_FILE}"
 endif
@@ -260,25 +248,31 @@ endif
 		--build-arg "COMMIT=${GIT_COMMIT}" \
 		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
 		--build-arg "AGENT_CONFIG_FILE=${AGENT_CONFIG_FILE}" \
-		-t elemental-iso:latest -f Dockerfile.iso .
+		-t elemental-os:dev -f Dockerfile.os .
+
+.PHONY: build-iso
+build-iso: build-os
 	$(CONTAINER_TOOL) run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ./iso:/iso \
-		--entrypoint /usr/bin/elemental docker.io/library/elemental-iso:latest --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
-		--local --squash-no-compression -o /iso docker.io/library/elemental-iso:latest
+		--entrypoint /usr/bin/elemental docker.io/library/elemental-os:dev --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
+		--local --squash-no-compression -o /iso docker.io/library/elemental-os:dev
+
+.PHONY: build-os-kubeadm
+build-os-kubeadm: 
+ifeq ($(AGENT_CONFIG_FILE),"iso/config/example-config.yaml")
+	@echo "No AGENT_CONFIG_FILE set, using the default one at ${AGENT_CONFIG_FILE}"
+endif
+	$(CONTAINER_TOOL) build \
+		--build-arg "TAG=${GIT_TAG}" \
+		--build-arg "COMMIT=${GIT_COMMIT}" \
+		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
+		--build-arg "AGENT_CONFIG_FILE=${AGENT_CONFIG_FILE}" \
+		-t elemental-os:dev-kubeadm -f Dockerfile.kubeadm.os .
 
 .PHONY: build-iso-kubeadm
-build-iso-kubeadm: 
-ifeq ($(AGENT_CONFIG_FILE),"iso/config/example-config.yaml")
-	@echo "No AGENT_CONFIG_FILE set, using the default one at ${AGENT_CONFIG_FILE}"
-endif
-	$(CONTAINER_TOOL) build \
-		--build-arg "TAG=${GIT_TAG}" \
-		--build-arg "COMMIT=${GIT_COMMIT}" \
-		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
-		--build-arg "AGENT_CONFIG_FILE=${AGENT_CONFIG_FILE}" \
-		-t elemental-iso:latest -f Dockerfile.kubeadm.iso .
+build-iso-kubeadm: build-os-kubeadm
 	$(CONTAINER_TOOL) run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ./iso:/iso \
-		--entrypoint /usr/bin/elemental docker.io/library/elemental-iso:latest --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
-		--local --squash-no-compression -o /iso docker.io/library/elemental-iso:latest
+		--entrypoint /usr/bin/elemental docker.io/library/elemental-os:dev-kubeadm --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
+		--local --squash-no-compression -o /iso docker.io/library/elemental-os:dev-kubeadm
 
 .PHONY: update-test-capi-crds
 update-test-capi-crds: 

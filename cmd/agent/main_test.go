@@ -217,7 +217,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&triggerResetResponse, nil),
 				// Make first reset attempt fail, expect to try again
 				plugin.EXPECT().TriggerReset().Return(errors.New("trigger reset test fail")),
-				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.ResetReady,
@@ -230,7 +230,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 				}),
 				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&triggerResetResponse, nil),
 				plugin.EXPECT().TriggerReset().Return(nil),
-				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.ResetReady,
@@ -250,7 +250,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&triggerBootstrapResponse, nil),
 				// Make first get bootstrap fail, expect to try again
 				mClient.EXPECT().GetBootstrap(hostResponseFixture.Name).Return(nil, errors.New("get bootstrap test fail")),
-				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.BootstrapReady,
@@ -265,7 +265,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&triggerBootstrapResponse, nil),
 				mClient.EXPECT().GetBootstrap(hostResponseFixture.Name).Return(&bootstrapResponse, nil),
 				plugin.EXPECT().Bootstrap(bootstrapResponse.Format, []byte(bootstrapResponse.Config)).Return(errors.New("apply bootstrap test fail")),
-				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.BootstrapReady,
@@ -280,7 +280,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&triggerBootstrapResponse, nil),
 				mClient.EXPECT().GetBootstrap(hostResponseFixture.Name).Return(&bootstrapResponse, nil),
 				plugin.EXPECT().Bootstrap(bootstrapResponse.Format, []byte(bootstrapResponse.Config)).Return(nil),
-				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.BootstrapReady,
@@ -302,7 +302,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&triggerBootstrapResponse, nil),
 				mClient.EXPECT().GetBootstrap(hostResponseFixture.Name).Return(&bootstrapResponse, nil),
 				plugin.EXPECT().Bootstrap(bootstrapResponse.Format, []byte(bootstrapResponse.Config)).Return(nil),
-				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.BootstrapReady,
@@ -314,7 +314,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 					))
 				}),
 				plugin.EXPECT().Reboot().Return(errors.New("reboot test fail")),
-				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.BootstrapReady,
@@ -342,7 +342,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&triggerBootstrapResponse, nil),
 				// Make first patch attempt fail
 				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, errors.New("bootstrapped patch test fail")),
-				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.BootstrapReady,
@@ -355,7 +355,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 				}),
 				// Succeed on second attempt
 				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&triggerBootstrapResponse, nil),
-				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(hostResponseFixture, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(hostResponseFixture, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					if patch.Bootstrapped == nil {
 						GinkgoT().Error("bootstrapped patch does not contain bootstrapped flag")
 					}
@@ -422,7 +422,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 				plugin.EXPECT().InstallHostname(hostResponseFixture.Name).Return(nil),
 				plugin.EXPECT().InstallFile(wantAgentConfigBytes, configPathDefault, uint32(0640), 0, 0).Return(nil),
 				plugin.EXPECT().InstallFile(gomock.Any(), wantIdentityFilePath, uint32(0640), 0, 0).Return(nil),
-				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.RegistrationReady,
@@ -433,7 +433,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 						},
 					))
 				}),
-				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.InstallationReady,
@@ -485,7 +485,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 				gomock.InOrder(
 					// Make the first get registration call fail. Expect to recover by calling again
 					mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(nil, errors.New("get registration test error")),
-					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 						Expect(*patch.Condition).Should(Equal(
 							clusterv1.Condition{
 								Type:     infrastructurev1beta1.InstallationReady,
@@ -499,7 +499,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 					mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(registrationFixture, nil),
 					// Make the cloud init apply fail. Expect to recover by getting registration and applying cloud init again
 					plugin.EXPECT().InstallCloudInit(wantCloudInit).Return(errors.New("cloud init test failed")),
-					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 						Expect(*patch.Condition).Should(Equal(
 							clusterv1.Condition{
 								Type:     infrastructurev1beta1.InstallationReady,
@@ -514,7 +514,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 					plugin.EXPECT().InstallCloudInit(wantCloudInit).Return(nil),
 					// Make the install fail. Expect to recover by getting registration and installing again
 					plugin.EXPECT().Install(wantInstall).Return(errors.New("install test fail")),
-					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 						Expect(*patch.Condition).Should(Equal(
 							clusterv1.Condition{
 								Type:     infrastructurev1beta1.InstallationReady,
@@ -529,7 +529,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 					plugin.EXPECT().Install(wantInstall).Return(nil),
 					// Make the patch host fail. Expect to recover by patching it again
 					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, errors.New("patch host test fail")),
-					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 						Expect(*patch.Condition).Should(Equal(
 							clusterv1.Condition{
 								Type:     infrastructurev1beta1.InstallationReady,
@@ -540,7 +540,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 							},
 						))
 					}),
-					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(hostResponseFixture, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(hostResponseFixture, nil).Do(func(patch api.HostPatchRequest, _ string) {
 						if patch.Installed == nil {
 							GinkgoT().Error("installation patch does not contain installed flag")
 						}
@@ -571,7 +571,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 				cmd.SetArgs([]string{"--reset"})
 				gomock.InOrder(
 					mClient.EXPECT().DeleteHost(hostResponseFixture.Name).Return(errors.New("delete host test error")),
-					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 						Expect(*patch.Condition).Should(Equal(
 							clusterv1.Condition{
 								Type:     infrastructurev1beta1.ResetReady,
@@ -585,7 +585,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 					mClient.EXPECT().DeleteHost(hostResponseFixture.Name).Return(nil),
 					// Make the first registration call fail. Expect to recover by calling again
 					mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(nil, errors.New("get registration test error")),
-					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 						Expect(*patch.Condition).Should(Equal(
 							clusterv1.Condition{
 								Type:     infrastructurev1beta1.ResetReady,
@@ -600,7 +600,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 					mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(registrationFixture, nil),
 					// Make the reset call fail. Expect to recover by getting registration and resetting again
 					plugin.EXPECT().Reset(wantReset).Return(errors.New("reset test error")),
-					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 						Expect(*patch.Condition).Should(Equal(
 							clusterv1.Condition{
 								Type:     infrastructurev1beta1.ResetReady,
@@ -616,7 +616,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 					plugin.EXPECT().Reset(wantReset).Return(nil),
 					// Make the patch host fail. Expect to recover by patching it again
 					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, errors.New("patch host test fail")),
-					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 						Expect(*patch.Condition).Should(Equal(
 							clusterv1.Condition{
 								Type:     infrastructurev1beta1.ResetReady,
@@ -628,7 +628,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 						))
 					}),
 					mClient.EXPECT().DeleteHost(hostResponseFixture.Name).Return(nil),
-					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(hostResponseFixture, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(hostResponseFixture, nil).Do(func(patch api.HostPatchRequest, _ string) {
 						if patch.Reset == nil {
 							GinkgoT().Error("reset patch does not contain reset flag")
 						}

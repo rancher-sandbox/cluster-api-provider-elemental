@@ -1,0 +1,26 @@
+run:
+  timeout: 10m
+issues:
+  exclude-rules:
+    - source: ginkgo|gomega
+      linters:
+        - revive
+      text: "should not use dot imports"
+linters:
+  enable:
+    - bodyclose
+    - contextcheck
+    - dupl
+    - errname
+    - errorlint
+    - exhaustive
+    - exportloopref
+    - gocyclo
+    - godot
+    - gofmt
+    - goimports
+    - gosec
+    - makezero
+    - tagliatelle
+    - revive
+    - wrapcheck 
