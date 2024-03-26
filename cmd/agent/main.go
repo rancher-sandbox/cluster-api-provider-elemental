@@ -222,7 +222,8 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, client client.Client) *
 					return nil
 				}
 
-				if !host.Bootstrapped {
+				// Handle Upgrade (PoC version)
+				if !host.Bootstrapped || host.InPlaceUpgrade == infrastructurev1beta1.InPlaceUpgradePending {
 					// Set OSVersionReady false condition to highlight the process started
 					patchRequest := api.HostPatchRequest{}
 					patchRequest.SetCondition(infrastructurev1beta1.OSVersionReady,
@@ -293,6 +294,10 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, client client.Client) *
 					// Last thing we need is to mark the OSVersionReady to tell the provider the process has finished.
 					// If this request fails we must re-try it until it succeeds before we bootstrap.
 					patchRequest = api.HostPatchRequest{}
+					if host.InPlaceUpgrade == infrastructurev1beta1.InPlaceUpgradePending {
+						upgradeDone := infrastructurev1beta1.InPlaceUpgradeDone
+						patchRequest.InPlaceUpgrade = &upgradeDone
+					}
 					patchRequest.SetCondition(infrastructurev1beta1.OSVersionReady,
 						corev1.ConditionTrue,
 						clusterv1.ConditionSeverityInfo,

@@ -29,11 +29,14 @@ const (
 
 // Labels.
 const (
-	LabelElementalHostMachineName  = "elementalhost.infrastructure.cluster.x-k8s.io/machine-name"
-	LabelElementalHostInstalled    = "elementalhost.infrastructure.cluster.x-k8s.io/installed"
-	LabelElementalHostBootstrapped = "elementalhost.infrastructure.cluster.x-k8s.io/bootstrapped"
-	LabelElementalHostNeedsReset   = "elementalhost.infrastructure.cluster.x-k8s.io/needs-reset"
-	LabelElementalHostReset        = "elementalhost.infrastructure.cluster.x-k8s.io/reset"
+	LabelElementalHostMachineName    = "elementalhost.infrastructure.cluster.x-k8s.io/machine-name"
+	LabelElementalHostInstalled      = "elementalhost.infrastructure.cluster.x-k8s.io/installed"
+	LabelElementalHostBootstrapped   = "elementalhost.infrastructure.cluster.x-k8s.io/bootstrapped"
+	LabelElementalHostNeedsReset     = "elementalhost.infrastructure.cluster.x-k8s.io/needs-reset"
+	LabelElementalHostReset          = "elementalhost.infrastructure.cluster.x-k8s.io/reset"
+	LabelElementalHostInPlaceUpgrade = "elementalhost.infrastructure.cluster.x-k8s.io/in-place-upgrade"
+	InPlaceUpgradePending            = "pending"
+	InPlaceUpgradeDone               = "done"
 )
 
 // Conditions.
