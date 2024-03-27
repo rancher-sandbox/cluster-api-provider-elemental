@@ -250,8 +250,8 @@ lint: ## See: https://golangci-lint.run/usage/linters/
 
 AGENT_CONFIG_FILE?="iso/config/example-config.yaml"
 
-.PHONY: build-iso
-build-iso: 
+.PHONY: build-os
+build-os: 
 ifeq ($(AGENT_CONFIG_FILE),"iso/config/example-config.yaml")
 	@echo "No AGENT_CONFIG_FILE set, using the default one at ${AGENT_CONFIG_FILE}"
 endif
@@ -260,25 +260,31 @@ endif
 		--build-arg "COMMIT=${GIT_COMMIT}" \
 		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
 		--build-arg "AGENT_CONFIG_FILE=${AGENT_CONFIG_FILE}" \
-		-t elemental-iso:latest -f Dockerfile.iso .
+		-t elemental-os:dev -f Dockerfile.os .
+
+.PHONY: build-iso
+build-iso: build-os
 	$(CONTAINER_TOOL) run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ./iso:/iso \
-		--entrypoint /usr/bin/elemental docker.io/library/elemental-iso:latest --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
-		--local --squash-no-compression -o /iso docker.io/library/elemental-iso:latest
+		--entrypoint /usr/bin/elemental docker.io/library/elemental-os:dev --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
+		--local --squash-no-compression -o /iso docker.io/library/elemental-os:dev
+
+.PHONY: build-os-kubeadm
+build-os-kubeadm: 
+ifeq ($(AGENT_CONFIG_FILE),"iso/config/example-config.yaml")
+	@echo "No AGENT_CONFIG_FILE set, using the default one at ${AGENT_CONFIG_FILE}"
+endif
+	$(CONTAINER_TOOL) build \
+		--build-arg "TAG=${GIT_TAG}" \
+		--build-arg "COMMIT=${GIT_COMMIT}" \
+		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
+		--build-arg "AGENT_CONFIG_FILE=${AGENT_CONFIG_FILE}" \
+		-t elemental-os:dev-kubeadm -f Dockerfile.kubeadm.os .
 
 .PHONY: build-iso-kubeadm
-build-iso-kubeadm: 
-ifeq ($(AGENT_CONFIG_FILE),"iso/config/example-config.yaml")
-	@echo "No AGENT_CONFIG_FILE set, using the default one at ${AGENT_CONFIG_FILE}"
-endif
-	$(CONTAINER_TOOL) build \
-		--build-arg "TAG=${GIT_TAG}" \
-		--build-arg "COMMIT=${GIT_COMMIT}" \
-		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
-		--build-arg "AGENT_CONFIG_FILE=${AGENT_CONFIG_FILE}" \
-		-t elemental-iso:latest -f Dockerfile.kubeadm.iso .
+build-iso-kubeadm: build-os-kubeadm
 	$(CONTAINER_TOOL) run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ./iso:/iso \
-		--entrypoint /usr/bin/elemental docker.io/library/elemental-iso:latest --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
-		--local --squash-no-compression -o /iso docker.io/library/elemental-iso:latest
+		--entrypoint /usr/bin/elemental docker.io/library/elemental-os:dev-kubeadm --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
+		--local --squash-no-compression -o /iso docker.io/library/elemental-os:dev-kubeadm
 
 .PHONY: update-test-capi-crds
 update-test-capi-crds: 
