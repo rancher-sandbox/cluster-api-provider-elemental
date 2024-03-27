@@ -1,3 +1,5 @@
+ARG ELEMENTAL_TOOLKIT=ghcr.io/rancher/elemental-toolkit/elemental-cli:v2.0.0
+
 FROM opensuse/leap:15.5 as AGENT
 
 # Install Go 1.22
@@ -42,7 +44,7 @@ RUN CGO_ENABLED=1 go build \
     -buildmode=plugin \
     -o dummy.so internal/agent/plugin/dummy/dummy.go
 
-FROM  ghcr.io/rancher/elemental-toolkit/elemental-cli:v1.1.0 as TOOLKIT
+FROM  ${ELEMENTAL_TOOLKIT} as TOOLKIT
 
 # OS base image of our choice
 FROM opensuse/leap:15.5 as OS
@@ -86,7 +88,10 @@ RUN ARCH=$(uname -m); \
       curl \
       sed \
       iptables \
-      iproute2 
+      iproute2 \
+      btrfsprogs \
+      btrfsmaintenance \
+      snapper
 
 # Add the elemental cli
 COPY --from=TOOLKIT /usr/bin/elemental /usr/bin/elemental

@@ -1,6 +1,7 @@
 #!/bin/sh
 
 # See: https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#installing-kubeadm-kubelet-and-kubectl
+# See: https://github.com/go4clouds/cloud-infra/blob/main/libvirt/provision-k8s-node.sh
 
 set -e
 
@@ -39,5 +40,21 @@ chmod +x kubectl
 
 ## containerd
 CONTAINERD_VERSION="1.7.14"
-curl -L "https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}-linux-${ARCH}.tar.gz" | tar -C "$DEST" -xz
+curl -L "https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}-linux-${ARCH}.tar.gz" | tar  --strip-components=1 -C "$DOWNLOAD_DIR" -xz
 curl -sSL "https://raw.githubusercontent.com/containerd/containerd/main/containerd.service" | sed "s:/usr/bin:${DOWNLOAD_DIR}:g" | tee /usr/lib/systemd/system/containerd.service
+
+## Preflight checks
+# See: https://github.com/go4clouds/cloud-infra/blob/main/libvirt/provision-os-node.sh
+
+# Load br_netfilter
+cat >> /etc/modules-load.d/99-k8s.conf << EOF
+overlay
+br_netfilter
+EOF
+
+# Network-related sysctls
+cat >> /etc/sysctl.d/99-k8s.conf << EOF
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
+net.ipv4.conf.all.forwarding = 1
+EOF

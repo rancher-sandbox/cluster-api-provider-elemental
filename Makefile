@@ -265,8 +265,9 @@ endif
 .PHONY: build-iso
 build-iso: build-os
 	$(CONTAINER_TOOL) run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ./iso:/iso \
-		--entrypoint /usr/bin/elemental docker.io/library/elemental-os:dev --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
-		--local --squash-no-compression -o /iso docker.io/library/elemental-os:dev
+		--entrypoint /usr/bin/elemental docker.io/library/elemental-os:dev \
+		--config-dir . --debug build-iso -n elemental-dev \
+		-o /iso dir:/
 
 .PHONY: build-os-kubeadm
 build-os-kubeadm: 
@@ -283,8 +284,9 @@ endif
 .PHONY: build-iso-kubeadm
 build-iso-kubeadm: build-os-kubeadm
 	$(CONTAINER_TOOL) run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ./iso:/iso \
-		--entrypoint /usr/bin/elemental docker.io/library/elemental-os:dev-kubeadm --config-dir . --debug build-iso --bootloader-in-rootfs -n elemental-dev \
-		--local --squash-no-compression -o /iso docker.io/library/elemental-os:dev-kubeadm
+		--entrypoint /usr/bin/elemental docker.io/library/elemental-os:dev-kubeadm \
+		--config-dir . --debug build-iso -n elemental-dev-kubeadm \
+		-o /iso dir:/
 
 .PHONY: update-test-capi-crds
 update-test-capi-crds: 
