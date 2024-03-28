@@ -51,9 +51,13 @@ type ElementalPlugin struct {
 }
 
 func GetPlugin() (osplugin.Plugin, error) {
+	deviceSelectorHandler, err := elementalcli.NewDeviceSelectorHandler()
+	if err != nil {
+		return nil, fmt.Errorf("enabling deviceSelector: %w", err)
+	}
 	return &ElementalPlugin{
 		fs:          vfs.OSFS,
-		cliRunner:   elementalcli.NewRunner(),
+		cliRunner:   elementalcli.NewRunner(deviceSelectorHandler),
 		hostManager: host.NewManager(),
 		cmdRunner:   utils.NewCommandRunner(),
 	}, nil

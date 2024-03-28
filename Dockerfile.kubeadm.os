@@ -100,7 +100,8 @@ RUN ARCH=$(uname -m); \
       conntrackd \
       conntrack-tools \
       iptables \
-      ebtables 
+      ebtables \
+      buildah
 
 # Install kubeadm stack
 COPY test/scripts/install_kubeadm_stack.sh /tmp/install_kubeadm_stack.sh

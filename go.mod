@@ -31,7 +31,10 @@ require (
 )
 
 require (
+	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
+	github.com/ghodss/yaml v1.0.0 // indirect
+	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/gobuffalo/flect v1.0.2 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
@@ -43,7 +46,9 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/itchyny/gojq v0.12.14 // indirect
 	github.com/itchyny/timefmt-go v0.1.5 // indirect
+	github.com/jaypipes/pcidb v1.0.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
+	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
@@ -54,6 +59,7 @@ require (
 	github.com/swaggest/refl v1.3.0 // indirect
 	github.com/swaggest/usecase v1.3.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
+	howett.net/plist v1.0.0 // indirect
 )
 
 require (
@@ -76,6 +82,7 @@ require (
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20230821062121-407c9e7a662f // indirect
+	github.com/jaypipes/ghw v0.12.0
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
