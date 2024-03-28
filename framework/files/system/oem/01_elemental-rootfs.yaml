@@ -34,17 +34,7 @@ stages:
           /usr/libexec
           /usr/local/bin
           /var/log
-          /var/lib/elemental
-          /var/lib/rancher
-          /var/lib/kubelet
-          /var/lib/NetworkManager
-          /var/lib/longhorn
-          /var/lib/cni
-          /var/lib/calico
-          /var/lib/containers
-          /var/lib/crio
-          /var/lib/etcd
-          /var/lib/containerd
+          /var/lib
         PERSISTENT_STATE_BIND: "true"
     - if: '[ -f "/run/elemental/recovery_mode" ]'
       # omit the persistent partition on recovery mode
