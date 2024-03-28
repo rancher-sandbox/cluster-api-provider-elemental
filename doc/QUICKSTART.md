@@ -214,6 +214,44 @@ You can configure a different device, editing the `ElementalRegistration` create
 
 - A new bootable iso should be available: `iso/elemental-dev.iso`.
 
+### kubeadm variant
+
+A `kubeadm` ready image can be built with:
+
+```bash
+AGENT_CONFIG_FILE=iso/config/my-config.yaml make build-iso-kubeadm
+```
+
+Note that the Kubeadm cluster need to be initialized with a CNI.
+For example, using [calico](https://docs.tigera.io/calico/latest/getting-started/kubernetes/quickstart) you can run on any bootstrapped node:  
+
+```bash
+export KUBECONFIG=/etc/kubernetes/super-admin.conf
+
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.2/manifests/tigera-operator.yaml
+
+cat << EOF | kubectl apply -f -
+apiVersion: operator.tigera.io/v1
+kind: Installation
+metadata:
+  name: default
+spec:
+  calicoNetwork:
+    ipPools:
+    - blockSize: 26
+      cidr: 10.244.0.0/16
+      encapsulation: VXLANCrossSubnet
+      natOutgoing: Enabled
+      nodeSelector: all()
+---
+apiVersion: operator.tigera.io/v1
+kind: APIServer
+metadata:
+  name: default
+spec: {}
+EOF
+```
+
 ## Trigger a Host reset
 
 A Host can receive a trigger reset instruction on the following scenarios:

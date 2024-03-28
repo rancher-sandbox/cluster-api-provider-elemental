@@ -15,7 +15,7 @@ spec:
     serviceDomain: ${SERVICE_DOMAIN:="cluster.local"}
   topology:
     class: kubeadm
-    version: ${KUBERNETES_VERSION:="1.28.5"}
+    version: ${KUBERNETES_VERSION:="1.29.3"}
     controlPlane:
       metadata: {}
       replicas: ${CONTROL_PLANE_MACHINE_COUNT:=1}

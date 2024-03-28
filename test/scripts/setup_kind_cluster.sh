@@ -123,7 +123,19 @@ spec:
           reboot: true
       install:
         debug: true
-        device: "/dev/vda"
+        deviceSelector:
+          - key: Name
+            operator: In
+            values:
+            - /dev/sda
+            - /dev/vda
+            - /dev/nvme0
+          - key: Size
+            operator: Gt
+            values:
+            - 25Gi
+        snapshotter:
+          type: btrfs
       reset:
         resetOem: true
         resetPersistent: true

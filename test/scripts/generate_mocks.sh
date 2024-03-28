@@ -11,5 +11,6 @@ mockgen -copyright_file=hack/boilerplate.go.txt -destination=pkg/agent/osplugin/
 mockgen -copyright_file=hack/boilerplate.go.txt -destination=internal/agent/hostname/hostname_mocks.go -package=hostname github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/hostname Formatter
 mockgen -copyright_file=hack/boilerplate.go.txt -destination=internal/agent/host/host_mocks.go -package=host github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/host Manager
 mockgen -copyright_file=hack/boilerplate.go.txt -destination=internal/agent/elementalcli/runner_mocks.go -package=elementalcli github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/elementalcli Runner
+mockgen -copyright_file=hack/boilerplate.go.txt -destination=internal/agent/elementalcli/device_selector_mocks.go -package=elementalcli github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/elementalcli DeviceSelectorHandler
 mockgen -copyright_file=hack/boilerplate.go.txt -destination=internal/agent/utils/runner_mocks.go -package=utils github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils CommandRunner
 mockgen -copyright_file=hack/boilerplate.go.txt -destination=internal/identity/identity_mocks.go -package=identity github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity Manager,Identity

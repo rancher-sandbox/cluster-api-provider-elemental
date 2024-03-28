@@ -29,7 +29,7 @@ const (
 	agentConfigTempPath   = "/tmp/elemental-agent-config.yaml"
 	resetCloudConfigPath  = "/oem/reset-cloud-config.yaml"
 	bootstrapPath         = "/oem/bootstrap-cloud-config.yaml"
-	liveModeFile          = "/run/cos/live_mode"
+	liveModeFile          = "/run/elemental/live_mode"
 	bootstrapSentinelPath = "/run/cluster-api/bootstrap-success.complete"
 )
 
@@ -51,9 +51,13 @@ type ElementalPlugin struct {
 }
 
 func GetPlugin() (osplugin.Plugin, error) {
+	deviceSelectorHandler, err := elementalcli.NewDeviceSelectorHandler()
+	if err != nil {
+		return nil, fmt.Errorf("enabling deviceSelector: %w", err)
+	}
 	return &ElementalPlugin{
 		fs:          vfs.OSFS,
-		cliRunner:   elementalcli.NewRunner(),
+		cliRunner:   elementalcli.NewRunner(deviceSelectorHandler),
 		hostManager: host.NewManager(),
 		cmdRunner:   utils.NewCommandRunner(),
 	}, nil
@@ -287,7 +291,7 @@ func (p *ElementalPlugin) TriggerReset() error {
 		Stages: map[string][]schema.Stage{
 			"network": {
 				schema.Stage{
-					If:   "[ -f /run/cos/recovery_mode ]",
+					If:   "[ -f /run/elemental/recovery_mode ]",
 					Name: "Runs elemental reset and re-register the system",
 					Commands: []string{
 						"elemental-agent --debug --reset --config /oem/elemental/agent/config.yaml",

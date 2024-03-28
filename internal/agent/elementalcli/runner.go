@@ -11,17 +11,24 @@ import (
 )
 
 type Install struct {
-	Firmware         string   `json:"firmware,omitempty" mapstructure:"firmware"`
-	Device           string   `json:"device,omitempty" mapstructure:"device"`
-	NoFormat         bool     `json:"noFormat,omitempty" mapstructure:"noFormat"`
-	ConfigURLs       []string `json:"configUrls,omitempty" mapstructure:"configUrls"`
-	ISO              string   `json:"iso,omitempty" mapstructure:"iso"`
-	SystemURI        string   `json:"systemUri,omitempty" mapstructure:"systemUri"`
-	Debug            bool     `json:"debug,omitempty" mapstructure:"debug"`
-	TTY              string   `json:"tty,omitempty" mapstructure:"tty"`
-	EjectCD          bool     `json:"ejectCd,omitempty" mapstructure:"ejectCd"`
-	DisableBootEntry bool     `json:"disableBootEntry,omitempty" mapstructure:"disableBootEntry"`
-	ConfigDir        string   `json:"configDir,omitempty" mapstructure:"configDir"`
+	Firmware         string            `json:"firmware,omitempty" mapstructure:"firmware"`
+	Device           string            `json:"device,omitempty" mapstructure:"device"`
+	DeviceSelector   DeviceSelector    `json:"deviceSelector,omitempty" mapstructure:"device"`
+	NoFormat         bool              `json:"noFormat,omitempty" mapstructure:"noFormat"`
+	ConfigURLs       []string          `json:"configUrls,omitempty" mapstructure:"configUrls"`
+	ISO              string            `json:"iso,omitempty" mapstructure:"iso"`
+	SystemURI        string            `json:"systemUri,omitempty" mapstructure:"systemUri"`
+	Debug            bool              `json:"debug,omitempty" mapstructure:"debug"`
+	TTY              string            `json:"tty,omitempty" mapstructure:"tty"`
+	EjectCD          bool              `json:"ejectCd,omitempty" mapstructure:"ejectCd"`
+	DisableBootEntry bool              `json:"disableBootEntry,omitempty" mapstructure:"disableBootEntry"`
+	ConfigDir        string            `json:"configDir,omitempty" mapstructure:"configDir"`
+	Snapshotter      SnapshotterConfig `json:"snapshotter,omitempty" mapstructure:"snapshotter,omitempty"`
+}
+
+type SnapshotterConfig struct {
+	// Type sets the snapshotter type a new installation, available options are 'loopdevice' and 'btrfs'
+	Type string `json:"type,omitempty" mapstructure:"type,omitempty"`
 }
 
 type Reset struct {
@@ -38,13 +45,17 @@ type Runner interface {
 	Reset(Reset) error
 }
 
-func NewRunner() Runner {
-	return &runner{}
+func NewRunner(deviceSelectorHandler DeviceSelectorHandler) Runner {
+	return &runner{
+		deviceSelector: deviceSelectorHandler,
+	}
 }
 
 var _ Runner = (*runner)(nil)
 
-type runner struct{}
+type runner struct {
+	deviceSelector DeviceSelectorHandler
+}
 
 func (r *runner) Install(conf Install) error {
 	log.Debug("Running elemental install")
@@ -58,6 +69,20 @@ func (r *runner) Install(conf Install) error {
 	if conf.ConfigDir != "" {
 		installerOpts = append(installerOpts, "--config-dir", conf.ConfigDir)
 	}
+
+	if conf.Device == "" {
+		log.Infof("Device not set. Using deviceSelector: %+v", conf.DeviceSelector)
+		deviceName, err := r.deviceSelector.FindInstallationDevice(conf.DeviceSelector)
+		if err != nil {
+			return fmt.Errorf("picking installation device: %w", err)
+		}
+
+		log.Infof("Picked device: %s", conf.Device)
+		conf.Device = deviceName
+	} else if len(conf.DeviceSelector) > 0 {
+		log.Info("Both 'device' and 'deviceSelector' set, using 'device' field '%s'", conf.Device)
+	}
+
 	installerOpts = append(installerOpts, "install")
 
 	cmd := exec.Command("elemental")
@@ -111,6 +136,7 @@ func mapToInstallEnv(conf Install) []string {
 	variables = append(variables, formatEV("ELEMENTAL_INSTALL_NO_FORMAT", strconv.FormatBool(conf.NoFormat)))
 	// See GetRunKeyEnvMap() in https://github.com/rancher/elemental-toolkit/blob/main/pkg/constants/constants.go
 	variables = append(variables, formatEV("ELEMENTAL_EJECT_CD", strconv.FormatBool(conf.EjectCD)))
+	variables = append(variables, formatEV("ELEMENTAL_SNAPSHOTTER_TYPE", conf.Snapshotter.Type))
 	return variables
 }
 
