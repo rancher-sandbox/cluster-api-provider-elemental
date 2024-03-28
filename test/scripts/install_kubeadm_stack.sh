@@ -23,6 +23,7 @@ CRICTL_VERSION="v1.29.0"
 curl -L "https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRICTL_VERSION}/crictl-${CRICTL_VERSION}-linux-${ARCH}.tar.gz" | tar -C $DOWNLOAD_DIR -xz
 
 ## kubeadm/kubelet
+## See: https://www.downloadkubernetes.com/
 RELEASE="v1.29.3"
 ARCH="amd64"
 cd $DOWNLOAD_DIR
@@ -42,6 +43,20 @@ chmod +x kubectl
 CONTAINERD_VERSION="1.7.14"
 curl -L "https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}-linux-${ARCH}.tar.gz" | tar  --strip-components=1 -C "$DOWNLOAD_DIR" -xz
 curl -sSL "https://raw.githubusercontent.com/containerd/containerd/main/containerd.service" | sed "s:/usr/bin:${DOWNLOAD_DIR}:g" | tee /usr/lib/systemd/system/containerd.service
+
+## containerd config
+mkdir -p /etc/containerd
+cat >> /etc/containerd/config.toml << EOF
+version = 2
+[plugins]
+  [plugins."io.containerd.grpc.v1.cri"]
+   [plugins."io.containerd.grpc.v1.cri".containerd]
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+          runtime_type = "io.containerd.runc.v2"
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+            SystemdCgroup = true
+EOF
 
 ## Preflight checks
 # See: https://github.com/go4clouds/cloud-infra/blob/main/libvirt/provision-os-node.sh
