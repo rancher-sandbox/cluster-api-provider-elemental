@@ -252,6 +252,19 @@ spec: {}
 EOF
 ```
 
+A Cluster manifest can be generated with:
+
+```bash
+CONTROL_PLANE_ENDPOINT_HOST=192.168.122.50 \
+VIP_INTERFACE=enp1s0 \
+clusterctl generate cluster \
+--control-plane-machine-count=1 \
+--worker-machine-count=2 \
+--infrastructure elemental \
+--flavor kubeadm \
+kubeadm > ~/kubeadm-cluster-manifest.yaml
+```
+
 ## Trigger a Host reset
 
 A Host can receive a trigger reset instruction on the following scenarios:
