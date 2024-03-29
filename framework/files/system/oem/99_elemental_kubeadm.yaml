@@ -1,7 +1,0 @@
-name: "Elemental kubeadm helper"
-stages:
-  fs.after:
-    - if: '[ ! -f /run/elemental/live_mode ] && [ ! -f /run/elemental/recovery_mode ] && [ -f /etc/elemental/kubeadm_mode ]'
-      commands:
-        - systemctl start containerd.service
-        - systemctl start kubelet.service

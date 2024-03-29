@@ -103,8 +103,7 @@ RUN ARCH=$(uname -m); \
       ebtables \
       buildah \
       ethtool \
-      socat \
-      lsof
+      socat
 
 # Install kubeadm stack
 COPY test/scripts/install_kubeadm_stack.sh /tmp/install_kubeadm_stack.sh
@@ -125,11 +124,7 @@ COPY framework/files/ /
 COPY $AGENT_CONFIG_FILE /oem/elemental/agent/config.yaml
 
 # Enable essential services
-RUN systemctl enable NetworkManager.service sshd conntrackd
-
-# Tell elemental to handle the containerd and kubelet services
-# This prevents running them in recovery or live mode
-RUN touch /etc/elemental/kubeadm_mode
+RUN systemctl enable NetworkManager.service sshd conntrackd containerd kubelet
 
 # This is for automatic testing purposes, do not do this in production.
 RUN echo "PermitRootLogin yes" > /etc/ssh/sshd_config.d/rootlogin.conf
