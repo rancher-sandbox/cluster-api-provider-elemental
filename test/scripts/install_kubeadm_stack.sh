@@ -40,8 +40,13 @@ Description=kubelet: The Kubernetes Node Agent
 Documentation=https://kubernetes.io/docs/
 Wants=network-online.target
 After=network-online.target
+# Do not start in Elemental Recovery or Live mode
 ConditionPathExists=!/run/elemental/live_mode
 ConditionPathExists=!/run/elemental/recovery_mode
+# Only run if the system has been bootstrapped.
+# This should prevent kubeadm from failing preflight with: [ERROR Port-10250]: Port 10250 is in use
+# The CAPI bootstrap will create this directory.
+ConditionPathExists=/etc/kubernetes/pki
 
 [Service]
 ExecStart=/usr/local/bin/kubelet
@@ -97,6 +102,7 @@ cat >> /usr/lib/systemd/system/containerd.service << EOF
 Description=containerd container runtime
 Documentation=https://containerd.io
 After=network.target local-fs.target
+# Do not start in Elemental Recovery or Live mode
 ConditionPathExists=!/run/elemental/live_mode
 ConditionPathExists=!/run/elemental/recovery_mode
 
@@ -128,14 +134,13 @@ EOF
 mkdir -p /etc/containerd
 cat >> /etc/containerd/config.toml << EOF
 version = 2
+[debug]
+  level = "debug"
+
 [plugins]
-  [plugins."io.containerd.grpc.v1.cri"]
-   [plugins."io.containerd.grpc.v1.cri".containerd]
-      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
-        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
-          runtime_type = "io.containerd.runc.v2"
-          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
-            SystemdCgroup = true
+  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+      SystemdCgroup = true
 EOF
 
 ## Preflight checks
