@@ -4,7 +4,7 @@
 name: "Kubeadm /usr/local/sbin hack"
 stages:
   boot:
-    - if: '[ -d "/opt/kubeadm/bin" ]'
+    - if: '[ -f /run/cos/active_mode ] && [ -d /opt/kubeadm/bin ]'
       name: "Link kubeadm binaries to /usr/local/sbin"
       commands: 
         - "ln -s /opt/kubeadm/bin/kubeadm /usr/local/sbin/kubeadm"
