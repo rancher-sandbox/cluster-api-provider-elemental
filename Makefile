@@ -267,7 +267,7 @@ build-iso: build-os
 	$(CONTAINER_TOOL) run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ./iso:/iso \
 		--entrypoint /usr/bin/elemental docker.io/library/elemental-os:dev \
 		--config-dir . --debug build-iso -n elemental-dev \
-		-o /iso dir:/
+		--local -o /iso docker.io/library/elemental-os:dev
 
 .PHONY: build-os-kubeadm
 build-os-kubeadm: 
@@ -275,7 +275,6 @@ ifeq ($(AGENT_CONFIG_FILE),"iso/config/example-config.yaml")
 	@echo "No AGENT_CONFIG_FILE set, using the default one at ${AGENT_CONFIG_FILE}"
 endif
 	$(CONTAINER_TOOL) build \
-		--no-cache \
 		--build-arg "TAG=${GIT_TAG}" \
 		--build-arg "COMMIT=${GIT_COMMIT}" \
 		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
@@ -287,7 +286,7 @@ build-iso-kubeadm: build-os-kubeadm
 	$(CONTAINER_TOOL) run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ./iso:/iso \
 		--entrypoint /usr/bin/elemental docker.io/library/elemental-os:dev-kubeadm \
 		--config-dir . --debug build-iso -n elemental-dev-kubeadm \
-		-o /iso dir:/
+		--local -o /iso docker.io/library/elemental-os:dev-kubeadm
 
 .PHONY: update-test-capi-crds
 update-test-capi-crds: 
