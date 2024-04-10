@@ -3,6 +3,9 @@
 # See: https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#installing-kubeadm-kubelet-and-kubectl
 # See: https://github.com/go4clouds/cloud-infra/blob/main/libvirt/provision-k8s-node.sh
 
+# Mind the /usr/local/sbin hack in ../../framework/files/system/oem/99_kubeadm_hack.yaml
+# Additional binaries to pass preflight (if any) need to be in PATH
+
 set -e
 
 ARCH=$(uname -m)
