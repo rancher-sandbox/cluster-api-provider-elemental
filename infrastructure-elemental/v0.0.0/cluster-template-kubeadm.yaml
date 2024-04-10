@@ -56,7 +56,7 @@ spec:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: ElementalMachineTemplate
         name: ${CLUSTER_NAME}-md-0
-      version: ${KUBERNETES_VERSION:=1.28.5}
+      version: ${KUBERNETES_VERSION:=1.29.3}
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1beta1
 kind: KubeadmControlPlane
@@ -67,7 +67,7 @@ metadata:
   namespace: ${NAMESPACE}
 spec:
   replicas: ${CONTROL_PLANE_MACHINE_COUNT:=1}
-  version: ${KUBERNETES_VERSION:=1.28.5}
+  version: ${KUBERNETES_VERSION:=1.29.3}
   machineTemplate:
     infrastructureRef:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
@@ -105,16 +105,20 @@ spec:
               value: ${VIP_INTERFACE:=eth0}
             - name: vip_cidr
               value: "32"
+            - name: dns_mode
+              value: first
             - name: cp_enable
               value: "true"
             - name: cp_namespace
               value: kube-system
-            - name: vip_ddns
-              value: "false"
             - name: svc_enable
               value: "true"
+            - name: svc_leasename
+              value: plndr-svcs-lock
             - name: vip_leaderelection
               value: "true"
+            - name: vip_leasename
+              value: plndr-cp-lock
             - name: vip_leaseduration
               value: "5"
             - name: vip_renewdeadline
@@ -123,7 +127,9 @@ spec:
               value: "1"
             - name: address
               value: ${CONTROL_PLANE_ENDPOINT_HOST}
-            image: ghcr.io/kube-vip/kube-vip:v0.6.4
+            - name: prometheus_server
+              value: :2112
+            image: ghcr.io/kube-vip/kube-vip:v0.7.2
             imagePullPolicy: Always
             name: kube-vip
             resources: {}
@@ -132,7 +138,6 @@ spec:
                 add:
                 - NET_ADMIN
                 - NET_RAW
-                - SYS_TIME
             volumeMounts:
             - mountPath: /etc/kubernetes/admin.conf
               name: kubeconfig
@@ -143,19 +148,11 @@ spec:
           hostNetwork: true
           volumes:
           - hostPath:
-              path: /etc/kubernetes/admin.conf
+              path: /etc/kubernetes/super-admin.conf
             name: kubeconfig
         status: {}
       owner: root:root
       path: /etc/kubernetes/manifests/kube-vip.yaml
-    initConfiguration:
-      nodeRegistration:
-        kubeletExtraArgs:
-          eviction-hard: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
-    joinConfiguration:
-      nodeRegistration:
-        kubeletExtraArgs:
-          eviction-hard: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: ElementalCluster
