@@ -9,8 +9,8 @@ ARCH=$(uname -m)
 if [[ $ARCH == "aarch64" ]]; then ARCH="arm64"; fi;
 if [[ $ARCH == "x86_64" ]]; then ARCH="amd64"; fi;
 
-DOWNLOAD_DIR="/opt/kubeadm/bin"
-mkdir -p "$DOWNLOAD_DIR"
+KUBEADM_DIR="/opt/kubeadm/bin"
+mkdir -p "$KUBEADM_DIR"
 
 ## CNI Plugins
 CNI_PLUGINS_VERSION="v1.4.1"
@@ -20,20 +20,20 @@ curl -L "https://github.com/containernetworking/plugins/releases/download/${CNI_
 
 ## crictl
 CRICTL_VERSION="v1.29.0"
-curl -L "https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRICTL_VERSION}/crictl-${CRICTL_VERSION}-linux-${ARCH}.tar.gz" | tar -C $DOWNLOAD_DIR -xz
+curl -L "https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRICTL_VERSION}/crictl-${CRICTL_VERSION}-linux-${ARCH}.tar.gz" | tar -C $KUBEADM_DIR -xz
 
 ## kubeadm/kubelet
 ## See: https://www.downloadkubernetes.com/
 RELEASE="v1.29.3"
 ARCH="amd64"
-cd $DOWNLOAD_DIR
+cd $KUBEADM_DIR
 curl -L --remote-name-all https://dl.k8s.io/release/${RELEASE}/bin/linux/${ARCH}/{kubeadm,kubelet}
 chmod +x {kubeadm,kubelet}
 
 RELEASE_VERSION="v0.16.5"
 mkdir -p /usr/lib/systemd/system/kubelet.service.d
 
-#curl -sSL "https://raw.githubusercontent.com/kubernetes/release/${RELEASE_VERSION}/cmd/krel/templates/latest/kubelet/kubelet.service" | sed "s:/usr/bin:${DOWNLOAD_DIR}:g" | tee /usr/lib/systemd/system/kubelet.service
+#curl -sSL "https://raw.githubusercontent.com/kubernetes/release/${RELEASE_VERSION}/cmd/krel/templates/latest/kubelet/kubelet.service" | sed "s:/usr/bin:${KUBEADM_DIR}:g" | tee /usr/lib/systemd/system/kubelet.service
 cat >> /usr/lib/systemd/system/kubelet.service << EOF
 [Unit]
 Description=kubelet: The Kubernetes Node Agent
@@ -45,7 +45,7 @@ ConditionPathExists=!/run/elemental/live_mode
 ConditionPathExists=!/run/elemental/recovery_mode
 
 [Service]
-ExecStart=/opt/kubeadm/bin/kubelet
+ExecStart=$KUBEADM_DIR/kubelet
 Restart=always
 StartLimitInterval=0
 RestartSec=10
@@ -54,7 +54,7 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 
-curl -sSL "https://raw.githubusercontent.com/kubernetes/release/${RELEASE_VERSION}/cmd/krel/templates/latest/kubeadm/10-kubeadm.conf" | sed "s:/usr/bin:${DOWNLOAD_DIR}:g" | tee /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf
+curl -sSL "https://raw.githubusercontent.com/kubernetes/release/${RELEASE_VERSION}/cmd/krel/templates/latest/kubeadm/10-kubeadm.conf" | sed "s:/usr/bin:${KUBEADM_DIR}:g" | tee /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf
 
 ## kubectl
 curl -LO https://dl.k8s.io/release/${RELEASE}/bin/linux/amd64/kubectl
@@ -62,9 +62,12 @@ chmod +x kubectl
 
 ## containerd
 CONTAINERD_VERSION="1.7.14"
-curl -L "https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}-linux-${ARCH}.tar.gz" | tar  --strip-components=1 -C "$DOWNLOAD_DIR" -xz
+CONTAINERD_DIR="/opt/containerd/bin"
+mkdir -p "$CONTAINERD_DIR"
+cd $CONTAINERD_DIR
+curl -L "https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}-linux-${ARCH}.tar.gz" | tar  --strip-components=1 -C "$CONTAINERD_DIR" -xz
 
-#curl -sSL "https://raw.githubusercontent.com/containerd/containerd/main/containerd.service" | sed "s:/usr/bin:${DOWNLOAD_DIR}:g" | tee /usr/lib/systemd/system/containerd.service
+#curl -sSL "https://raw.githubusercontent.com/containerd/containerd/main/containerd.service" | sed "s:/usr/bin:${CONTAINERD_DIR}:g" | tee /usr/lib/systemd/system/containerd.service
 cat >> /usr/lib/systemd/system/containerd.service << EOF
 # Copyright The containerd Authors.
 #
@@ -90,7 +93,7 @@ ConditionPathExists=!/run/elemental/recovery_mode
 
 [Service]
 ExecStartPre=-/sbin/modprobe overlay
-ExecStart=/opt/kubeadm/bin/containerd
+ExecStart=$CONTAINERD_DIR/containerd
 
 Type=notify
 Delegate=yes
