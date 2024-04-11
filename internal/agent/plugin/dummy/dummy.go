@@ -19,6 +19,7 @@ const (
 	cloudInitFile           = "cloud-init.yaml"
 	installFile             = "install.yaml"
 	resetFile               = "reset.yaml"
+	osVersionFile           = "os-version.yaml"
 	sentinelFileResetNeeded = "reset.needed"
 	bootstrapCloudInitPath  = "/etc/cloud/cloud.cfg.d/elemental-capi-bootstrap.cfg"
 	bootstrapIgnitionPath   = "/usr/local/bin/ignition/data/elemental-capi-bootstrap.conf"
@@ -170,6 +171,19 @@ func (p *DummyPlugin) Reset(input []byte) error {
 		return fmt.Errorf("getting info for file '%s': %w", sentinelFile, err)
 	}
 	return nil
+}
+
+func (p *DummyPlugin) ReconcileOSVersion(input []byte) (bool, error) {
+	path := fmt.Sprintf("%s/%s", p.workDir, osVersionFile)
+	log.Debugf("Copying OS Version config to file: %s", path)
+	bytes, err := plugin.UnmarshalRawJSONToYaml(input)
+	if err != nil {
+		return false, fmt.Errorf("unmarshalling OS Version config: %w", err)
+	}
+	if err := p.fs.WriteFile(path, bytes, os.ModePerm); err != nil {
+		return false, fmt.Errorf("writing OS Version config: %w", err)
+	}
+	return false, nil
 }
 
 func (p *DummyPlugin) PowerOff() error {

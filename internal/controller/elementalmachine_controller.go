@@ -573,15 +573,6 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 		return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
 	}
 
-	// Link the ElementalMachine to ElementalHost
-	elementalMachine.Spec.HostRef = &corev1.ObjectReference{
-		APIVersion: elementalHostCandidate.APIVersion,
-		Kind:       elementalHostCandidate.Kind,
-		Namespace:  elementalHostCandidate.Namespace,
-		Name:       elementalHostCandidate.Name,
-		UID:        elementalHostCandidate.UID,
-	}
-
 	// Link the ElementalHost to ElementalMachine
 	elementalHostCandidate.Labels[infrastructurev1beta1.LabelElementalHostMachineName] = elementalMachine.Name
 	elementalHostCandidate.Spec.MachineRef = &corev1.ObjectReference{
@@ -599,6 +590,9 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 		Name:      *machine.Spec.Bootstrap.DataSecretName,
 	}
 
+	// Propagate OSVersionManagement
+	elementalHostCandidate.Spec.OSVersionManagement = elementalMachine.Spec.OSVersionManagement
+
 	// TODO: Decorate the ElementalHost with useful labels, for example the Cluster name, Control Plane endpoint, etc.
 
 	// Reconciliation step #10: Set status.addresses to the provider-specific set of instance addresses
@@ -607,6 +601,15 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 	// Patch the associated ElementalHost
 	if err := patchHelper.Patch(ctx, &elementalHostCandidate); err != nil {
 		return ctrl.Result{}, fmt.Errorf("patching ElementalHost: %w", err)
+	}
+
+	// Link the ElementalMachine to ElementalHost
+	elementalMachine.Spec.HostRef = &corev1.ObjectReference{
+		APIVersion: elementalHostCandidate.APIVersion,
+		Kind:       elementalHostCandidate.Kind,
+		Namespace:  elementalHostCandidate.Namespace,
+		Name:       elementalHostCandidate.Name,
+		UID:        elementalHostCandidate.UID,
 	}
 
 	logger.Info("Association successful")

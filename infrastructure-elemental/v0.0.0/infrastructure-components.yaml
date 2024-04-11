@@ -366,6 +366,12 @@ spec:
                     type: string
                 type: object
                 x-kubernetes-map-type: atomic
+              osVersionManagement:
+                description: |-
+                  OSVersionManagement defines the OS Version and options to be reconciled
+                  on the host. The supported schema depends on the OSPlugin in use by
+                  the elementa-agent.
+                x-kubernetes-preserve-unknown-fields: true
               pubKey:
                 description: |-
                   PubKey is the host public key to verify when authenticating
@@ -515,6 +521,13 @@ spec:
                     type: string
                 type: object
                 x-kubernetes-map-type: atomic
+              osVersionManagement:
+                description: |-
+                  OSVersionManagement defines the OS Version and options to be reconciled
+                  on the host. The supported schema depends on the OSPlugin in use by
+                  the elementa-agent. Whenever an ElementalHost is associated to this
+                  ElementalMachine, the OSVersionManagement will be applied to it.
+                x-kubernetes-preserve-unknown-fields: true
               providerID:
                 description: |-
                   ProviderID references the associated ElementalHost.
@@ -751,6 +764,13 @@ spec:
                             type: string
                         type: object
                         x-kubernetes-map-type: atomic
+                      osVersionManagement:
+                        description: |-
+                          OSVersionManagement defines the OS Version and options to be reconciled
+                          on the host. The supported schema depends on the OSPlugin in use by
+                          the elementa-agent. Whenever an ElementalHost is associated to this
+                          ElementalMachine, the OSVersionManagement will be applied to it.
+                        x-kubernetes-preserve-unknown-fields: true
                       providerID:
                         description: |-
                           ProviderID references the associated ElementalHost.

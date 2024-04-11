@@ -131,6 +131,12 @@ spec:
                     type: string
                 type: object
                 x-kubernetes-map-type: atomic
+              osVersionManagement:
+                description: |-
+                  OSVersionManagement defines the OS Version and options to be reconciled
+                  on the host. The supported schema depends on the OSPlugin in use by
+                  the elementa-agent.
+                x-kubernetes-preserve-unknown-fields: true
               pubKey:
                 description: |-
                   PubKey is the host public key to verify when authenticating

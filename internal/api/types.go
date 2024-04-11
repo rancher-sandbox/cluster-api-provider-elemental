@@ -7,6 +7,7 @@ import (
 	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	"sigs.k8s.io/cluster-api/util/conditions"
@@ -56,11 +57,12 @@ type HostPatchRequest struct {
 	RegistrationName string `path:"registrationName"`
 	HostName         string `path:"hostName"`
 
-	Annotations  map[string]string `json:"annotations,omitempty"`
-	Labels       map[string]string `json:"labels,omitempty"`
-	Bootstrapped *bool             `json:"bootstrapped,omitempty"`
-	Installed    *bool             `json:"installed,omitempty"`
-	Reset        *bool             `json:"reset,omitempty"`
+	Annotations    map[string]string `json:"annotations,omitempty"`
+	Labels         map[string]string `json:"labels,omitempty"`
+	Bootstrapped   *bool             `json:"bootstrapped,omitempty"`
+	Installed      *bool             `json:"installed,omitempty"`
+	Reset          *bool             `json:"reset,omitempty"`
+	InPlaceUpgrade *string           `json:"inPlaceUpgrade,omitempty"`
 
 	Condition *clusterv1.Condition `json:"condition,omitempty"`
 }
@@ -94,6 +96,9 @@ func (h *HostPatchRequest) applyToElementalHost(elementalHost *infrastructurev1b
 	if h.Reset != nil {
 		elementalHost.Labels[infrastructurev1beta1.LabelElementalHostReset] = "true"
 	}
+	if h.InPlaceUpgrade != nil {
+		elementalHost.Labels[infrastructurev1beta1.LabelElementalHostInPlaceUpgrade] = *h.InPlaceUpgrade
+	}
 	if elementalHost.Status.Conditions == nil {
 		elementalHost.Status.Conditions = clusterv1.Conditions{}
 	}
@@ -104,13 +109,15 @@ func (h *HostPatchRequest) applyToElementalHost(elementalHost *infrastructurev1b
 }
 
 type HostResponse struct {
-	Name           string            `json:"name,omitempty"`
-	Annotations    map[string]string `json:"annotations,omitempty"`
-	Labels         map[string]string `json:"labels,omitempty"`
-	BootstrapReady bool              `json:"bootstrapReady,omitempty"`
-	Bootstrapped   bool              `json:"bootstrapped,omitempty"`
-	Installed      bool              `json:"installed,omitempty"`
-	NeedsReset     bool              `json:"needsReset,omitempty"`
+	Name                string                          `json:"name,omitempty"`
+	Annotations         map[string]string               `json:"annotations,omitempty"`
+	Labels              map[string]string               `json:"labels,omitempty"`
+	BootstrapReady      bool                            `json:"bootstrapReady,omitempty"`
+	Bootstrapped        bool                            `json:"bootstrapped,omitempty"`
+	Installed           bool                            `json:"installed,omitempty"`
+	NeedsReset          bool                            `json:"needsReset,omitempty"`
+	InPlaceUpgrade      string                          `json:"inPlaceUpgrade,omitempty"`
+	OSVersionManagement map[string]runtime.RawExtension `json:"osVersionManagement,omitempty" yaml:"osVersionManagement,omitempty"`
 }
 
 func (h *HostResponse) fromElementalHost(elementalHost infrastructurev1beta1.ElementalHost) {
@@ -131,6 +138,10 @@ func (h *HostResponse) fromElementalHost(elementalHost infrastructurev1beta1.Ele
 	if value, found := elementalHost.Labels[infrastructurev1beta1.LabelElementalHostNeedsReset]; found && value == "true" {
 		h.NeedsReset = true
 	}
+	if value, found := elementalHost.Labels[infrastructurev1beta1.LabelElementalHostInPlaceUpgrade]; found {
+		h.InPlaceUpgrade = value
+	}
+	h.OSVersionManagement = elementalHost.Spec.OSVersionManagement
 }
 
 type RegistrationGetRequest struct {
