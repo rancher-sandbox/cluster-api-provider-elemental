@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # See: https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#installing-kubeadm-kubelet-and-kubectl
 # See: https://github.com/go4clouds/cloud-infra/blob/main/libvirt/provision-k8s-node.sh
