@@ -64,6 +64,8 @@ kubectl apply -f ~/kubeadm-cluster-manifest.yaml
 
 ## 4. Initialize the Kubeadm cluster with a CNI
 
+On the control plane node:
+
 ```bash
 export KUBECONFIG=/etc/kubernetes/super-admin.conf
 
@@ -127,44 +129,44 @@ kubectl patch machinedeployment kubeadm-md-0 -p '{"spec":{"replicas":2}}' --type
 
 ## 7. Mock in-place upgrade on one Host
 
-1. Build an in-place upgrade OS image
+Build an in-place upgrade OS image
 
 ```bash
 GIT_COMMIT="in-place-upgraded-version" make build-os-kubeadm
 ```
 
-1. Push the image to the test registry
+Push the image to the test registry
 
 ```bash
 docker image tag docker.io/library/elemental-os:dev-kubeadm 192.168.122.10:30000/elemental-os:dev-next-in-place
 docker push 192.168.122.10:30000/elemental-os:dev-next-in-place
 ```
 
-1. Update the ElementalMachine OSVersion
+Update the ElementalMachine OSVersion
 
 ```bash
 kubectl patch elementalmachine my-associated-elemental-machine -p '{"spec":{"osVersionManagement":{"osVersion":{"imageUri":"oci://192.168.122.10:30000/elemental-os:dev-next-in-place"}}}}' --type=merge
 ```
 
-1. Confirm the OSVersion was correctly propagated to the associated host
+Confirm the OSVersion was correctly propagated to the associated host
 
 ```bash
 kubectl describe elementalhost my-to-be-upgraded-host
 ```
 
-1. Drain the selected node (on the control plane node)
+Drain the selected node (on the control plane node)
 
 ```bash
 kubectl drain --ignore-daemonsets my-to-be-upgraded-host
 ```
 
-1. Mark it as in-place-upgradable (on the management cluster):
+Mark it as in-place-upgradable (on the management cluster):
 
 ```bash
 kubectl label elementalhost my-to-be-upgraded-host elementalhost.infrastructure.cluster.x-k8s.io/in-place-upgrade=pending
 ```
 
-1. After successful reboot, uncordon the node (on the control plane node)
+After successful reboot, uncordon the node (on the control plane node)
 
 ```bash
 kubectl uncordon my-to-be-upgraded-host
