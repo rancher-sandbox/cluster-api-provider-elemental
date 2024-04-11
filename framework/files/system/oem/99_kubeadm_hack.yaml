@@ -1,0 +1,18 @@
+# TODO: kubeadm binaries needs to be in PATH for the bootstrap to work. 
+#       They should live in /usr/local/sbin, but that requires a newer version of elemental-toolkit.
+#       This is just a dirty workaround.
+name: "Kubeadm /usr/local/sbin hack"
+stages:
+  boot:
+    - if: '[ -f /run/cos/active_mode ] && [ -d /opt/kubeadm/bin ]'
+      name: "Link kubeadm binaries to /usr/local/sbin"
+      commands: 
+        - "ln -s /opt/kubeadm/bin/kubeadm /usr/local/sbin/kubeadm"
+        - "ln -s /opt/kubeadm/bin/kubelet /usr/local/sbin/kubelet"
+        - "ln -s /opt/kubeadm/bin/kubectl /usr/local/sbin/kubectl"
+        - "ln -s /opt/kubeadm/bin/crictl /usr/local/sbin/crictl"
+#   This keeps the kubelet happy, otherwise it will complain it can't access /etc/kubernetes/manifests on worker nodes.
+    - if: '[ -f /run/cos/active_mode ] && [ -d /opt/kubeadm/bin ]'
+      name: "Create Kubernetes manifests dir"
+      commands: 
+        - "mkdir -p /etc/kubernetes/manifests"

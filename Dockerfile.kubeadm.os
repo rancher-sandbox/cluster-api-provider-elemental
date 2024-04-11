@@ -1,4 +1,6 @@
-FROM opensuse/leap:15.5 as AGENT
+ARG ELEMENTAL_TOOLKIT=ghcr.io/rancher/elemental-toolkit/elemental-cli:v1.1.0
+
+FROM registry.opensuse.org/opensuse/leap:15.5 as AGENT
 
 # Install Go 1.22
 RUN zypper install -y wget tar gzip gcc
@@ -42,10 +44,10 @@ RUN CGO_ENABLED=1 go build \
     -buildmode=plugin \
     -o dummy.so internal/agent/plugin/dummy/dummy.go
 
-FROM  ghcr.io/rancher/elemental-toolkit/elemental-cli:v1.1.0 as TOOLKIT
+FROM  ${ELEMENTAL_TOOLKIT} as TOOLKIT
 
 # OS base image of our choice
-FROM opensuse/tumbleweed:latest as OS
+FROM registry.opensuse.org/opensuse/tumbleweed:latest as OS
 
 ARG AGENT_CONFIG_FILE=iso/config/example-config.yaml
 
@@ -88,18 +90,22 @@ RUN ARCH=$(uname -m); \
       iproute2 \
       shim 
 
-# Install kubeadm stack
+# Install kubeadm stack dependencies
 RUN ARCH=$(uname -m); \
     if [[ $ARCH == "aarch64" ]]; then ARCH="arm64"; fi; \
     zypper --non-interactive install -- \
-      kubernetes1.28-kubeadm \
-      kubernetes1.28-kubelet \
-      kubernetes1.28-client \
-      cri-o \
       conntrackd \
       conntrack-tools \
       iptables \
-      fuse-overlayfs
+      ebtables \
+      buildah \
+      ethtool \
+      socat
+
+# Install kubeadm stack
+COPY test/scripts/install_kubeadm_stack.sh /tmp/install_kubeadm_stack.sh
+RUN /tmp/install_kubeadm_stack.sh
+RUN rm -f /tmp/install_kubeadm_stack.sh
 
 # Add the elemental cli
 COPY --from=TOOLKIT /usr/bin/elemental /usr/bin/elemental
@@ -114,11 +120,8 @@ COPY framework/files/ /
 # Add agent config
 COPY $AGENT_CONFIG_FILE /oem/elemental/agent/config.yaml
 
-# Configure cri-o overlayfs
-COPY iso/crio-overlay-storage.conf /etc/crio/crio.conf.d/99-storage.conf
-
 # Enable essential services
-RUN systemctl enable NetworkManager.service sshd conntrackd kubelet crio
+RUN systemctl enable NetworkManager.service sshd conntrackd containerd kubelet
 
 # This is for automatic testing purposes, do not do this in production.
 RUN echo "PermitRootLogin yes" > /etc/ssh/sshd_config.d/rootlogin.conf
