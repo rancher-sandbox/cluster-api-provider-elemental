@@ -270,7 +270,7 @@ func (c *client) newToken(hostname string) (string, error) {
 	now := time.Now()
 	claims := jwt.RegisteredClaims{
 		IssuedAt:  jwt.NewNumericDate(now),
-		NotBefore: jwt.NewNumericDate(now),
+		NotBefore: jwt.NewNumericDate(now.Add(-2 * time.Second)), // JWT precision is seconds, -2 seconds mitigates time sync issues.
 		ExpiresAt: jwt.NewNumericDate(now.Add(1 * time.Minute)),
 		Issuer:    c.userAgent,
 		Subject:   hostname,
