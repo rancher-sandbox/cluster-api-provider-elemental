@@ -37,7 +37,13 @@ var (
 	ErrUnsupportedBootstrapFormat = errors.New("unsupported bootstrap format")
 	ErrBootstrapAlreadyApplied    = errors.New("bootstrap already applied")
 	ErrUnsupportedCloudInitSchema = errors.New("unsupported cloud-init schema")
+	ErrFailedUpgrade              = errors.New("upgrade failed")
 )
+
+type OSVersionManagement struct {
+	OSVersion elementalcli.Upgrade `json:"osVersion,omitempty" mapstructure:"osVersion"`
+	Force     bool                 `json:"force,omitempty" mapstructure:"force"`
+}
 
 var _ osplugin.Plugin = (*ElementalPlugin)(nil)
 
@@ -349,6 +355,42 @@ func (p *ElementalPlugin) Reset(input []byte) error {
 		return fmt.Errorf("running command '%s': %w", command, err)
 	}
 	return nil
+}
+
+func (p *ElementalPlugin) ReconcileOSVersion(input []byte) (bool, error) {
+	log.Debug("Reconciling Elemental OS Version")
+	oSVersionManagement := OSVersionManagement{}
+	if err := json.Unmarshal(input, &oSVersionManagement); err != nil {
+		return false, fmt.Errorf("unmarshalling oSVersionManagement config: %w", err)
+	}
+	installState, err := LoadInstallState(p.fs, p.workDir)
+	if err != nil {
+		return false, fmt.Errorf("loading install state: %w", err)
+	}
+
+	// No version was defined, nothing to do.
+	if len(oSVersionManagement.OSVersion.ImageURI) == 0 {
+		return false, nil
+	}
+
+	// Last applied URI is equal, it means we have nothing do to anymore, or we just rebooted post upgrade.
+	if !installState.hostNeedsUpgrade(oSVersionManagement.OSVersion.ImageURI) {
+		// TODO: We need to determine here if we rebooted into the passive system or not.
+		// If we booted into the passive system, then this should be highlighted as an error.
+		log.Infof("Image '%s' is already applied to this host. Nothing to do.", oSVersionManagement.OSVersion.ImageURI)
+		return false, nil
+	}
+
+	if err := p.cliRunner.Upgrade(oSVersionManagement.OSVersion); err != nil {
+		return false, fmt.Errorf("invoking elemental upgrade: %w", err)
+	}
+
+	installState.LastAppliedURI = oSVersionManagement.OSVersion.ImageURI
+	if err := WriteInstallState(p.fs, p.workDir, *installState); err != nil {
+		return false, fmt.Errorf("writing install state: %w", err)
+	}
+
+	return true, nil
 }
 
 func (p *ElementalPlugin) PowerOff() error {

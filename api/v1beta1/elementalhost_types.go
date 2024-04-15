@@ -19,6 +19,7 @@ package v1beta1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtime "k8s.io/apimachinery/pkg/runtime"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
@@ -35,6 +36,13 @@ type ElementalHostSpec struct {
 	// PubKey is the host public key to verify when authenticating
 	// Elemental API requests for this host.
 	PubKey string `json:"pubKey,omitempty"`
+	// OSVersionManagement defines the OS Version and options to be reconciled
+	// on the host. The supported schema depends on the OSPlugin in use by
+	// the elementa-agent.
+	// +optional
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:validation:XPreserveUnknownFields
+	OSVersionManagement map[string]runtime.RawExtension `json:"osVersionManagement,omitempty" yaml:"osVersionManagement,omitempty"`
 }
 
 // ElementalHostStatus defines the observed state of ElementalHost.

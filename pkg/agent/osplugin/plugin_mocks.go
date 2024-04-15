@@ -219,6 +219,21 @@ func (mr *MockPluginMockRecorder) Reboot() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reboot", reflect.TypeOf((*MockPlugin)(nil).Reboot))
 }
 
+// ReconcileOSVersion mocks base method.
+func (m *MockPlugin) ReconcileOSVersion(arg0 []byte) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReconcileOSVersion", arg0)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReconcileOSVersion indicates an expected call of ReconcileOSVersion.
+func (mr *MockPluginMockRecorder) ReconcileOSVersion(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReconcileOSVersion", reflect.TypeOf((*MockPlugin)(nil).ReconcileOSVersion), arg0)
+}
+
 // Reset mocks base method.
 func (m *MockPlugin) Reset(arg0 []byte) error {
 	m.ctrl.T.Helper()

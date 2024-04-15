@@ -37,7 +37,7 @@ RUN CGO_ENABLED=1 go build \
 # Build elemental-toolkit plugin
 RUN CGO_ENABLED=1 go build \
     -buildmode=plugin \
-    -o elemental.so internal/agent/plugin/elemental/elemental.go
+    -o elemental.so internal/agent/plugin/elemental/elemental.go  internal/agent/plugin/elemental/state.go
 
 # Build dummy plugin
 RUN CGO_ENABLED=1 go build \

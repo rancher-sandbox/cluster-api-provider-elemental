@@ -29,11 +29,14 @@ const (
 
 // Labels.
 const (
-	LabelElementalHostMachineName  = "elementalhost.infrastructure.cluster.x-k8s.io/machine-name"
-	LabelElementalHostInstalled    = "elementalhost.infrastructure.cluster.x-k8s.io/installed"
-	LabelElementalHostBootstrapped = "elementalhost.infrastructure.cluster.x-k8s.io/bootstrapped"
-	LabelElementalHostNeedsReset   = "elementalhost.infrastructure.cluster.x-k8s.io/needs-reset"
-	LabelElementalHostReset        = "elementalhost.infrastructure.cluster.x-k8s.io/reset"
+	LabelElementalHostMachineName    = "elementalhost.infrastructure.cluster.x-k8s.io/machine-name"
+	LabelElementalHostInstalled      = "elementalhost.infrastructure.cluster.x-k8s.io/installed"
+	LabelElementalHostBootstrapped   = "elementalhost.infrastructure.cluster.x-k8s.io/bootstrapped"
+	LabelElementalHostNeedsReset     = "elementalhost.infrastructure.cluster.x-k8s.io/needs-reset"
+	LabelElementalHostReset          = "elementalhost.infrastructure.cluster.x-k8s.io/reset"
+	LabelElementalHostInPlaceUpgrade = "elementalhost.infrastructure.cluster.x-k8s.io/in-place-upgrade"
+	InPlaceUpgradePending            = "pending"
+	InPlaceUpgradeDone               = "done"
 )
 
 // Conditions.
@@ -74,6 +77,17 @@ const (
 	WaitingForResetReasonSeverity clusterv1.ConditionSeverity = clusterv1.ConditionSeverityInfo
 	// ResetFailedReason indicates that the Host reset failed.
 	ResetFailedReason = "ResetFailed"
+
+	// OSVersionReady describes the Host OS version reconciliation phase.
+	OSVersionReady clusterv1.ConditionType = "OSVersionReady"
+	// WaitingForOSVersionReconcileReason indicates that the Host OS version reconciliation was triggered.
+	WaitingForOSVersionReconcileReason                                     = "WaitingForOSVersionReconcile"
+	WaitingForOSVersionReconcileReasonSeverity clusterv1.ConditionSeverity = clusterv1.ConditionSeverityInfo
+	// OSVersionReconciliationFailedReason indicates that the attempted Host OS version reconciliation failed.
+	OSVersionReconciliationFailedReason = "OSVersionReconciliationFailed"
+	// WaitingForPostReconcileRebootReason indicates that the Host OS version was applied and the Host is going to reboot.
+	WaitingForPostReconcileRebootReason                                     = "WaitingForPostReconcileReboot"
+	WaitingForPostReconcileRebootReasonSeverity clusterv1.ConditionSeverity = clusterv1.ConditionSeverityInfo
 )
 
 // ElementalMachine Conditions and Reasons.
