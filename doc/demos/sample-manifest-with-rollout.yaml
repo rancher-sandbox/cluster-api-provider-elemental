@@ -1,0 +1,162 @@
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+kind: KubeadmConfigTemplate
+metadata:
+  name: kubeadm-md-0
+  namespace: default
+spec:
+  template:
+    spec: {}
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  labels:
+    cni: kubeadm-crs-0
+    crs: "true"
+  name: kubeadm
+  namespace: default
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+      - 10.244.0.0/16
+    serviceDomain: cluster.local
+    services:
+      cidrBlocks:
+      - 10.96.0.0/12
+  controlPlaneRef:
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+    kind: KubeadmControlPlane
+    name: kubeadm-control-plane
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: ElementalCluster
+    name: kubeadm
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: kubeadm-md-0
+  namespace: default
+spec:
+  # RolloutAfter is a field to indicate a rollout should be performed 
+  # after the specified time even if no changes have been made to the MachineDeployment.
+  rolloutAfter: "2024-04-16T02:00:00Z"
+  strategy:
+    type: "RollingUpdate"
+    rollingUpdate:
+      # The maximum number of machines that can be unavailable during the update.
+      maxUnavailable: 1
+      # The maximum number of machines that can be scheduled above the desired number of machines.
+      maxSurge: 1
+      # DeletePolicy defines the policy used by the MachineDeployment to identify nodes to delete when downscaling.
+      deletePolicy: "Oldest"
+  clusterName: kubeadm
+  replicas: 2
+  selector:
+    matchLabels: null
+  template:
+    metadata:
+      labels:
+        nodepool: pool1
+    spec:
+      # CAPI uses default [kubectl draining implementation](https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/) with `--ignore-daemonsets=true`.
+      nodeDrainTimeout: 120s
+      bootstrap:
+        configRef:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          kind: KubeadmConfigTemplate
+          name: kubeadm-md-0
+      clusterName: kubeadm
+      infrastructureRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: ElementalMachineTemplate
+        name: kubeadm-md-0
+      version: 1.29.3
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+kind: KubeadmControlPlane
+metadata:
+  labels:
+    nodepool: pool0
+  name: kubeadm-control-plane
+  namespace: default
+spec:
+  # Drain will wait indefinitely (default value)
+  nodeDrainTimeout: 0
+  # RolloutBefore is a field to indicate a rollout should be performed
+	# if the specified criteria is met.
+  rolloutBefore: 
+    # CertificatesExpiryDays indicates a rollout needs to be performed if the
+    # certificates of the machine will expire within the specified days.
+    certificatesExpiryDays: 30
+  # RolloutAfter is a field to indicate a rollout should be performed
+	# after the specified time even if no changes have been made to the
+	# KubeadmControlPlane.
+  rolloutAfter: "2024-04-16T00:00:00Z"
+  # The RolloutStrategy to use to replace control plane machines with new ones.
+  rolloutStrategy: 
+    type: ExternalUpdate
+    externalUpdate: 
+      fallbackRolling: 
+        maxSurge: 1
+  kubeadmConfigSpec:
+    clusterConfiguration:
+      apiServer:
+        certSANs:
+        - localhost
+        - 127.0.0.1
+        - 0.0.0.0
+      controllerManager:
+        extraArgs:
+          enable-hostpath-provisioner: "true"
+      dns: {}
+      etcd: {}
+      networking: {}
+      scheduler: {}
+    format: cloud-config
+    initConfiguration:
+      apiVersion: kubeadm.k8s.io/v1beta1
+      kind: InitConfiguration
+      localAPIEndpoint: {}
+      nodeRegistration:
+        imagePullPolicy: IfNotPresent
+  machineTemplate:
+    infrastructureRef:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      kind: ElementalMachineTemplate
+      name: kubeadm-control-plane
+      namespace: default
+  replicas: 1
+  version: 1.29.3
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: ElementalCluster
+metadata:
+  name: kubeadm
+  namespace: default
+spec:
+  controlPlaneEndpoint:
+    host: 192.168.122.50
+    port: 6443
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: ElementalMachineTemplate
+metadata:
+  name: kubeadm-control-plane
+  namespace: default
+spec:
+  template:
+    spec:
+      selector:
+        matchLabels:
+          my-control-plane: "true"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: ElementalMachineTemplate
+metadata:
+  name: kubeadm-md-0
+  namespace: default
+spec:
+  template:
+    spec: {}
