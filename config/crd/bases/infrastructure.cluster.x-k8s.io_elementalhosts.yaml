@@ -21,14 +21,14 @@ spec:
       type: string
     - description: Machine object associated to this ElementalHost (through ElementalMachine)
       jsonPath: .metadata.labels['elementalhost\.infrastructure\.cluster\.x-k8s\.io/machine-name']
-      name: ElementalMachine
+      name: Machine
       type: string
     - description: ElementalMachine object associated to this ElementalHost
-      jsonPath: .spec.machineRef[?(@.kind=="ElementalMachine")].name
+      jsonPath: .spec.machineRef.name
       name: ElementalMachine
       type: string
-    - description: ElementalHost ready status
-      jsonPath: .status.ready
+    - description: ElementalHost ready condition
+      jsonPath: .status.conditions[?(@.type=="Ready")].status
       name: Ready
       type: string
     - description: Time duration since creation of ElementalHost

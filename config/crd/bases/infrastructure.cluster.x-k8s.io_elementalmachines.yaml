@@ -27,8 +27,8 @@ spec:
       jsonPath: .spec.providerID
       name: ProviderID
       type: string
-    - description: ElementalMachine ready status
-      jsonPath: .status.ready
+    - description: ElementalMachine ready condition
+      jsonPath: .status.conditions[?(@.type=="Ready")].status
       name: Ready
       type: string
     - description: Time duration since creation of ElementalMachine
