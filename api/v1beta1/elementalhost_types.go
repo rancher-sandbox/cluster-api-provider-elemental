@@ -56,6 +56,11 @@ func (h *ElementalHost) SetConditions(conditions clusterv1.Conditions) {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".metadata.labels['cluster\\.x-k8s\\.io/cluster-name']",description="Cluster"
+//+kubebuilder:printcolumn:name="Machine",type="string",JSONPath=".metadata.labels['elementalhost\\.infrastructure\\.cluster\\.x-k8s\\.io/machine-name']",description="Machine object associated to this ElementalHost (through ElementalMachine)"
+//+kubebuilder:printcolumn:name="ElementalMachine",type="string",JSONPath=".spec.machineRef[?(@.kind==\"ElementalMachine\")].name",description="ElementalMachine object associated to this ElementalHost"
+//+kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.ready",description="ElementalHost ready status"
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="Time duration since creation of ElementalHost"
 
 // ElementalHost is the Schema for the elementalhosts API.
 type ElementalHost struct {

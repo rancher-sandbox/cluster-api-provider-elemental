@@ -49,7 +49,7 @@ var _ = Describe("ElementalMachine controller association", Label("controller", 
 	}
 	machine := clusterv1.Machine{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
+			Name:      "machine-test",
 			Namespace: namespace.Name,
 		},
 		Spec: clusterv1.MachineSpec{
@@ -62,9 +62,9 @@ var _ = Describe("ElementalMachine controller association", Label("controller", 
 	// ElementalMachine owned by the CAPI Machine (ownership set after creation in BeforeAll())
 	elementalMachine := v1beta1.ElementalMachine{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
+			Name:      "elemental-machine-test",
 			Namespace: namespace.Name,
-			Labels:    map[string]string{"cluster.x-k8s.io/cluster-name": cluster.Name},
+			Labels:    map[string]string{clusterv1.ClusterNameLabel: cluster.Name},
 		},
 	}
 
@@ -157,7 +157,8 @@ var _ = Describe("ElementalMachine controller association", Label("controller", 
 			Name:      installedHost.Name,
 			Namespace: installedHost.Namespace,
 		}, &installedHost)).Should(Succeed())
-		Expect(installedHost.Labels[v1beta1.LabelElementalHostMachineName]).Should(Equal(elementalMachine.Name), "machine-name label must be set")
+		Expect(installedHost.Labels[v1beta1.LabelElementalHostMachineName]).Should(Equal(machine.Name), "machine-name label must be set")
+		Expect(installedHost.Labels[clusterv1.ClusterNameLabel]).Should(Equal(cluster.Name), "cluster name label must be set")
 	})
 	It("should not mark machine as ready until cluster's controlplane is initialized ", func() {
 		// Mark the host as bootstrapped
