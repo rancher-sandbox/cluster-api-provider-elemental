@@ -66,6 +66,11 @@ func (m *ElementalMachine) SetConditions(conditions clusterv1.Conditions) {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".metadata.labels['cluster\\.x-k8s\\.io/cluster-name']",description="Cluster"
+//+kubebuilder:printcolumn:name="Machine",type="string",JSONPath=".metadata.ownerReferences[?(@.kind==\"Machine\")].name",description="Machine object which owns with this ElementalMachine"
+//+kubebuilder:printcolumn:name="ProviderID",type="string",JSONPath=".spec.providerID",description="Provider ID"
+//+kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.ready",description="ElementalMachine ready status"
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="Time duration since creation of ElementalMachine"
 
 // ElementalMachine is the Schema for the elementalmachines API.
 type ElementalMachine struct {
