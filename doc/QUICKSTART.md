@@ -181,6 +181,14 @@
     EOF
     ```
 
+1. Wait for the `ElementalRegistration` to be ready:
+
+   This will ensure the provider created a new private key to sign Registration tokens and the trust CA Cert is also loaded.    
+
+   ```bash
+   kubectl wait --for=condition=ready elementalregistration my-registration
+   ```
+
 ## (Elemental Toolkit) Host configuration
 
 A bootable ISO image can be build using the [elemental-toolkit](https://github.com/rancher/elemental-toolkit).

@@ -14,6 +14,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -68,6 +70,16 @@ var _ = Describe("ElementalRegistration controller", Label("controller", "elemen
 				updatedRegistration)).Should(Succeed())
 			return updatedRegistration.Spec.Config.Elemental.Registration.URI
 		}).WithTimeout(time.Minute).Should(Equal(expectedURI))
+	})
+	It("should set Ready condition", func() {
+		updatedRegistration := &v1beta1.ElementalRegistration{}
+		Eventually(func() bool {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      registration.Name,
+				Namespace: registration.Namespace},
+				updatedRegistration)).Should(Succeed())
+			return conditions.IsTrue(updatedRegistration, clusterv1.ReadyCondition)
+		}).WithTimeout(time.Minute).Should(BeTrue(), "Registration should have Ready condition")
 	})
 	It("should not override URI if already set", func() {
 		// Create a new registration with the URI already set.
