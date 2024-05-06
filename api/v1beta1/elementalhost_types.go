@@ -39,6 +39,9 @@ type ElementalHostSpec struct {
 
 // ElementalHostStatus defines the observed state of ElementalHost.
 type ElementalHostStatus struct {
+	// Phase defines the current host phase
+	// +optional
+	Phase HostPhase `json:"phase,omitempty"`
 	// Conditions defines current service state of the ElementalHost.
 	// +optional
 	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
