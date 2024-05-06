@@ -305,6 +305,7 @@ wcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K
 			Registration: registration.Spec.Config.Elemental.Registration,
 			Agent:        registration.Spec.Config.Elemental.Agent,
 		}
+		conf.Registration.Token = registrationToken
 		expected := api.RegistrationResponse{
 			Config: v1beta1.Config{
 				Elemental: v1beta1.Elemental{
@@ -325,26 +326,26 @@ wcHkvD3kEU33TR9VnkHUwgC9jDyDa62sef84S5MUAiAJfWf5G5PqtN+AE4XJgg2K
 		}
 		Expect(eClient.Init(fs, id, conf)).Should(Succeed())
 		// Test API client by fetching the Registration
-		registrationResponse, err := eClient.GetRegistration(registrationToken)
+		registrationResponse, err := eClient.GetRegistration()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(*registrationResponse).To(Equal(expected))
 	})
 	It("should return error if namespace or registration not found", func() {
 		wrongNamespaceURI := fmt.Sprintf("%s%s%s/namespaces/%s/registrations/%s", serverURL, api.Prefix, api.PrefixV1, "does-not-exist", registration.Name)
 		conf := config.Config{
-			Registration: v1beta1.Registration{URI: wrongNamespaceURI},
+			Registration: v1beta1.Registration{URI: wrongNamespaceURI, Token: registrationToken},
 			Agent:        registration.Spec.Config.Elemental.Agent,
 		}
 		Expect(eClient.Init(fs, id, conf)).Should(Succeed())
 		// Expect err on wrong namespace
-		_, err := eClient.GetRegistration(registrationToken)
+		_, err := eClient.GetRegistration()
 		Expect(err).To(HaveOccurred())
 
 		wrongRegistrationURI := fmt.Sprintf("%s%s%s/namespaces/%s/registrations/%s", serverURL, api.Prefix, api.PrefixV1, namespace.Name, "does-not-exist")
 		conf.Registration.URI = wrongRegistrationURI
 		Expect(eClient.Init(fs, id, conf)).Should(Succeed())
 		// Expect err on wrong registration name
-		_, err = eClient.GetRegistration(registrationToken)
+		_, err = eClient.GetRegistration()
 		Expect(err).To(HaveOccurred())
 	})
 })

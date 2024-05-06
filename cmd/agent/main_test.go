@@ -409,15 +409,15 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 			cmd.SetArgs([]string{"--register"})
 			gomock.InOrder(
 				// First get registration call fails. Should repeat to recover.
-				mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(nil, errors.New("test get registration fail")),
-				mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(registrationFixture, nil),
+				mClient.EXPECT().GetRegistration().Return(nil, errors.New("test get registration fail")),
+				mClient.EXPECT().GetRegistration().Return(registrationFixture, nil),
 				plugin.EXPECT().GetHostname().Return("host", nil),
 				// Let's make the first create host call fail. Expect to recover.
-				mClient.EXPECT().CreateHost(wantRequest, configFixture.Registration.Token).Return(errors.New("test creat host fail")),
-				mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(registrationFixture, nil),
+				mClient.EXPECT().CreateHost(wantRequest).Return(errors.New("test creat host fail")),
+				mClient.EXPECT().GetRegistration().Return(registrationFixture, nil),
 				// Expect a new hostname to be formatted due to creation failure.
 				plugin.EXPECT().GetHostname().Return("host", nil),
-				mClient.EXPECT().CreateHost(wantRequest, configFixture.Registration.Token).Return(nil),
+				mClient.EXPECT().CreateHost(wantRequest).Return(nil),
 				// Post --register
 				plugin.EXPECT().InstallHostname(hostResponseFixture.Name).Return(nil),
 				plugin.EXPECT().InstallFile(wantAgentConfigBytes, configPathDefault, uint32(0640), 0, 0).Return(nil),
@@ -454,9 +454,9 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 			cmd.SetArgs([]string{"--register", "--install"})
 			gomock.InOrder(
 				// --register
-				mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(registrationFixture, nil),
+				mClient.EXPECT().GetRegistration().Return(registrationFixture, nil),
 				plugin.EXPECT().GetHostname().Return("host", nil),
-				mClient.EXPECT().CreateHost(wantRequest, configFixture.Registration.Token).Return(nil),
+				mClient.EXPECT().CreateHost(wantRequest).Return(nil),
 				// Post --register
 				plugin.EXPECT().InstallHostname(hostResponseFixture.Name).Return(nil),
 				plugin.EXPECT().InstallFile(wantAgentConfigBytes, configPathDefault, uint32(0640), 0, 0).Return(nil),
@@ -464,7 +464,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil), // condition reporting
 				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil), // condition reporting
 				// --install
-				mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(registrationFixture, nil),
+				mClient.EXPECT().GetRegistration().Return(registrationFixture, nil),
 				plugin.EXPECT().InstallCloudInit(gomock.Any()).Return(nil),
 				plugin.EXPECT().Install(gomock.Any()).Return(nil),
 				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil), // condition reporting
@@ -484,7 +484,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 				cmd.SetArgs([]string{"--install"})
 				gomock.InOrder(
 					// Make the first get registration call fail. Expect to recover by calling again
-					mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(nil, errors.New("get registration test error")),
+					mClient.EXPECT().GetRegistration().Return(nil, errors.New("get registration test error")),
 					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
 						Expect(*patch.Condition).Should(Equal(
 							clusterv1.Condition{
@@ -496,7 +496,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 							},
 						))
 					}),
-					mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(registrationFixture, nil),
+					mClient.EXPECT().GetRegistration().Return(registrationFixture, nil),
 					// Make the cloud init apply fail. Expect to recover by getting registration and applying cloud init again
 					plugin.EXPECT().InstallCloudInit(wantCloudInit).Return(errors.New("cloud init test failed")),
 					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
@@ -510,7 +510,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 							},
 						))
 					}),
-					mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(registrationFixture, nil),
+					mClient.EXPECT().GetRegistration().Return(registrationFixture, nil),
 					plugin.EXPECT().InstallCloudInit(wantCloudInit).Return(nil),
 					// Make the install fail. Expect to recover by getting registration and installing again
 					plugin.EXPECT().Install(wantInstall).Return(errors.New("install test fail")),
@@ -525,7 +525,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 							},
 						))
 					}),
-					mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(registrationFixture, nil),
+					mClient.EXPECT().GetRegistration().Return(registrationFixture, nil),
 					plugin.EXPECT().Install(wantInstall).Return(nil),
 					// Make the patch host fail. Expect to recover by patching it again
 					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, errors.New("patch host test fail")),
@@ -584,7 +584,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 					}),
 					mClient.EXPECT().DeleteHost(hostResponseFixture.Name).Return(nil),
 					// Make the first registration call fail. Expect to recover by calling again
-					mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(nil, errors.New("get registration test error")),
+					mClient.EXPECT().GetRegistration().Return(nil, errors.New("get registration test error")),
 					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
 						Expect(*patch.Condition).Should(Equal(
 							clusterv1.Condition{
@@ -597,7 +597,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 						))
 					}),
 					mClient.EXPECT().DeleteHost(hostResponseFixture.Name).Return(nil), // Always called
-					mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(registrationFixture, nil),
+					mClient.EXPECT().GetRegistration().Return(registrationFixture, nil),
 					// Make the reset call fail. Expect to recover by getting registration and resetting again
 					plugin.EXPECT().Reset(wantReset).Return(errors.New("reset test error")),
 					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
@@ -612,7 +612,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 						))
 					}),
 					mClient.EXPECT().DeleteHost(hostResponseFixture.Name).Return(nil),
-					mClient.EXPECT().GetRegistration(configFixture.Registration.Token).Return(registrationFixture, nil),
+					mClient.EXPECT().GetRegistration().Return(registrationFixture, nil),
 					plugin.EXPECT().Reset(wantReset).Return(nil),
 					// Make the patch host fail. Expect to recover by patching it again
 					mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, errors.New("patch host test fail")),
