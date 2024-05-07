@@ -14,7 +14,28 @@ spec:
     singular: elementalhost
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - description: Cluster
+      jsonPath: .metadata.labels['cluster\.x-k8s\.io/cluster-name']
+      name: Cluster
+      type: string
+    - description: Machine object associated to this ElementalHost (through ElementalMachine)
+      jsonPath: .metadata.labels['elementalhost\.infrastructure\.cluster\.x-k8s\.io/machine-name']
+      name: Machine
+      type: string
+    - description: ElementalMachine object associated to this ElementalHost
+      jsonPath: .spec.machineRef.name
+      name: ElementalMachine
+      type: string
+    - description: ElementalHost ready condition
+      jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - description: Time duration since creation of ElementalHost
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: ElementalHost is the Schema for the elementalhosts API.

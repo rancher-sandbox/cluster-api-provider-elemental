@@ -583,7 +583,6 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 	}
 
 	// Link the ElementalHost to ElementalMachine
-	elementalHostCandidate.Labels[infrastructurev1beta1.LabelElementalHostMachineName] = elementalMachine.Name
 	elementalHostCandidate.Spec.MachineRef = &corev1.ObjectReference{
 		APIVersion: elementalMachine.APIVersion,
 		Kind:       elementalMachine.Kind,
@@ -599,7 +598,13 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 		Name:      *machine.Spec.Bootstrap.DataSecretName,
 	}
 
-	// TODO: Decorate the ElementalHost with useful labels, for example the Cluster name, Control Plane endpoint, etc.
+	// Propagate the Machine name to ElementalHost
+	elementalHostCandidate.Labels[infrastructurev1beta1.LabelElementalHostMachineName] = machine.Name
+
+	// Propagate the Cluster name to ElementalHost
+	if name, ok := elementalMachine.Labels[clusterv1.ClusterNameLabel]; ok {
+		elementalHostCandidate.Labels[clusterv1.ClusterNameLabel] = name
+	}
 
 	// Reconciliation step #10: Set status.addresses to the provider-specific set of instance addresses
 	// TODO: Fetch the addresses from ElementalHost to update the associated ElementalMachine
