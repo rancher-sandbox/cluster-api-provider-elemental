@@ -29,6 +29,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -129,6 +132,13 @@ func (r *ElementalRegistrationReconciler) Reconcile(ctx context.Context, req ctr
 			return ctrl.Result{}, fmt.Errorf("refreshing registration token: %w", err)
 		}
 	}
+
+	// Set Ready condition
+	conditions.Set(registration, &v1beta1.Condition{
+		Type:   clusterv1.ReadyCondition,
+		Status: corev1.ConditionTrue,
+		Reason: "",
+	})
 
 	return ctrl.Result{}, nil
 }

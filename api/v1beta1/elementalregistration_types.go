@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
 // ElementalRegistrationSpec defines the desired state of ElementalRegistration.
@@ -40,7 +41,21 @@ type ElementalRegistrationSpec struct {
 }
 
 // ElementalRegistrationStatus defines the observed state of ElementalRegistration.
-type ElementalRegistrationStatus struct{}
+type ElementalRegistrationStatus struct {
+	// Conditions defines current service state of the ElementalRegistration.
+	// +optional
+	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
+}
+
+// GetConditions returns the set of conditions for this object.
+func (m *ElementalRegistration) GetConditions() clusterv1.Conditions {
+	return m.Status.Conditions
+}
+
+// SetConditions sets the conditions on this object.
+func (m *ElementalRegistration) SetConditions(conditions clusterv1.Conditions) {
+	m.Status.Conditions = conditions
+}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status

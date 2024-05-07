@@ -45,7 +45,7 @@ type ElementalMachineStatus struct {
 	// Ready indicates the provider-specific infrastructure has been provisioned and is ready.
 	Ready bool `json:"ready,omitempty"`
 
-	// Conditions defines current service state of the ElementalCluster.
+	// Conditions defines current service state of the ElementalMachine.
 	// +optional
 	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
 

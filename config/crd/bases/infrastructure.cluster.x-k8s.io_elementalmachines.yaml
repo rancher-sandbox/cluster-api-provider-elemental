@@ -140,7 +140,7 @@ spec:
             description: ElementalMachineStatus defines the observed state of ElementalMachine.
             properties:
               conditions:
-                description: Conditions defines current service state of the ElementalCluster.
+                description: Conditions defines current service state of the ElementalMachine.
                 items:
                   description: Condition defines an observation of a Cluster API resource
                     operational state.
