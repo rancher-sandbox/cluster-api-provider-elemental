@@ -344,6 +344,9 @@ components:
           additionalProperties:
             type: string
           type: object
+        phase:
+          nullable: true
+          type: string
         reset:
           nullable: true
           type: boolean
