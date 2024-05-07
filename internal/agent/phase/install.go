@@ -45,7 +45,7 @@ func (i *installHandler) Install(hostname string) {
 	i.installLoop(hostname)
 }
 
-// installLoop **indefinitely** tries to fetch the remote registration and install the ElementalHost
+// installLoop **indefinitely** tries to fetch the remote registration and install the ElementalHost.
 func (i *installHandler) installLoop(hostname string) {
 	cloudConfigAlreadyApplied := false
 	alreadyInstalled := false

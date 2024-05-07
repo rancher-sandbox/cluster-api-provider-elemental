@@ -69,7 +69,7 @@ func (h *hostPhaseHandler) Handle(phase infrastructurev1beta1.HostPhase) (PostCo
 			return PostCondition{}, fmt.Errorf("registering new host: %w", err)
 		}
 		h.hostContext.Hostname = hostname
-		h.setPhase(phase) // Note that we set the phase **after** only once concluded, because we do not have any remote ElementalHost to patch before.
+		h.setPhase(phase) // Note that we set the phase **after* its conclusion, because we do not have any remote ElementalHost to patch before.
 	case infrastructurev1beta1.PhaseFinalizingRegistration:
 		h.setPhase(phase)
 		if err := h.register.FinalizeRegistration(h.hostContext.Hostname, h.hostContext.AgentConfigPath); err != nil {

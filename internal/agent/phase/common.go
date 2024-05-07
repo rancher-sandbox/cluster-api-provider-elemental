@@ -1,6 +1,8 @@
 package phase
 
 import (
+	"fmt"
+
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
@@ -17,4 +19,15 @@ func updateCondition(client client.Client, hostname string, condition clusterv1.
 	}, hostname); err != nil {
 		log.Error(err, "reporting condition", "conditionType", condition.Type, "conditionReason", condition.Reason)
 	}
+}
+
+// updateConditionOrFail should be used to set 'Status: True' conditions.
+// In case of errors we should re-attempt, otherwise a condition may never be set to True.
+func updateConditionOrFail(client client.Client, hostname string, condition clusterv1.Condition) error {
+	if _, err := client.PatchHost(api.HostPatchRequest{
+		Condition: &condition,
+	}, hostname); err != nil {
+		return fmt.Errorf("reporting condition: %w", err)
+	}
+	return nil
 }

@@ -63,7 +63,7 @@ func (r *resetHandler) Reset(hostname string) {
 	r.resetLoop(hostname)
 }
 
-// installLoop **indefinitely** tries to fetch the remote registration and reset the ElementalHost
+// installLoop **indefinitely** tries to fetch the remote registration and reset the ElementalHost.
 func (r *resetHandler) resetLoop(hostname string) {
 	var resetError error
 	alreadyReset := false

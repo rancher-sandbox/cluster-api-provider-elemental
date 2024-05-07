@@ -63,11 +63,14 @@ func (r *registrationHandler) FinalizeRegistration(hostname string, configPath s
 		})
 		return fmt.Errorf("finalizing registration: %w", err)
 	}
-	updateCondition(r.client, hostname, clusterv1.Condition{
+	err = updateConditionOrFail(r.client, hostname, clusterv1.Condition{
 		Type:     infrastructurev1beta1.RegistrationReady,
 		Status:   corev1.ConditionTrue,
 		Severity: clusterv1.ConditionSeverityInfo,
 	})
+	if err != nil {
+		return fmt.Errorf("updating RegistrationReady True condition: %w", err)
+	}
 	updateCondition(r.client, hostname, clusterv1.Condition{
 		Type:     infrastructurev1beta1.InstallationReady,
 		Status:   corev1.ConditionFalse,
@@ -110,7 +113,7 @@ func (r *registrationHandler) finalize(hostname string, configPath string) error
 	return nil
 }
 
-// registrationLoop **indefinitely** tries to fetch the remote registration and register a new ElementalHost
+// registrationLoop **indefinitely** tries to fetch the remote registration and register a new ElementalHost.
 func (r *registrationHandler) registrationLoop(pubKey []byte) string {
 	hostnameFormatter := hostname.NewFormatter(r.osPlugin)
 	var newHostname string
@@ -140,6 +143,12 @@ func (r *registrationHandler) registrationLoop(pubKey []byte) string {
 			log.Error(err, "picking new hostname")
 			registrationError = true
 			continue
+		}
+		// Check if Registration already happened
+		// This can happen if finalizing the registration failed and the agent is started again to re-attempt.
+		if _, err := r.client.PatchHost(api.HostPatchRequest{}, newHostname); err == nil {
+			log.Infof("Found existing ElementalHost: %s. Skipping new registration.", newHostname)
+			break
 		}
 		// Register new Elemental Host
 		log.Debugf("Registering new host: %s", newHostname)
