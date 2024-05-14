@@ -16,6 +16,7 @@ import (
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
 	log "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/phase"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/phase/phases"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/utils"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
@@ -192,6 +193,8 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, client client.Client, p
 					_, err := phaseHandler.Handle(infrastructurev1beta1.PhaseTriggeringReset)
 					if err != nil {
 						log.Error(err, "handling reset trigger")
+						log.Debugf("Waiting %s...", conf.Agent.Reconciliation.String())
+						time.Sleep(conf.Agent.Reconciliation)
 						continue
 					}
 					// If Reset was triggered successfully, exit the program.
@@ -205,11 +208,14 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, client client.Client, p
 					post, err := phaseHandler.Handle(infrastructurev1beta1.PhaseBootstrapping)
 					if err != nil {
 						log.Error(err, "handling bootstrap")
+						log.Debugf("Waiting %s...", conf.Agent.Reconciliation.String())
+						time.Sleep(conf.Agent.Reconciliation)
+						continue
 					}
-					handlePost(osPlugin, post)
-					log.Debugf("Waiting %s...", conf.Agent.Reconciliation.String())
-					time.Sleep(conf.Agent.Reconciliation)
-					continue
+					if handlePost(osPlugin, post) {
+						// Exit the program if we are rebooting to apply bootstrap
+						return nil
+					}
 				}
 
 				log.Debugf("Waiting %s...", conf.Agent.Reconciliation.String())
@@ -247,16 +253,21 @@ func getConfig(fs vfs.FS) (config.Config, error) {
 	return conf, nil
 }
 
-func handlePost(osPlugin osplugin.Plugin, post phase.PostCondition) {
-	if post.Poweroff {
+// handlePost handles post conditions such as Reboot or PowerOff.
+// A true flag is returned if any of the conditions is true, to highlight the program should exit.
+func handlePost(osPlugin osplugin.Plugin, post phases.PostCondition) bool {
+	if post.PowerOff {
 		log.Info("Powering off system")
 		if err := osPlugin.PowerOff(); err != nil {
 			log.Error(err, "Powering off system")
 		}
+		return true
 	} else if post.Reboot {
 		log.Info("Rebooting system")
 		if err := osPlugin.Reboot(); err != nil {
 			log.Error(err, "Rebooting system")
 		}
+		return true
 	}
+	return false
 }

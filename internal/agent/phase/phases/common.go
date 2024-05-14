@@ -1,4 +1,4 @@
-package phase
+package phases
 
 import (
 	"fmt"
@@ -8,6 +8,12 @@ import (
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
+
+// PostCondition is used to return instructions to the cli after a Phase is handled.
+type PostCondition struct {
+	PowerOff bool
+	Reboot   bool
+}
 
 // updateCondition is a best effort method to update the remote condition.
 // Due to the unexpected nature of failures, we should not attempt indefinitely as there is no indication for recovery.

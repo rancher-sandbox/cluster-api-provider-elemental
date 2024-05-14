@@ -8,6 +8,7 @@ import (
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/phase/phases"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/pkg/agent/osplugin"
@@ -15,12 +16,6 @@ import (
 )
 
 var ErrUknownPhase = errors.New("Can not handle unknown phase")
-
-// PostCondition is used to return instructions to the cli after a Phase is handled.
-type PostCondition struct {
-	Poweroff bool
-	Reboot   bool
-}
 
 type HostContext struct {
 	AgentConfig     config.Config
@@ -30,7 +25,7 @@ type HostContext struct {
 
 type HostPhaseHandler interface {
 	Init(fs vfs.FS, client client.Client, osPlugin osplugin.Plugin, id identity.Identity, hostContext HostContext)
-	Handle(infrastructurev1beta1.HostPhase) (PostCondition, error)
+	Handle(infrastructurev1beta1.HostPhase) (phases.PostCondition, error)
 }
 
 var _ HostPhaseHandler = (*hostPhaseHandler)(nil)
@@ -44,49 +39,49 @@ func (h *hostPhaseHandler) Init(fs vfs.FS, client client.Client, osPlugin osplug
 
 	h.hostContext = hostContext
 
-	h.register = NewRegistrationHandler(client, osPlugin, id, hostContext.AgentConfig.Agent.Reconciliation)
-	h.install = NewInstallHandler(client, osPlugin, id, hostContext.AgentConfig.Agent.Reconciliation)
-	h.bootstrap = NewBootstrapHandler(fs, client, osPlugin)
-	h.reset = NewResetHandler(client, osPlugin, hostContext.AgentConfig.Agent.Reconciliation)
+	h.register = phases.NewRegistrationHandler(client, osPlugin, id, hostContext.AgentConfig.Agent.Reconciliation)
+	h.install = phases.NewInstallHandler(client, osPlugin, id, hostContext.AgentConfig.Agent.Reconciliation)
+	h.bootstrap = phases.NewBootstrapHandler(fs, client, osPlugin)
+	h.reset = phases.NewResetHandler(client, osPlugin, hostContext.AgentConfig.Agent.Reconciliation)
 }
 
 type hostPhaseHandler struct {
 	client client.Client
 
-	register  RegistrationHandler
-	install   InstallHandler
-	bootstrap BootstrapHandler
-	reset     ResetHandler
+	register  phases.RegistrationHandler
+	install   phases.InstallHandler
+	bootstrap phases.BootstrapHandler
+	reset     phases.ResetHandler
 
 	hostContext HostContext
 }
 
-func (h *hostPhaseHandler) Handle(phase infrastructurev1beta1.HostPhase) (PostCondition, error) {
+func (h *hostPhaseHandler) Handle(phase infrastructurev1beta1.HostPhase) (phases.PostCondition, error) {
 	switch phase {
 	case infrastructurev1beta1.PhaseRegistering:
 		hostname, err := h.register.Register()
 		if err != nil {
-			return PostCondition{}, fmt.Errorf("registering new host: %w", err)
+			return phases.PostCondition{}, fmt.Errorf("registering new host: %w", err)
 		}
 		h.hostContext.Hostname = hostname
 		h.setPhase(phase) // Note that we set the phase **after* its conclusion, because we do not have any remote ElementalHost to patch before.
 	case infrastructurev1beta1.PhaseFinalizingRegistration:
 		h.setPhase(phase)
 		if err := h.register.FinalizeRegistration(h.hostContext.Hostname, h.hostContext.AgentConfigPath); err != nil {
-			return PostCondition{}, fmt.Errorf("finalizing registration: %w", err)
+			return phases.PostCondition{}, fmt.Errorf("finalizing registration: %w", err)
 		}
 	case infrastructurev1beta1.PhaseInstalling:
 		h.setPhase(phase)
 		h.install.Install(h.hostContext.Hostname)
-		return PostCondition{
+		return phases.PostCondition{
 			Reboot:   h.hostContext.AgentConfig.Agent.PostInstall.Reboot,
-			Poweroff: h.hostContext.AgentConfig.Agent.PostInstall.PowerOff,
+			PowerOff: h.hostContext.AgentConfig.Agent.PostInstall.PowerOff,
 		}, nil
 	case infrastructurev1beta1.PhaseBootstrapping:
 		h.setPhase(phase)
 		post, err := h.bootstrap.Bootstrap(h.hostContext.Hostname)
 		if err != nil {
-			return PostCondition{}, fmt.Errorf("bootstrapping host: %w", err)
+			return phases.PostCondition{}, fmt.Errorf("bootstrapping host: %w", err)
 		}
 		return post, nil
 	case infrastructurev1beta1.PhaseRunning:
@@ -95,20 +90,20 @@ func (h *hostPhaseHandler) Handle(phase infrastructurev1beta1.HostPhase) (PostCo
 	case infrastructurev1beta1.PhaseTriggeringReset:
 		h.setPhase(phase)
 		if err := h.reset.TriggerReset(h.hostContext.Hostname); err != nil {
-			return PostCondition{}, fmt.Errorf("triggering reset: %w", err)
+			return phases.PostCondition{}, fmt.Errorf("triggering reset: %w", err)
 		}
-		return PostCondition{}, nil
+		return phases.PostCondition{}, nil
 	case infrastructurev1beta1.PhaseResetting:
 		h.setPhase(phase)
 		h.reset.Reset(h.hostContext.Hostname)
-		return PostCondition{
+		return phases.PostCondition{
 			Reboot:   h.hostContext.AgentConfig.Agent.PostReset.Reboot,
-			Poweroff: h.hostContext.AgentConfig.Agent.PostReset.PowerOff,
+			PowerOff: h.hostContext.AgentConfig.Agent.PostReset.PowerOff,
 		}, nil
 	default:
-		return PostCondition{}, fmt.Errorf("handling '%s' phase: %w", phase, ErrUknownPhase)
+		return phases.PostCondition{}, fmt.Errorf("handling '%s' phase: %w", phase, ErrUknownPhase)
 	}
-	return PostCondition{}, nil
+	return phases.PostCondition{}, nil
 }
 
 // setPhase is a best-effort attempt to reconcile the remote HostPhase.

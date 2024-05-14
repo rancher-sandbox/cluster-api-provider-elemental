@@ -1,4 +1,4 @@
-package phase
+package phases
 
 import (
 	"encoding/json"
