@@ -27,6 +27,10 @@ spec:
       jsonPath: .spec.machineRef.name
       name: ElementalMachine
       type: string
+    - description: ElementalHost phase
+      jsonPath: .status.phase
+      name: Phase
+      type: string
     - description: ElementalHost ready condition
       jsonPath: .status.conditions[?(@.type=="Ready")].status
       name: Ready
