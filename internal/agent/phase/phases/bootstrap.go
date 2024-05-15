@@ -21,7 +21,7 @@ const (
 )
 
 type BootstrapHandler interface {
-	Bootstrap(hostname string) (PostCondition, error)
+	Bootstrap(hostname string) (PostAction, error)
 }
 
 var _ BootstrapHandler = (*bootstrapHandler)(nil)
@@ -56,7 +56,7 @@ type bootstrapHandler struct {
 // If reboot happens and `/run/cluster-api/bootstrap-success.complete` is not found on the already-bootstrapped system,
 // the plugin will be invoked again to re-apply the bootstrap config. It's up to the plugin implementation to recover
 // from this state if possible, or to just return an error to highlight manual intervention is needed (and possibly a machine reset).
-func (b *bootstrapHandler) Bootstrap(hostname string) (PostCondition, error) {
+func (b *bootstrapHandler) Bootstrap(hostname string) (PostAction, error) {
 	post, err := b.bootstrap(hostname)
 	if err != nil {
 		updateCondition(b.client, hostname, clusterv1.Condition{
@@ -70,17 +70,17 @@ func (b *bootstrapHandler) Bootstrap(hostname string) (PostCondition, error) {
 	return post, err
 }
 
-func (b *bootstrapHandler) bootstrap(hostname string) (PostCondition, error) {
+func (b *bootstrapHandler) bootstrap(hostname string) (PostAction, error) {
 	_, err := b.fs.Stat(bootstrapSentinelFile)
 
 	// Assume system is successfully bootstrapped if sentinel file is found
 	if err == nil {
 		log.Infof("Found file: %s. System is bootstrapped.", bootstrapSentinelFile)
 		if err := b.updateBoostrappedStatus(hostname); err != nil {
-			return PostCondition{}, fmt.Errorf("updating bootstrapped status: %w", err)
+			return PostAction{}, fmt.Errorf("updating bootstrapped status: %w", err)
 		}
 		log.Info("Bootstrap config applied successfully")
-		return PostCondition{}, nil
+		return PostAction{}, nil
 	}
 
 	// Sentinel file not found, assume system needs bootstrapping
@@ -88,11 +88,11 @@ func (b *bootstrapHandler) bootstrap(hostname string) (PostCondition, error) {
 		log.Debug("Fetching bootstrap config")
 		bootstrap, err := b.client.GetBootstrap(hostname)
 		if err != nil {
-			return PostCondition{}, fmt.Errorf("fetching bootstrap config: %w", err)
+			return PostAction{}, fmt.Errorf("fetching bootstrap config: %w", err)
 		}
 		log.Info("Applying bootstrap config")
 		if err := b.osPlugin.Bootstrap(bootstrap.Format, []byte(bootstrap.Config)); err != nil {
-			return PostCondition{}, fmt.Errorf("applying bootstrap config: %w", err)
+			return PostAction{}, fmt.Errorf("applying bootstrap config: %w", err)
 		}
 		updateCondition(b.client, hostname, clusterv1.Condition{
 			Type:     infrastructurev1beta1.BootstrapReady,
@@ -102,10 +102,10 @@ func (b *bootstrapHandler) bootstrap(hostname string) (PostCondition, error) {
 			Message:  "Waiting for bootstrap to be executed",
 		})
 		log.Info("System is rebooting to execute the bootstrap configuration...")
-		return PostCondition{Reboot: true}, nil
+		return PostAction{Reboot: true}, nil
 	}
 
-	return PostCondition{}, fmt.Errorf("reading file '%s': %w", bootstrapSentinelFile, err)
+	return PostAction{}, fmt.Errorf("reading file '%s': %w", bootstrapSentinelFile, err)
 }
 
 func (b *bootstrapHandler) updateBoostrappedStatus(hostname string) error {

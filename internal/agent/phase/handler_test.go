@@ -63,7 +63,7 @@ var _ = Describe("handler", Label("cli", "phases", "handler"), func() {
 
 			post, err := phaseHandler.Handle(v1beta1.PhaseRegistering)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(post).To(Equal(phases.PostCondition{}))
+			Expect(post).To(Equal(phases.PostAction{}))
 
 			Expect(phaseHandler.hostContext.Hostname).To(Equal(wantHostname), "Context Hostname should be updated with registered Hostname value")
 		})
@@ -84,7 +84,7 @@ var _ = Describe("handler", Label("cli", "phases", "handler"), func() {
 
 			post, err := phaseHandler.Handle(v1beta1.PhaseFinalizingRegistration)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(post).To(Equal(phases.PostCondition{}))
+			Expect(post).To(Equal(phases.PostAction{}))
 		})
 		It("should fail on finalizing registration error", func() {
 			phaseHandler.hostContext.Hostname = "just a test hostname"
@@ -121,7 +121,7 @@ var _ = Describe("handler", Label("cli", "phases", "handler"), func() {
 
 			post, err := phaseHandler.Handle(v1beta1.PhaseInstalling)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(post).To(Equal(phases.PostCondition{PowerOff: true, Reboot: true}))
+			Expect(post).To(Equal(phases.PostAction{PowerOff: true, Reboot: true}))
 		})
 	})
 
@@ -137,7 +137,7 @@ var _ = Describe("handler", Label("cli", "phases", "handler"), func() {
 			}
 		})
 		It("should return post conditions based on bootstrap results", func() {
-			wantPost := phases.PostCondition{PowerOff: true, Reboot: true}
+			wantPost := phases.PostAction{PowerOff: true, Reboot: true}
 
 			mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(v1beta1.PhaseBootstrapping)}, phaseHandler.hostContext.Hostname).Return(nil, nil)
 			bootstrapHandler.EXPECT().Bootstrap(phaseHandler.hostContext.Hostname).Return(wantPost, nil)
@@ -149,7 +149,7 @@ var _ = Describe("handler", Label("cli", "phases", "handler"), func() {
 		It("should fail on bootstrap error", func() {
 			wantErr := errors.New("test bootstrap error")
 			mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(v1beta1.PhaseBootstrapping)}, phaseHandler.hostContext.Hostname).Return(nil, nil)
-			bootstrapHandler.EXPECT().Bootstrap(phaseHandler.hostContext.Hostname).Return(phases.PostCondition{}, wantErr)
+			bootstrapHandler.EXPECT().Bootstrap(phaseHandler.hostContext.Hostname).Return(phases.PostAction{}, wantErr)
 
 			_, err := phaseHandler.Handle(v1beta1.PhaseBootstrapping)
 			Expect(err).To(HaveOccurred())
@@ -178,7 +178,7 @@ var _ = Describe("handler", Label("cli", "phases", "handler"), func() {
 
 			post, err := phaseHandler.Handle(v1beta1.PhaseResetting)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(post).To(Equal(phases.PostCondition{PowerOff: true, Reboot: true}))
+			Expect(post).To(Equal(phases.PostAction{PowerOff: true, Reboot: true}))
 		})
 		It("should trigger reset", func() {
 			phaseHandler.hostContext.Hostname = "just a test hostname"
@@ -188,7 +188,7 @@ var _ = Describe("handler", Label("cli", "phases", "handler"), func() {
 
 			post, err := phaseHandler.Handle(v1beta1.PhaseTriggeringReset)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(post).To(Equal(phases.PostCondition{}))
+			Expect(post).To(Equal(phases.PostAction{}))
 		})
 		It("should fail on trigger reset error", func() {
 			phaseHandler.hostContext.Hostname = "just a test hostname"

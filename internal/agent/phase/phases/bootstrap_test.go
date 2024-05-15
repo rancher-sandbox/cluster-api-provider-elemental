@@ -59,7 +59,7 @@ var _ = Describe("bootstrap handler", Label("cli", "phases", "bootstrap"), func(
 
 		post, err := handler.Bootstrap(HostResponseFixture.Name)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(post).To(Equal(PostCondition{Reboot: true}), "System must reboot to apply bootstrap config")
+		Expect(post).To(Equal(PostAction{Reboot: true}), "System must reboot to apply bootstrap config")
 	})
 	It("should patch the host as bootstrapped when sentinel file is present", func() {
 		// Mark the system as bootstrapped. This path is part of the CAPI contract: https://cluster-api.sigs.k8s.io/developer/providers/bootstrap.html#sentinel-file
@@ -86,7 +86,7 @@ var _ = Describe("bootstrap handler", Label("cli", "phases", "bootstrap"), func(
 		)
 		post, err := handler.Bootstrap(HostResponseFixture.Name)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(post).To(Equal(PostCondition{}))
+		Expect(post).To(Equal(PostAction{}))
 	})
 	It("should fail on bootstrap error", func() {
 		wantErr := errors.New("test bootstrap error")
@@ -110,6 +110,6 @@ var _ = Describe("bootstrap handler", Label("cli", "phases", "bootstrap"), func(
 		post, err := handler.Bootstrap(HostResponseFixture.Name)
 		Expect(err).To(HaveOccurred())
 		Expect(errors.Is(err, wantErr)).To(BeTrue())
-		Expect(post).To(Equal(PostCondition{}))
+		Expect(post).To(Equal(PostAction{}))
 	})
 })

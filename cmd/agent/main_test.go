@@ -178,10 +178,10 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(nil, errors.New("patch host test fail")),
 				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&triggerResetResponse, nil),
 				// Make first reset attempt fail, expect to try again
-				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseTriggeringReset).Return(phases.PostCondition{}, errors.New("trigger reset test fail")),
+				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseTriggeringReset).Return(phases.PostAction{}, errors.New("trigger reset test fail")),
 				// Second trigger reset attempt, succeed
 				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&triggerResetResponse, nil),
-				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseTriggeringReset).Return(phases.PostCondition{}, nil),
+				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseTriggeringReset).Return(phases.PostAction{}, nil),
 			)
 			Expect(cmd.Execute()).ToNot(HaveOccurred())
 		})
@@ -190,10 +190,10 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 			gomock.InOrder(
 				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&triggerBootstrapResponse, nil),
 				// Make first bootstrap fail, expect to try again
-				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseBootstrapping).Return(phases.PostCondition{}, errors.New("bootstrap fail")),
+				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseBootstrapping).Return(phases.PostAction{}, errors.New("bootstrap fail")),
 				// Second attempt, succeed
 				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&triggerBootstrapResponse, nil),
-				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseBootstrapping).Return(phases.PostCondition{Reboot: true}, nil),
+				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseBootstrapping).Return(phases.PostAction{Reboot: true}, nil),
 				plugin.EXPECT().Reboot().Return(nil),
 			)
 			Expect(cmd.Execute()).ToNot(HaveOccurred())
@@ -204,7 +204,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 			bootstrapAndResetResponse.BootstrapReady = true
 			gomock.InOrder(
 				mClient.EXPECT().PatchHost(gomock.Any(), hostResponseFixture.Name).Return(&bootstrapAndResetResponse, nil),
-				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseTriggeringReset).Return(phases.PostCondition{}, nil),
+				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseTriggeringReset).Return(phases.PostAction{}, nil),
 			)
 			Expect(cmd.Execute()).ToNot(HaveOccurred())
 		})
@@ -213,17 +213,17 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 		It("should register and exit", func() {
 			cmd.SetArgs([]string{"--register"})
 			gomock.InOrder(
-				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseRegistering).Return(phases.PostCondition{}, nil),
-				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseFinalizingRegistration).Return(phases.PostCondition{}, nil),
+				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseRegistering).Return(phases.PostAction{}, nil),
+				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseFinalizingRegistration).Return(phases.PostAction{}, nil),
 			)
 			Expect(cmd.Execute()).ToNot(HaveOccurred())
 		})
 		It("should register and try to install if --install also passed", func() {
 			cmd.SetArgs([]string{"--register", "--install"})
 			gomock.InOrder(
-				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseRegistering).Return(phases.PostCondition{}, nil),
-				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseFinalizingRegistration).Return(phases.PostCondition{}, nil),
-				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseInstalling).Return(phases.PostCondition{}, nil),
+				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseRegistering).Return(phases.PostAction{}, nil),
+				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseFinalizingRegistration).Return(phases.PostAction{}, nil),
+				hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseInstalling).Return(phases.PostAction{}, nil),
 			)
 			Expect(cmd.Execute()).ToNot(HaveOccurred())
 		})
@@ -231,7 +231,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 			It("should install", func() {
 				cmd.SetArgs([]string{"--install"})
 				gomock.InOrder(
-					hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseInstalling).Return(phases.PostCondition{PowerOff: true}, nil),
+					hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseInstalling).Return(phases.PostAction{PowerOff: true}, nil),
 					// Post --install
 					plugin.EXPECT().PowerOff().Return(nil),
 				)
@@ -242,7 +242,7 @@ var _ = Describe("elemental-agent", Label("agent", "cli"), func() {
 			It("should reset", func() {
 				cmd.SetArgs([]string{"--reset"})
 				gomock.InOrder(
-					hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseResetting).Return(phases.PostCondition{Reboot: true}, nil),
+					hostPhaseHandler.EXPECT().Handle(infrastructurev1beta1.PhaseResetting).Return(phases.PostAction{Reboot: true}, nil),
 					// Post --reset
 					plugin.EXPECT().Reboot().Return(nil),
 				)

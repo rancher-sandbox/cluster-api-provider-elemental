@@ -9,8 +9,8 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
-// PostCondition is used to return instructions to the cli after a Phase is handled.
-type PostCondition struct {
+// PostAction is used to return instructions to the cli after a Phase is handled.
+type PostAction struct {
 	PowerOff bool
 	Reboot   bool
 }

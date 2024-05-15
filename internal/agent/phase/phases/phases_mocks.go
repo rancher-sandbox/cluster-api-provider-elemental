@@ -142,10 +142,10 @@ func (m *MockBootstrapHandler) EXPECT() *MockBootstrapHandlerMockRecorder {
 }
 
 // Bootstrap mocks base method.
-func (m *MockBootstrapHandler) Bootstrap(arg0 string) (PostCondition, error) {
+func (m *MockBootstrapHandler) Bootstrap(arg0 string) (PostAction, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Bootstrap", arg0)
-	ret0, _ := ret[0].(PostCondition)
+	ret0, _ := ret[0].(PostAction)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

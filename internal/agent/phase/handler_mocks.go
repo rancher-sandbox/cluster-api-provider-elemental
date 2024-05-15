@@ -61,10 +61,10 @@ func (m *MockHostPhaseHandler) EXPECT() *MockHostPhaseHandlerMockRecorder {
 }
 
 // Handle mocks base method.
-func (m *MockHostPhaseHandler) Handle(arg0 v1beta1.HostPhase) (phases.PostCondition, error) {
+func (m *MockHostPhaseHandler) Handle(arg0 v1beta1.HostPhase) (phases.PostAction, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Handle", arg0)
-	ret0, _ := ret[0].(phases.PostCondition)
+	ret0, _ := ret[0].(phases.PostAction)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

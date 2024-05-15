@@ -255,7 +255,7 @@ func getConfig(fs vfs.FS) (config.Config, error) {
 
 // handlePost handles post conditions such as Reboot or PowerOff.
 // A true flag is returned if any of the conditions is true, to highlight the program should exit.
-func handlePost(osPlugin osplugin.Plugin, post phases.PostCondition) bool {
+func handlePost(osPlugin osplugin.Plugin, post phases.PostAction) bool {
 	if post.PowerOff {
 		log.Info("Powering off system")
 		if err := osPlugin.PowerOff(); err != nil {

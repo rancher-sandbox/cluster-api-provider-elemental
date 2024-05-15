@@ -25,7 +25,7 @@ type HostContext struct {
 
 type HostPhaseHandler interface {
 	Init(fs vfs.FS, client client.Client, osPlugin osplugin.Plugin, id identity.Identity, hostContext HostContext)
-	Handle(infrastructurev1beta1.HostPhase) (phases.PostCondition, error)
+	Handle(infrastructurev1beta1.HostPhase) (phases.PostAction, error)
 }
 
 var _ HostPhaseHandler = (*hostPhaseHandler)(nil)
@@ -56,24 +56,24 @@ type hostPhaseHandler struct {
 	hostContext HostContext
 }
 
-func (h *hostPhaseHandler) Handle(phase infrastructurev1beta1.HostPhase) (phases.PostCondition, error) {
+func (h *hostPhaseHandler) Handle(phase infrastructurev1beta1.HostPhase) (phases.PostAction, error) {
 	switch phase {
 	case infrastructurev1beta1.PhaseRegistering:
 		hostname, err := h.register.Register()
 		if err != nil {
-			return phases.PostCondition{}, fmt.Errorf("registering new host: %w", err)
+			return phases.PostAction{}, fmt.Errorf("registering new host: %w", err)
 		}
 		h.hostContext.Hostname = hostname
 		h.setPhase(phase) // Note that we set the phase **after* its conclusion, because we do not have any remote ElementalHost to patch before.
 	case infrastructurev1beta1.PhaseFinalizingRegistration:
 		h.setPhase(phase)
 		if err := h.register.FinalizeRegistration(h.hostContext.Hostname, h.hostContext.AgentConfigPath); err != nil {
-			return phases.PostCondition{}, fmt.Errorf("finalizing registration: %w", err)
+			return phases.PostAction{}, fmt.Errorf("finalizing registration: %w", err)
 		}
 	case infrastructurev1beta1.PhaseInstalling:
 		h.setPhase(phase)
 		h.install.Install(h.hostContext.Hostname)
-		return phases.PostCondition{
+		return phases.PostAction{
 			Reboot:   h.hostContext.AgentConfig.Agent.PostInstall.Reboot,
 			PowerOff: h.hostContext.AgentConfig.Agent.PostInstall.PowerOff,
 		}, nil
@@ -81,7 +81,7 @@ func (h *hostPhaseHandler) Handle(phase infrastructurev1beta1.HostPhase) (phases
 		h.setPhase(phase)
 		post, err := h.bootstrap.Bootstrap(h.hostContext.Hostname)
 		if err != nil {
-			return phases.PostCondition{}, fmt.Errorf("bootstrapping host: %w", err)
+			return phases.PostAction{}, fmt.Errorf("bootstrapping host: %w", err)
 		}
 		return post, nil
 	case infrastructurev1beta1.PhaseRunning:
@@ -90,20 +90,20 @@ func (h *hostPhaseHandler) Handle(phase infrastructurev1beta1.HostPhase) (phases
 	case infrastructurev1beta1.PhaseTriggeringReset:
 		h.setPhase(phase)
 		if err := h.reset.TriggerReset(h.hostContext.Hostname); err != nil {
-			return phases.PostCondition{}, fmt.Errorf("triggering reset: %w", err)
+			return phases.PostAction{}, fmt.Errorf("triggering reset: %w", err)
 		}
-		return phases.PostCondition{}, nil
+		return phases.PostAction{}, nil
 	case infrastructurev1beta1.PhaseResetting:
 		h.setPhase(phase)
 		h.reset.Reset(h.hostContext.Hostname)
-		return phases.PostCondition{
+		return phases.PostAction{
 			Reboot:   h.hostContext.AgentConfig.Agent.PostReset.Reboot,
 			PowerOff: h.hostContext.AgentConfig.Agent.PostReset.PowerOff,
 		}, nil
 	default:
-		return phases.PostCondition{}, fmt.Errorf("handling '%s' phase: %w", phase, ErrUknownPhase)
+		return phases.PostAction{}, fmt.Errorf("handling '%s' phase: %w", phase, ErrUknownPhase)
 	}
-	return phases.PostCondition{}, nil
+	return phases.PostAction{}, nil
 }
 
 // setPhase is a best-effort attempt to reconcile the remote HostPhase.
