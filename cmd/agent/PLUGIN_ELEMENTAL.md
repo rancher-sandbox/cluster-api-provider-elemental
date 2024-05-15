@@ -4,7 +4,7 @@ The Elemental plugin leverages the [elemental-toolkit](https://rancher.github.io
 
 ## Phases
 
-The `elemental-agent` goes through 5 different phases, normally in the documented order.  
+The `elemental-agent` goes through several [phases](../../doc/HOST_PHASES.md), normally in the documented order.  
 Failures during any of the phases should be represented within the Status of the related `ElementalHost` on the CAPI management cluster.
 For example:
 
@@ -21,7 +21,7 @@ Status:
     Type:                  InstallationReady
 ```
 
-### 1. (Post) Registration
+### 1. Finalizing Registration
 
 When running `elemental-agent --register`, upon successful registration, the plugin will be invoked by the agent to perform the following actions:
 
@@ -31,7 +31,7 @@ When running `elemental-agent --register`, upon successful registration, the plu
 
 For each action, the elemental plugin will create an `elemental-toolkit` cloud-init file in the `/oem` directory.  
 
-### 2. Installation
+### 2. Installing
 
 When running `elemental-agent --install`, assuming registration was performed successfully, the plugin will be invoked to:
 
@@ -66,7 +66,7 @@ Under normal cirsumstances, the `/oem/bootstrap-cloud-config.yaml` should be del
 However, if the bootstrap application fails for any reason, you will be able to review the file to investigate issues.  
 Additionally, you can manually execute and debug the bootstrap configuration by running: `elemental --debug run-stage network`  
 
-### 4. Reset trigger
+### 4. Trigger Reset
 
 When the `elemental-agent` receives a reset trigger, for example because the CAPI Cluster was deleted, the plugin will take the following actions:
 
@@ -87,7 +87,7 @@ When the `elemental-agent` receives a reset trigger, for example because the CAP
 - Configure `grub` to use the Recovery partition at the next boot: `grub2-editenv /oem/grubenv set next_entry=recovery`
 - Schedule system reboot (in 1 minute): `shutdown -r +1`  
 
-### 5. Reset
+### 5. Resetting
 
 In a typical Elemental installation, the reset phase is executed from the above mentioned `Elemental Reset` plan.  
 When running `elemental-agent --reset`, the plugin will make a copy of the agent config in `/tmp/elemental-agent-config.yaml` and then invoke `elemental reset` using the remote `ElementalRegistration` `spec.config.elemental.reset` config.  
