@@ -15,7 +15,7 @@ GINKGO_VER := v2.17.0
 KUSTOMIZE_VERSION ?= v5.3.0
 CONTROLLER_TOOLS_VERSION ?= v0.14.0
 # CAPI version used for test CRDs
-CAPI_VERSION ?= v1.6.3
+CAPI_VERSION?=$(shell grep "sigs.k8s.io/cluster-api" go.mod | awk '{print $$NF}')
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
