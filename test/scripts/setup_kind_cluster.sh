@@ -128,3 +128,12 @@ spec:
         resetOem: true
         resetPersistent: true
 EOF
+
+# Wait for registration to be initialized
+kubectl wait --for=condition=ready elementalregistration my-registration
+
+# Print the agent config
+cd "$(dirname "$0")"
+echo -e "Test Agent config:\n"
+./print_agent_config.sh -n default -r my-registration
+echo -e "\nBuild a new image with: AGENT_CONFIG_FILE=iso/config/my-config.yaml make build-iso"
