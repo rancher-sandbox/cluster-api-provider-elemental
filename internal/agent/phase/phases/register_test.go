@@ -135,7 +135,6 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 			err := handler.FinalizeRegistration(HostResponseFixture.Name, wantConfigPath, wantAgentConfig)
 			Expect(err).ToNot(HaveOccurred())
 		})
-
 		It("should fail on finalizing registration error", func() {
 			wantErr := errors.New("test finalizing registration error")
 
@@ -158,6 +157,42 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 			Expect(err).To(HaveOccurred())
 			Expect(errors.Is(err, wantErr)).To(BeTrue())
 		})
+		It("should recover from update Ready condition errors", func() {
+			gomock.InOrder(
+				plugin.EXPECT().InstallHostname(HostResponseFixture.Name).Return(nil),
+				plugin.EXPECT().InstallFile(wantAgentConfigBytes, wantConfigPath, uint32(0640), 0, 0).Return(nil),
+				id.EXPECT().Marshal().Return(wantMarshalledIdentity, nil),
+				plugin.EXPECT().InstallFile(wantMarshalledIdentity, wantIdentityFilePath, uint32(0640), 0, 0).Return(nil),
 
+				// First update condition error fails, expect a second attempt
+				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, errors.New("test update condition error")),
+				// Expect second attempt
+				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+					Expect(*patch.Condition).Should(Equal(
+						clusterv1.Condition{
+							Type:     infrastructurev1beta1.RegistrationReady,
+							Status:   corev1.ConditionTrue,
+							Severity: clusterv1.ConditionSeverityInfo,
+							Reason:   "",
+							Message:  "",
+						},
+					))
+				}),
+				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+					Expect(*patch.Condition).Should(Equal(
+						clusterv1.Condition{
+							Type:     infrastructurev1beta1.InstallationReady,
+							Status:   corev1.ConditionFalse,
+							Severity: infrastructurev1beta1.WaitingForInstallationReasonSeverity,
+							Reason:   infrastructurev1beta1.WaitingForInstallationReason,
+							Message:  "Host is registered successfully. Waiting for installation.",
+						},
+					))
+				}),
+			)
+
+			err := handler.FinalizeRegistration(HostResponseFixture.Name, wantConfigPath, wantAgentConfig)
+			Expect(err).ToNot(HaveOccurred())
+		})
 	})
 })

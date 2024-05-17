@@ -63,14 +63,27 @@ func (r *registrationHandler) FinalizeRegistration(hostname string, configPath s
 		})
 		return fmt.Errorf("finalizing registration: %w", err)
 	}
-	err = updateConditionOrFail(r.client, hostname, clusterv1.Condition{
-		Type:     infrastructurev1beta1.RegistrationReady,
-		Status:   corev1.ConditionTrue,
-		Severity: clusterv1.ConditionSeverityInfo,
-	})
-	if err != nil {
-		return fmt.Errorf("updating RegistrationReady True condition: %w", err)
+
+	// We try to catch and recover errors here since this is not recoverable once the cli exits with an error.
+	//
+	// If this steps fail and `elemental-agent --register` is called again, it will try to register using a new identity,
+	// since the system is not installed yet and the previously registered identity lived in-memory.
+	//
+	// Therefore we must prevent the entire registration process from failing on recoverable errors (in this case a network issue).
+	for {
+		if err := updateConditionOrFail(r.client, hostname, clusterv1.Condition{
+			Type:     infrastructurev1beta1.RegistrationReady,
+			Status:   corev1.ConditionTrue,
+			Severity: clusterv1.ConditionSeverityInfo,
+		}); err != nil {
+			log.Error(err, "updating RegistrationReady True condition")
+			log.Debugf("Waiting '%s' on update condition error to recover", r.reconciliation)
+			time.Sleep(r.reconciliation)
+			continue
+		}
+		break
 	}
+
 	updateCondition(r.client, hostname, clusterv1.Condition{
 		Type:     infrastructurev1beta1.InstallationReady,
 		Status:   corev1.ConditionFalse,
