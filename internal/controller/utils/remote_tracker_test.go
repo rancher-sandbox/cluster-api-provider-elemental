@@ -50,7 +50,7 @@ var _ = Describe("Remote Tracker", Label("utils", "remote tracker"), Ordered, fu
 	Expect(clusterv1.AddToScheme(scheme.Scheme)).Should(Succeed())
 	logger := zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true))
 	fakeClient := fake.NewClientBuilder().WithObjects(cluster, node, taintedNode).Build()
-	tracker := remote.NewTestClusterCacheTracker(logger, fakeClient, scheme.Scheme, types.NamespacedName{Namespace: cluster.Namespace, Name: cluster.Name})
+	tracker := remote.NewTestClusterCacheTracker(logger, fakeClient, fakeClient, scheme.Scheme, types.NamespacedName{Namespace: cluster.Namespace, Name: cluster.Name})
 
 	remoteTracker := NewRemoteTracker(tracker)
 	It("should return error if cluster not found", func() {
