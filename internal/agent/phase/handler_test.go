@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/phase/phases"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	gomock "go.uber.org/mock/gomock"
@@ -55,10 +56,12 @@ var _ = Describe("handler", Label("cli", "phases", "handler"), func() {
 				register: registrationHandler,
 			}
 		})
-		It("should set hostname after registration", func() {
+		It("should set hostname and agent config after registration", func() {
 			wantHostname := "just a test hostname"
+			wantConfig := config.DefaultConfig()
+			wantConfig.Registration.URI = "just for testing"
 
-			registrationHandler.EXPECT().Register().Return(wantHostname, nil)
+			registrationHandler.EXPECT().Register().Return(wantHostname, wantConfig, nil)
 			mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(v1beta1.PhaseRegistering)}, wantHostname).Return(nil, nil)
 
 			post, err := phaseHandler.Handle(v1beta1.PhaseRegistering)
@@ -66,10 +69,11 @@ var _ = Describe("handler", Label("cli", "phases", "handler"), func() {
 			Expect(post).To(Equal(phases.PostAction{}))
 
 			Expect(phaseHandler.hostContext.Hostname).To(Equal(wantHostname), "Context Hostname should be updated with registered Hostname value")
+			Expect(phaseHandler.hostContext.AgentConfig).To(Equal(wantConfig))
 		})
 		It("should fail on registration error", func() {
 			wantErr := errors.New("test registration error")
-			registrationHandler.EXPECT().Register().Return("", wantErr)
+			registrationHandler.EXPECT().Register().Return("", config.Config{}, wantErr)
 
 			_, err := phaseHandler.Handle(v1beta1.PhaseRegistering)
 			Expect(err).To(HaveOccurred())
@@ -78,9 +82,10 @@ var _ = Describe("handler", Label("cli", "phases", "handler"), func() {
 		It("should pass agentConfig and hostname when finalizing registration", func() {
 			phaseHandler.hostContext.Hostname = "just a test hostname"
 			phaseHandler.hostContext.AgentConfigPath = "/just/a/test/path"
+			phaseHandler.hostContext.AgentConfig = config.DefaultConfig()
 
 			mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(v1beta1.PhaseFinalizingRegistration)}, phaseHandler.hostContext.Hostname).Return(nil, nil)
-			registrationHandler.EXPECT().FinalizeRegistration(phaseHandler.hostContext.Hostname, phaseHandler.hostContext.AgentConfigPath).Return(nil)
+			registrationHandler.EXPECT().FinalizeRegistration(phaseHandler.hostContext.Hostname, phaseHandler.hostContext.AgentConfigPath, phaseHandler.hostContext.AgentConfig).Return(nil)
 
 			post, err := phaseHandler.Handle(v1beta1.PhaseFinalizingRegistration)
 			Expect(err).ToNot(HaveOccurred())
@@ -89,10 +94,11 @@ var _ = Describe("handler", Label("cli", "phases", "handler"), func() {
 		It("should fail on finalizing registration error", func() {
 			phaseHandler.hostContext.Hostname = "just a test hostname"
 			phaseHandler.hostContext.AgentConfigPath = "/just/a/test/path"
+			phaseHandler.hostContext.AgentConfig = config.DefaultConfig()
 			wantErr := errors.New("test finalizing registration error")
 
 			mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(v1beta1.PhaseFinalizingRegistration)}, phaseHandler.hostContext.Hostname).Return(nil, nil)
-			registrationHandler.EXPECT().FinalizeRegistration(phaseHandler.hostContext.Hostname, phaseHandler.hostContext.AgentConfigPath).Return(wantErr)
+			registrationHandler.EXPECT().FinalizeRegistration(phaseHandler.hostContext.Hostname, phaseHandler.hostContext.AgentConfigPath, phaseHandler.hostContext.AgentConfig).Return(wantErr)
 
 			_, err := phaseHandler.Handle(v1beta1.PhaseFinalizingRegistration)
 			Expect(err).To(HaveOccurred())

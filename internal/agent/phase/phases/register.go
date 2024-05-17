@@ -19,8 +19,8 @@ import (
 )
 
 type RegistrationHandler interface {
-	Register() (string, error)
-	FinalizeRegistration(hostname string, configPath string) error
+	Register() (string, config.Config, error)
+	FinalizeRegistration(hostname string, agentConfigPath string, agentConfig config.Config) error
 }
 
 var _ RegistrationHandler = (*registrationHandler)(nil)
@@ -41,18 +41,18 @@ type registrationHandler struct {
 	reconciliation time.Duration
 }
 
-func (r *registrationHandler) Register() (string, error) {
+func (r *registrationHandler) Register() (string, config.Config, error) {
 	pubKey, err := r.id.MarshalPublic()
 	if err != nil {
-		return "", fmt.Errorf("marshalling host public key: %w", err)
+		return "", config.Config{}, fmt.Errorf("marshalling host public key: %w", err)
 	}
-	hostname := r.registrationLoop(pubKey)
+	hostname, config := r.registrationLoop(pubKey)
 	log.Infof("Successfully registered as '%s'", hostname)
-	return hostname, nil
+	return hostname, config, nil
 }
 
-func (r *registrationHandler) FinalizeRegistration(hostname string, configPath string) error {
-	err := r.finalize(hostname, configPath)
+func (r *registrationHandler) FinalizeRegistration(hostname string, configPath string, agentConfig config.Config) error {
+	err := r.finalize(hostname, configPath, agentConfig)
 	if err != nil {
 		updateCondition(r.client, hostname, clusterv1.Condition{
 			Type:     infrastructurev1beta1.RegistrationReady,
@@ -81,19 +81,12 @@ func (r *registrationHandler) FinalizeRegistration(hostname string, configPath s
 	return nil
 }
 
-func (r *registrationHandler) finalize(hostname string, configPath string) error {
+func (r *registrationHandler) finalize(hostname string, configPath string, agentConfig config.Config) error {
 	// Persist registered hostname
 	if err := r.osPlugin.InstallHostname(hostname); err != nil {
 		return fmt.Errorf("persisting hostname '%s': %w", hostname, err)
 	}
-	// Fetch remote Registration
-	log.Debug("Fetching remote registration")
-	registration, err := r.client.GetRegistration()
-	if err != nil {
-		return fmt.Errorf("getting remote Registration: %w", err)
-	}
 	// Persist agent config
-	agentConfig := config.FromAPI(*registration)
 	agentConfigBytes, err := yaml.Marshal(agentConfig)
 	if err != nil {
 		return fmt.Errorf("marshalling agent config: %w", err)
@@ -114,7 +107,7 @@ func (r *registrationHandler) finalize(hostname string, configPath string) error
 }
 
 // registrationLoop **indefinitely** tries to fetch the remote registration and register a new ElementalHost.
-func (r *registrationHandler) registrationLoop(pubKey []byte) string {
+func (r *registrationHandler) registrationLoop(pubKey []byte) (string, config.Config) {
 	hostnameFormatter := hostname.NewFormatter(r.osPlugin)
 	var newHostname string
 	var registration *api.RegistrationResponse
@@ -164,5 +157,6 @@ func (r *registrationHandler) registrationLoop(pubKey []byte) string {
 		}
 		break
 	}
-	return newHostname
+
+	return newHostname, config.FromAPI(*registration)
 }

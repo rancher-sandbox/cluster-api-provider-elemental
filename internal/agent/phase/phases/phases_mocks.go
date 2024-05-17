@@ -28,6 +28,7 @@ package phases
 import (
 	reflect "reflect"
 
+	config "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -55,26 +56,27 @@ func (m *MockRegistrationHandler) EXPECT() *MockRegistrationHandlerMockRecorder 
 }
 
 // FinalizeRegistration mocks base method.
-func (m *MockRegistrationHandler) FinalizeRegistration(arg0, arg1 string) error {
+func (m *MockRegistrationHandler) FinalizeRegistration(arg0, arg1 string, arg2 config.Config) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FinalizeRegistration", arg0, arg1)
+	ret := m.ctrl.Call(m, "FinalizeRegistration", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // FinalizeRegistration indicates an expected call of FinalizeRegistration.
-func (mr *MockRegistrationHandlerMockRecorder) FinalizeRegistration(arg0, arg1 any) *gomock.Call {
+func (mr *MockRegistrationHandlerMockRecorder) FinalizeRegistration(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalizeRegistration", reflect.TypeOf((*MockRegistrationHandler)(nil).FinalizeRegistration), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalizeRegistration", reflect.TypeOf((*MockRegistrationHandler)(nil).FinalizeRegistration), arg0, arg1, arg2)
 }
 
 // Register mocks base method.
-func (m *MockRegistrationHandler) Register() (string, error) {
+func (m *MockRegistrationHandler) Register() (string, config.Config, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Register")
 	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(config.Config)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // Register indicates an expected call of Register.

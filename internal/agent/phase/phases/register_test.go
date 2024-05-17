@@ -47,7 +47,7 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 			wantErr := errors.New("test unmarshalling pubkey error")
 			id.EXPECT().MarshalPublic().Return([]byte(""), wantErr)
 
-			_, err := handler.Register()
+			_, _, err := handler.Register()
 			Expect(err).To(HaveOccurred())
 			Expect(errors.Is(err, wantErr)).To(BeTrue())
 		})
@@ -70,9 +70,10 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 				mClient.EXPECT().CreateHost(wantRequest).Return(nil),
 			)
 
-			hostname, err := handler.Register()
+			hostname, agentConfig, err := handler.Register()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(hostname).To(Equal(HostResponseFixture.Name))
+			Expect(agentConfig).To(Equal(config.FromAPI(RegistrationFixture)))
 		})
 		It("should not create ElementalHost twice", func() {
 			wantPubKey := []byte("just a test pubkey")
@@ -86,9 +87,10 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 				// Nothing to do here anymore, registration loop should break.
 			)
 
-			hostname, err := handler.Register()
+			hostname, agentConfig, err := handler.Register()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(hostname).To(Equal(HostResponseFixture.Name))
+			Expect(agentConfig).To(Equal(config.FromAPI(RegistrationFixture)))
 		})
 	})
 
@@ -103,7 +105,6 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 		It("should install hostname and config files to finalize registration", func() {
 			gomock.InOrder(
 				plugin.EXPECT().InstallHostname(HostResponseFixture.Name).Return(nil),
-				mClient.EXPECT().GetRegistration().Return(&RegistrationFixture, nil),
 				plugin.EXPECT().InstallFile(wantAgentConfigBytes, wantConfigPath, uint32(0640), 0, 0).Return(nil),
 				id.EXPECT().Marshal().Return(wantMarshalledIdentity, nil),
 				plugin.EXPECT().InstallFile(wantMarshalledIdentity, wantIdentityFilePath, uint32(0640), 0, 0).Return(nil),
@@ -131,7 +132,7 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 				}),
 			)
 
-			err := handler.FinalizeRegistration(HostResponseFixture.Name, wantConfigPath)
+			err := handler.FinalizeRegistration(HostResponseFixture.Name, wantConfigPath, wantAgentConfig)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -153,7 +154,7 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 				}),
 			)
 
-			err := handler.FinalizeRegistration(HostResponseFixture.Name, wantConfigPath)
+			err := handler.FinalizeRegistration(HostResponseFixture.Name, wantConfigPath, config.FromAPI(RegistrationFixture))
 			Expect(err).To(HaveOccurred())
 			Expect(errors.Is(err, wantErr)).To(BeTrue())
 		})

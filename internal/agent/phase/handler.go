@@ -59,15 +59,16 @@ type hostPhaseHandler struct {
 func (h *hostPhaseHandler) Handle(phase infrastructurev1beta1.HostPhase) (phases.PostAction, error) {
 	switch phase {
 	case infrastructurev1beta1.PhaseRegistering:
-		hostname, err := h.register.Register()
+		hostname, agentConfig, err := h.register.Register()
 		if err != nil {
 			return phases.PostAction{}, fmt.Errorf("registering new host: %w", err)
 		}
 		h.hostContext.Hostname = hostname
+		h.hostContext.AgentConfig = agentConfig
 		h.setPhase(phase) // Note that we set the phase **after* its conclusion, because we do not have any remote ElementalHost to patch before.
 	case infrastructurev1beta1.PhaseFinalizingRegistration:
 		h.setPhase(phase)
-		if err := h.register.FinalizeRegistration(h.hostContext.Hostname, h.hostContext.AgentConfigPath); err != nil {
+		if err := h.register.FinalizeRegistration(h.hostContext.Hostname, h.hostContext.AgentConfigPath, h.hostContext.AgentConfig); err != nil {
 			return phases.PostAction{}, fmt.Errorf("finalizing registration: %w", err)
 		}
 	case infrastructurev1beta1.PhaseInstalling:
