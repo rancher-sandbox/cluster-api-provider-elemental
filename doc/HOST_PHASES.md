@@ -35,7 +35,7 @@ During this phase the `elemental-agent` will take the following steps:
 1. Fetch the remote `ElementalRegistration` and use it to install a new agent config file. (OSPlugin dependent)  
 **Note:** During this phase the current agent config path is used to determine the install location. This is important if you are using a custom path (ex. `elemental-agent --config /my/custom/config.yaml`) and you will need to change it later. Migration of this file is going to be needed and depending on how the `OSPlugin` installs files (for ex. in an immutable system), the migration strategy may differ.  
 
-1. Installs the generated private key used for the host registration. (OSPlugin dependent)
+1. Install the generated private key used for the host registration. (OSPlugin dependent)
 The private key is used by the `elemental-agent` for authentication and is going to be installed in the agent `workDir` (from the `ElementalRegistration` derived config) under the `private.key` filename.  
 
 ### Installing
