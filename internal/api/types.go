@@ -62,7 +62,8 @@ type HostPatchRequest struct {
 	Installed    *bool             `json:"installed,omitempty"`
 	Reset        *bool             `json:"reset,omitempty"`
 
-	Condition *clusterv1.Condition `json:"condition,omitempty"`
+	Condition *clusterv1.Condition             `json:"condition,omitempty"`
+	Phase     *infrastructurev1beta1.HostPhase `json:"phase,omitempty"`
 }
 
 func (h *HostPatchRequest) SetCondition(conditionType clusterv1.ConditionType, status corev1.ConditionStatus, severity clusterv1.ConditionSeverity, reason string, message string) {
@@ -101,6 +102,10 @@ func (h *HostPatchRequest) applyToElementalHost(elementalHost *infrastructurev1b
 	conditions.Set(elementalHost, h.Condition)
 	// Always update the Summary after conditions change
 	conditions.SetSummary(elementalHost)
+
+	if h.Phase != nil {
+		elementalHost.Status.Phase = *h.Phase
+	}
 }
 
 type HostResponse struct {

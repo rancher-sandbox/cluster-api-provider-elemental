@@ -28,8 +28,8 @@ var (
 
 type Client interface {
 	Init(vfs.FS, identity.Identity, config.Config) error
-	GetRegistration(token string) (*api.RegistrationResponse, error)
-	CreateHost(newHost api.HostCreateRequest, registrationToken string) error
+	GetRegistration() (*api.RegistrationResponse, error)
+	CreateHost(newHost api.HostCreateRequest) error
 	DeleteHost(hostname string) error
 	PatchHost(patch api.HostPatchRequest, hostname string) (*api.HostResponse, error)
 	GetBootstrap(hostname string) (*api.BootstrapResponse, error)
@@ -38,10 +38,11 @@ type Client interface {
 var _ Client = (*client)(nil)
 
 type client struct {
-	userAgent       string
-	registrationURI string
-	httpClient      http.Client
-	identity        identity.Identity
+	userAgent         string
+	registrationURI   string
+	registrationToken string
+	httpClient        http.Client
+	identity          identity.Identity
 }
 
 func NewClient(version string) Client {
@@ -80,6 +81,7 @@ func (c *client) Init(fs vfs.FS, identity identity.Identity, conf config.Config)
 	}
 
 	c.registrationURI = conf.Registration.URI
+	c.registrationToken = conf.Registration.Token
 	c.httpClient = http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: tlsConfig,
@@ -89,13 +91,13 @@ func (c *client) Init(fs vfs.FS, identity identity.Identity, conf config.Config)
 	return nil
 }
 
-func (c *client) GetRegistration(registrationToken string) (*api.RegistrationResponse, error) {
+func (c *client) GetRegistration() (*api.RegistrationResponse, error) {
 	log.Debugf("Getting registration: %s", c.registrationURI)
 	request, err := c.newRequest(http.MethodGet, c.registrationURI, nil)
 	if err != nil {
 		return nil, fmt.Errorf("preparing GET registration request: %w", err)
 	}
-	c.addRegistrationHeader(&request.Header, registrationToken)
+	c.addRegistrationHeader(&request.Header, c.registrationToken)
 	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("getting registration: %w", err)
@@ -118,7 +120,7 @@ func (c *client) GetRegistration(registrationToken string) (*api.RegistrationRes
 	return &registration, nil
 }
 
-func (c *client) CreateHost(newHost api.HostCreateRequest, registrationToken string) error {
+func (c *client) CreateHost(newHost api.HostCreateRequest) error {
 	log.Debugf("Creating new host: %s", newHost.Name)
 	requestBody, err := json.Marshal(newHost)
 	if err != nil {
@@ -131,7 +133,7 @@ func (c *client) CreateHost(newHost api.HostCreateRequest, registrationToken str
 		return fmt.Errorf("preparing POST host request: %w", err)
 	}
 	request.Header.Add("Content-Type", "application/json")
-	c.addRegistrationHeader(&request.Header, registrationToken)
+	c.addRegistrationHeader(&request.Header, c.registrationToken)
 	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return fmt.Errorf("creating new host: %w", err)

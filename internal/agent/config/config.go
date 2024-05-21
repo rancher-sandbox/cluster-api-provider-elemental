@@ -33,10 +33,7 @@ func FromInfrastructure(conf infrastructurev1beta1.Config) Config {
 
 // FromAPI can be used to convert the Elemental API Registration resource to an agent config file.
 // This function can be used by the client to update the local config to match the remote configuration.
-func FromAPI(conf *api.RegistrationResponse) Config {
-	if conf == nil {
-		return Config{}
-	}
+func FromAPI(conf api.RegistrationResponse) Config {
 	return Config{
 		Registration: conf.Config.Elemental.Registration,
 		Agent:        conf.Config.Elemental.Agent,

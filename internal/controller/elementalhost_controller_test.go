@@ -226,7 +226,6 @@ runcmd:
 	var err error
 	var fsCleanup func()
 	var eClient client.Client
-	var registrationToken string
 	BeforeAll(func() {
 		fs, fsCleanup, err = vfst.NewTestFS(map[string]interface{}{})
 		Expect(err).ToNot(HaveOccurred())
@@ -241,13 +240,14 @@ runcmd:
 				updatedRegistration)).Should(Succeed())
 			return len(updatedRegistration.Spec.Config.Elemental.Registration.Token) != 0
 		}).WithTimeout(time.Minute).Should(BeTrue(), "missing registration token")
-		registrationToken = updatedRegistration.Spec.Config.Elemental.Registration.Token
+		registrationToken := updatedRegistration.Spec.Config.Elemental.Registration.Token
 		Expect(k8sClient.Create(ctx, &bootstrapSecret)).Should(Succeed())
 		eClient = client.NewClient("v0.0.0-test")
 		conf := config.Config{
 			Registration: registration.Spec.Config.Elemental.Registration,
 			Agent:        registration.Spec.Config.Elemental.Agent,
 		}
+		conf.Registration.Token = registrationToken
 		idManager := identity.NewManager(fs, registration.Spec.Config.Elemental.Agent.WorkDir)
 		id, err := idManager.LoadSigningKeyOrCreateNew()
 		Expect(err).ToNot(HaveOccurred())
@@ -261,7 +261,7 @@ runcmd:
 	})
 	It("should create new host", func() {
 		// Create the new host
-		Expect(eClient.CreateHost(request, registrationToken)).Should(Succeed())
+		Expect(eClient.CreateHost(request)).Should(Succeed())
 		// Issue an empty patch to get a host response
 		response, err := eClient.PatchHost(api.HostPatchRequest{}, request.Name)
 		Expect(err).ToNot(HaveOccurred())

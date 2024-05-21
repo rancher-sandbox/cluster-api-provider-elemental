@@ -36,6 +36,19 @@ const (
 	LabelElementalHostReset        = "elementalhost.infrastructure.cluster.x-k8s.io/reset"
 )
 
+// HostPhases.
+type HostPhase string
+
+const (
+	PhaseRegistering            = HostPhase("Registering")
+	PhaseFinalizingRegistration = HostPhase("Finalizing Registration")
+	PhaseInstalling             = HostPhase("Installing")
+	PhaseBootstrapping          = HostPhase("Bootstrapping")
+	PhaseRunning                = HostPhase("Running")
+	PhaseTriggeringReset        = HostPhase("Triggering Reset")
+	PhaseResetting              = HostPhase("Resetting")
+)
+
 // Conditions.
 // See: https://github.com/kubernetes-sigs/cluster-api/blob/main/docs/proposals/20200506-conditions.md
 

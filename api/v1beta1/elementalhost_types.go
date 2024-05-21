@@ -39,6 +39,9 @@ type ElementalHostSpec struct {
 
 // ElementalHostStatus defines the observed state of ElementalHost.
 type ElementalHostStatus struct {
+	// Phase defines the current host phase
+	// +optional
+	Phase HostPhase `json:"phase,omitempty"`
 	// Conditions defines current service state of the ElementalHost.
 	// +optional
 	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
@@ -59,6 +62,7 @@ func (h *ElementalHost) SetConditions(conditions clusterv1.Conditions) {
 //+kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".metadata.labels['cluster\\.x-k8s\\.io/cluster-name']",description="Cluster"
 //+kubebuilder:printcolumn:name="Machine",type="string",JSONPath=".metadata.labels['elementalhost\\.infrastructure\\.cluster\\.x-k8s\\.io/machine-name']",description="Machine object associated to this ElementalHost (through ElementalMachine)"
 //+kubebuilder:printcolumn:name="ElementalMachine",type="string",JSONPath=".spec.machineRef.name",description="ElementalMachine object associated to this ElementalHost"
+//+kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="ElementalHost phase"
 //+kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status",description="ElementalHost ready condition"
 //+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="Time duration since creation of ElementalHost"
 
