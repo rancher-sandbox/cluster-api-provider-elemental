@@ -3,7 +3,7 @@
 The `ElementalHost.status.phase` describes the current phase the host is going through.  
 Host phases can be used to quickly determine what any `ElementalHost` is doing, for example if it is still installing, resetting, or just running normally.  
 
-All `ElementalHosts` are following the same phases, however the implementation for each phase heavily depends on the [OSPlugin](../cmd/agent/README.md#plugins) in use.  
+All `ElementalHosts` are following the same phases, however the implementation of each phase heavily depends on the [OSPlugin](../cmd/agent/README.md#plugins) in use.  
 Please refer to the plugin documentation to learn about specific details. For example the [Elemental plugin](../cmd/agent/PLUGIN_ELEMENTAL.md).  
 
 ## Phases
