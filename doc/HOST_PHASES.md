@@ -55,7 +55,7 @@ The `Bootstrapping` phase happens whenever an `ElementalHost` is associated to a
 This is part of the CAPI bootstrap process.  
 The `elemental-agent` evaluates the correct bootstrapping of an `ElementalHost` confirming the presence of the `/run/cluster-api/bootstrap-success.complete` [sentinel file](https://cluster-api.sigs.k8s.io/developer/providers/bootstrap#sentinel-file).  
 
-If the sentinel file is not found, the `elemental-agent` will invoke the `OSPlugin` apply the bootstrap config on the system.  
+If the sentinel file is not found, the `elemental-agent` will invoke the `OSPlugin` to apply the bootstrap config on the system.  
 If the application is successful, the `elemental-agent` will reboot the system to execute the bootstrap config at boot stage.  
 
 Note that the `OSPlugin` can also return an error during this step if it determines that bootstrap was already applied, for example after the reboot.  
