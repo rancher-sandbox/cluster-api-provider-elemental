@@ -93,7 +93,7 @@ This will add a `deletionTimestamp` to the remote resource, however a finalizer 
 
 After deleting the remote `ElementalHost`, the `elemental-agent` will fetch the remote `ElementalRegistration` and pass the schemaless `ElementalRegistration.spec.elemental.reset` field to the `OSPlugin` to perform reset.  
 
-If the `OSPlugin` reset the host successfully, the remote `ElementalHost` is updated one last time to highlight reset has been completed. This will allow the deletion of the `ElementalHost`.  
+If the `OSPlugin` resets the host successfully, the remote `ElementalHost` is updated one last time to highlight reset has been completed. This will allow the deletion of the `ElementalHost`.  
 
 It is expected to re-start the lifecycle of the host at this point if desired.  
 This means running `elemental-agent --register --install` to perform a new registration and a fresh installation of the system.  
