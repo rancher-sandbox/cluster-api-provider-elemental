@@ -9,7 +9,7 @@ Please refer to the plugin documentation to learn about specific details. For ex
 ## Phases
 
 Phases are normally executed in the documented order, but this might not always be the case.  
-For example a host can be reset just after installation, or some hosts will never use the `Bootstrapping` phase, if not associated to any CAPI Machine.  
+For example a host can be reset just after installation, or some hosts may never use the `Bootstrapping` phase, if not associated to any CAPI Machine.  
 
 Most importantly, during normal operation the `Triggering Reset` phase is prioritized, so that in case of any errors, the user has the possibility to execute a host reset, to fix issues, for example to recover from a failed bootstrap.  
 
