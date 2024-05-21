@@ -16,7 +16,7 @@ Most importantly, during normal operation the `Triggering Reset` phase is priori
 ### Registering
 
 The `Registering` phase is the first ever phase for any host.  
-During this phase the `elemental-agent` picks a new hostname (according to the `ElementalRegistration` configuratio), creates a new key pair for identification, and attempts to create a new `ElementalHost` on the management cluster using the [Elemental API](./ELEMENTAL_API_SETUP.md).  
+During this phase the `elemental-agent` picks a new hostname (according to the `ElementalRegistration` configuration), creates a new key pair for identification, and attempts to create a new `ElementalHost` on the management cluster using the [Elemental API](./ELEMENTAL_API_SETUP.md).  
 If an `ElementalHost` with the same name and public key already exists, the `elemental-agent` will consider the registration already done. This allows to attempt registration multiple times, **when not using random hostnames**.  
 
 Normally the `Registering` phase is very short living and transitory.  
