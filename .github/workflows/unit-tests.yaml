@@ -18,7 +18,3 @@ jobs:
         go-version-file: go.mod
     - name: Run tests
       run: make test
-    - name: Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.out
