@@ -6,7 +6,7 @@ kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
 - role: control-plane
-  image: kindest/node:v1.26.4
+  image: kindest/node:v1.26.6
   kubeadmConfigPatches:
   - |
     kind: InitConfiguration
@@ -130,7 +130,7 @@ spec:
 EOF
 
 # Wait for registration to be initialized
-kubectl wait --for=condition=ready elementalregistration my-registration
+kubectl wait --for=condition=ready elementalregistration my-registration --timeout=120s
 
 # Print the agent config
 cd "$(dirname "$0")"
