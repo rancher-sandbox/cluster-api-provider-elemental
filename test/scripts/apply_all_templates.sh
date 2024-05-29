@@ -100,7 +100,7 @@ rke2 > $MANIFEST_RKE2
 kubectl create namespace $MANIFEST_RKE2_NAMESPACE
 kubectl apply -f $MANIFEST_RKE2
 
-## rke2 clusterclass not supported upstream yet
+# rke2 clusterclass not supported upstream yet
 # printf "\n##### rke2-clusterclass #####\n"
 # MANIFEST_RKE2_CLUSTERCLASS="$MANIFESTS_DIR/rke2-clusterclass.yaml"
 # MANIFEST_RKE2_CLUSTERCLASS_NAMESPACE="rke2-clusterclass"
