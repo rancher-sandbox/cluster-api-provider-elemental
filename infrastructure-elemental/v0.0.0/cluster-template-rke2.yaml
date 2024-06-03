@@ -75,8 +75,7 @@ spec:
     kind: ElementalMachineTemplate
     name: ${CLUSTER_NAME}-control-plane
   nodeDrainTimeout: 2m
-  registrationMethod: "address"
-  registrationAddress: "${CONTROL_PLANE_ENDPOINT_HOST}"
+  registrationMethod: "control-plane-endpoint"
   rolloutStrategy:
     type: "RollingUpdate"
     rollingUpdate:
