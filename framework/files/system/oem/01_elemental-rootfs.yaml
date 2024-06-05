@@ -32,6 +32,7 @@ stages:
           /etc/conntrackd
           /etc/containerd
           /usr/libexec
+          /usr/local
           /home
           /opt
           /root

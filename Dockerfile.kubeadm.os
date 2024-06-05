@@ -1,4 +1,4 @@
-ARG ELEMENTAL_TOOLKIT=ghcr.io/rancher/elemental-toolkit/elemental-cli:v1.1.0
+ARG ELEMENTAL_TOOLKIT=ghcr.io/rancher/elemental-toolkit/elemental-cli:v2.1.0
 
 FROM registry.opensuse.org/opensuse/leap:15.5 as AGENT
 
