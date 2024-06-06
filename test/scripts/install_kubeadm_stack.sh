@@ -44,8 +44,8 @@ Documentation=https://kubernetes.io/docs/
 Wants=network-online.target
 After=network-online.target
 # Do not start in Elemental Recovery or Live mode
-ConditionPathExists=!/run/cos/live_mode
-ConditionPathExists=!/run/cos/recovery_mode
+ConditionPathExists=!/run/elemental/live_mode
+ConditionPathExists=!/run/elemental/recovery_mode
 
 [Service]
 ExecStart=$KUBEADM_DIR/kubelet
@@ -91,8 +91,8 @@ Description=containerd container runtime
 Documentation=https://containerd.io
 After=network.target local-fs.target
 # Do not start in Elemental Recovery or Live mode
-ConditionPathExists=!/run/cos/live_mode
-ConditionPathExists=!/run/cos/recovery_mode
+ConditionPathExists=!/run/elemental/live_mode
+ConditionPathExists=!/run/elemental/recovery_mode
 
 [Service]
 ExecStartPre=-/sbin/modprobe overlay
