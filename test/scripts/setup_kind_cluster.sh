@@ -136,4 +136,6 @@ kubectl wait --for=condition=ready elementalregistration my-registration --timeo
 cd "$(dirname "$0")"
 echo -e "Test Agent config:\n"
 ./print_agent_config.sh -n default -r my-registration
-echo -e "\nBuild a new image with: AGENT_CONFIG_FILE=iso/config/my-config.yaml make build-iso"
+echo -e "\nBuild a new image with:"\
+  "\n test/scripts/print_agent_config.sh -n default -r my-registration > iso/config/my-config.yaml"\
+  "\n AGENT_CONFIG_FILE=iso/config/my-config.yaml make build-iso"
