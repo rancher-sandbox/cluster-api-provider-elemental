@@ -10,7 +10,7 @@ IMG = ${IMG_NAME}:${IMG_TAG}
 # See: https://storage.googleapis.com/kubebuilder-tools
 ENVTEST_K8S_VERSION = 1.29.1
 # Install with: go install github.com/onsi/ginkgo/v2/ginkgo
-GINKGO_VER := v2.17.0
+GINKGO_VER := v2.17.1
 # Tool Versions
 KUSTOMIZE_VERSION ?= v5.3.0
 CONTROLLER_TOOLS_VERSION ?= v0.14.0
