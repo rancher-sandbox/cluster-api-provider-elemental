@@ -1,24 +1,21 @@
 name: "Elemental Rootfs Layout Settings"
 stages:
   initramfs:
-    - if: '[ ! -f "/run/cos/recovery_mode" ]'
+    - if: '[ ! -f "/run/elemental/recovery_mode" ]'
       name: "Persist /etc/machine-id"
       commands:
       - |
         # persist machine-id
-        if [ -s /usr/local/etc/machine-id ]; then
-          cat /usr/local/etc/machine-id > /etc/machine-id
+        if [ -s /run/elemental/persistent/etc/machine-id ]; then
+          cat /run/elemental/persistent/etc/machine-id > /etc/machine-id
         else
-          mkdir -p /usr/local/etc
-          cp /etc/machine-id /usr/local/etc
+          mkdir -p /run/elemental/persistent/etc
+          cp /etc/machine-id /run/elemental/persistent/etc
         fi
-    - name: "Create essential persistent paths"
-      directories:
-      - path: /usr/local/bin
   rootfs:
-    - if: '[ ! -f "/run/cos/recovery_mode" ]'
+    - if: '[ ! -f "/run/elemental/recovery_mode" ]'
       name: "Layout configuration"
-      environment_file: /run/cos/cos-layout.env
+      environment_file: /run/elemental/mount-layout.env
       environment:
         OVERLAY: "tmpfs:25%"
         RW_PATHS: "/var /etc /srv"
@@ -31,16 +28,17 @@ stages:
           /etc/cni
           /etc/conntrackd
           /etc/containerd
-          /usr/libexec
           /home
           /opt
           /root
+          /usr/libexec
+          /usr/local
           /var/log
           /var/lib
         PERSISTENT_STATE_BIND: "true"
-    - if: '[ -f "/run/cos/recovery_mode" ]'
+    - if: '[ -f "/run/elemental/recovery_mode" ]'
       # omit the persistent partition on recovery mode
       name: "Layout configuration for recovery"
-      environment_file: /run/cos/cos-layout.env
+      environment_file: /run/elemental/mount-layout.env
       environment:
         OVERLAY: "tmpfs:25%"
