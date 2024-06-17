@@ -511,45 +511,14 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 	logger := log.FromContext(ctx).
 		WithValues(ilog.KeyNamespace, elementalMachine.Namespace).
 		WithValues(ilog.KeyElementalMachine, elementalMachine.Name)
-	logger.Info("Finding a suitable ElementalHost to associate")
-	elementalHosts := &infrastructurev1beta1.ElementalHostList{}
-	var selector labels.Selector
-	var selectorErr error
-	// Use the label selector defined in the ElementalMachine, or select any ElementalHost available if no selector has been defined.
-	if elementalMachine.Spec.Selector != nil {
-		if selector, selectorErr = metav1.LabelSelectorAsSelector(elementalMachine.Spec.Selector); selectorErr != nil {
-			return ctrl.Result{}, fmt.Errorf("converting LabelSelector to Selector: %w", selectorErr)
-		}
-	} else {
-		selector = labels.NewSelector()
-	}
 
-	// Select hosts that are Installed (all components installed, host ready to be bootstrapped)
-	requirement, err := labels.NewRequirement(infrastructurev1beta1.LabelElementalHostInstalled, selection.Equals, []string{"true"})
+	// Find available host for association
+	elementalHostCandidate, err := r.findAvailableHost(ctx, *elementalMachine)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("adding host installed label requirement: %w", err)
+		return ctrl.Result{}, fmt.Errorf("finding available host for association: %w", err)
 	}
-	selector = selector.Add(*requirement)
-	// Select hosts that are not undergoing a Reset flow
-	requirement, err = labels.NewRequirement(infrastructurev1beta1.LabelElementalHostNeedsReset, selection.DoesNotExist, nil)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("adding host needs reset label requirement: %w", err)
-	}
-	selector = selector.Add(*requirement)
-	// Select hosts that have not been associated yet
-	requirement, err = labels.NewRequirement(infrastructurev1beta1.LabelElementalHostMachineName, selection.DoesNotExist, nil)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("adding host machine name label requirement: %w", err)
-	}
-	selector = selector.Add(*requirement)
-
-	// Query the available ElementalHosts within the same namespace as the ElementalMachine
-	if err := r.Client.List(ctx, elementalHosts, client.InNamespace(elementalMachine.Namespace), &client.ListOptions{LabelSelector: selector}); err != nil {
-		return ctrl.Result{}, fmt.Errorf("listing available ElementalHosts: %w", err)
-	}
-
-	// If there are no available, wait for new hosts to be installed
-	if len(elementalHosts.Items) == 0 {
+	// If none available, try again later
+	if elementalHostCandidate == nil {
 		logger.Info("No ElementalHosts available for association. Waiting for new hosts to be provisioned.")
 		conditions.Set(elementalMachine, &clusterv1.Condition{
 			Type:     infrastructurev1beta1.AssociationReady,
@@ -560,18 +529,14 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 		})
 		return ctrl.Result{RequeueAfter: r.RequeuePeriod}, nil
 	}
-
-	// Pick the first one available
-	elementalHostCandidate := elementalHosts.Items[0]
-
 	logger = logger.WithValues(ilog.KeyElementalHost, elementalHostCandidate.Name)
-	logger.Info("Associating ElementalMachine to ElementalHost")
+	logger.Info("Available host found")
 
-	// Create the patch helper.
-	patchHelper, err := patch.NewHelper(&elementalHostCandidate, r.Client)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("initializing patch helper: %w", err)
+	if err := r.linkElementalHostToElementalMachine(ctx, machine, *elementalMachine, elementalHostCandidate); err != nil {
+		return ctrl.Result{}, fmt.Errorf("linking ElementalHost to ElementalMachine: %w", err)
 	}
+
+	logger.Info("ElementalHost linked successfully")
 
 	// Link the ElementalMachine to ElementalHost
 	elementalMachine.Spec.HostRef = &corev1.ObjectReference{
@@ -580,6 +545,32 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 		Namespace:  elementalHostCandidate.Namespace,
 		Name:       elementalHostCandidate.Name,
 		UID:        elementalHostCandidate.UID,
+	}
+
+	conditions.Set(elementalMachine, &clusterv1.Condition{
+		Type:     infrastructurev1beta1.AssociationReady,
+		Status:   corev1.ConditionTrue,
+		Severity: clusterv1.ConditionSeverityInfo,
+	})
+
+	// We already know the host is installed (from label selection) and the bootstrap secret is ready.
+	// Therefore we can already set this condition.
+	conditions.Set(elementalMachine, &clusterv1.Condition{
+		Type:     infrastructurev1beta1.HostReady,
+		Status:   corev1.ConditionFalse,
+		Severity: infrastructurev1beta1.HostWaitingForBootstrapReasonSeverity,
+		Reason:   infrastructurev1beta1.HostWaitingForBootstrapReason,
+		Message:  fmt.Sprintf("Waiting for ElementalHost '%s' to be bootstrapped", elementalHostCandidate.Name),
+	})
+
+	return ctrl.Result{}, nil
+}
+
+func (r *ElementalMachineReconciler) linkElementalHostToElementalMachine(ctx context.Context, machine clusterv1.Machine, elementalMachine infrastructurev1beta1.ElementalMachine, elementalHostCandidate *infrastructurev1beta1.ElementalHost) error {
+	// Create the patch helper.
+	patchHelper, err := patch.NewHelper(elementalHostCandidate, r.Client)
+	if err != nil {
+		return fmt.Errorf("initializing patch helper: %w", err)
 	}
 
 	// Link the ElementalHost to ElementalMachine
@@ -598,8 +589,9 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 		Name:      *machine.Spec.Bootstrap.DataSecretName,
 	}
 
-	// Propagate the Machine name to ElementalHost
+	// Propagate the Machine and ElementalMachine names to ElementalHost
 	elementalHostCandidate.Labels[infrastructurev1beta1.LabelElementalHostMachineName] = machine.Name
+	elementalHostCandidate.Labels[infrastructurev1beta1.LabelElementalHostElementalMachineName] = elementalMachine.Name
 
 	// Propagate the Cluster name to ElementalHost
 	if name, ok := elementalMachine.Labels[clusterv1.ClusterNameLabel]; ok {
@@ -610,28 +602,125 @@ func (r *ElementalMachineReconciler) associateElementalHost(ctx context.Context,
 	// TODO: Fetch the addresses from ElementalHost to update the associated ElementalMachine
 
 	// Patch the associated ElementalHost
-	if err := patchHelper.Patch(ctx, &elementalHostCandidate); err != nil {
-		return ctrl.Result{}, fmt.Errorf("patching ElementalHost: %w", err)
+	if err := patchHelper.Patch(ctx, elementalHostCandidate); err != nil {
+		return fmt.Errorf("patching ElementalHost: %w", err)
+	}
+	return nil
+}
+
+func (r *ElementalMachineReconciler) findAvailableHost(ctx context.Context, elementalMachine infrastructurev1beta1.ElementalMachine) (*infrastructurev1beta1.ElementalHost, error) {
+	logger := log.FromContext(ctx).
+		WithValues(ilog.KeyNamespace, elementalMachine.Namespace).
+		WithValues(ilog.KeyElementalMachine, elementalMachine.Name)
+	logger.Info("Finding a suitable ElementalHost to associate")
+
+	// First lookup ElementalHosts which may have been already linked before (ElementalMachine <-- ElementalHost).
+	// This can happen if the association process stopped abruptly, before finalizing the ElementalMachine --> ElementalHost link.
+	alreadyAssociatedHost, err := r.lookUpAlreadyLinkedHost(ctx, elementalMachine)
+	if err != nil {
+		return nil, fmt.Errorf("looking up already associated hosts: %w", err)
+	}
+	if alreadyAssociatedHost != nil {
+		logger = logger.WithValues(ilog.KeyElementalHost, alreadyAssociatedHost.Name)
+		logger.Info("Finalizing association with already linked ElementalHost")
+		return alreadyAssociatedHost, nil
 	}
 
-	logger.Info("Association successful")
-	conditions.Set(elementalMachine, &clusterv1.Condition{
-		Type:     infrastructurev1beta1.AssociationReady,
-		Status:   corev1.ConditionTrue,
-		Severity: clusterv1.ConditionSeverityInfo,
-	})
+	// If no already associated ElementalHost is found, find a new one.
+	newHostCandidate, err := r.lookUpNewAvailableHost(ctx, elementalMachine)
+	if err != nil {
+		return nil, fmt.Errorf("looking up new available host: %w", err)
+	}
+	return newHostCandidate, nil
+}
 
-	// We already know the host is installed (from label selection) and the bootstrap secret is ready.
-	// Therefore we can already set this condition.
-	conditions.Set(elementalMachine, &clusterv1.Condition{
-		Type:     infrastructurev1beta1.HostReady,
-		Status:   corev1.ConditionFalse,
-		Severity: infrastructurev1beta1.HostWaitingForBootstrapReasonSeverity,
-		Reason:   infrastructurev1beta1.HostWaitingForBootstrapReason,
-		Message:  fmt.Sprintf("Waiting for ElementalHost '%s' to be bootstrapped", elementalHostCandidate.Name),
-	})
+func (r *ElementalMachineReconciler) lookUpNewAvailableHost(ctx context.Context, elementalMachine infrastructurev1beta1.ElementalMachine) (*infrastructurev1beta1.ElementalHost, error) {
+	logger := log.FromContext(ctx).
+		WithValues(ilog.KeyNamespace, elementalMachine.Namespace).
+		WithValues(ilog.KeyElementalMachine, elementalMachine.Name)
+	logger.Info("Looking up for a new ElementalHost to associate")
 
-	return ctrl.Result{}, nil
+	elementalHosts := &infrastructurev1beta1.ElementalHostList{}
+	var selector labels.Selector
+	var err error
+
+	// Use the label selector defined in the ElementalMachine, or select any ElementalHost available if no selector has been defined.
+	if elementalMachine.Spec.Selector != nil {
+		if selector, err = metav1.LabelSelectorAsSelector(elementalMachine.Spec.Selector); err != nil {
+			return nil, fmt.Errorf("converting LabelSelector to Selector: %w", err)
+		}
+	} else {
+		selector = labels.NewSelector()
+	}
+
+	// Select hosts that are Installed (all components installed, host ready to be bootstrapped)
+	requirement, err := labels.NewRequirement(infrastructurev1beta1.LabelElementalHostInstalled, selection.Equals, []string{"true"})
+	if err != nil {
+		return nil, fmt.Errorf("adding host installed label requirement: %w", err)
+	}
+	selector = selector.Add(*requirement)
+	// Select hosts that are not undergoing a Reset flow
+	requirement, err = labels.NewRequirement(infrastructurev1beta1.LabelElementalHostNeedsReset, selection.DoesNotExist, nil)
+	if err != nil {
+		return nil, fmt.Errorf("adding host needs reset label requirement: %w", err)
+	}
+	selector = selector.Add(*requirement)
+	// Select hosts that have not been associated yet
+	requirement, err = labels.NewRequirement(infrastructurev1beta1.LabelElementalHostMachineName, selection.DoesNotExist, nil)
+	if err != nil {
+		return nil, fmt.Errorf("adding host machine name label requirement: %w", err)
+	}
+	selector = selector.Add(*requirement)
+
+	// Query the available ElementalHosts within the same namespace as the ElementalMachine
+	if err := r.Client.List(ctx, elementalHosts, client.InNamespace(elementalMachine.Namespace), &client.ListOptions{LabelSelector: selector}); err != nil {
+		return nil, fmt.Errorf("listing available ElementalHosts: %w", err)
+	}
+
+	logger.WithCallDepth(ilog.DebugLevel).Info(fmt.Sprintf("Found %d available hosts", len(elementalHosts.Items)))
+
+	// Return the first one available, if any
+	for _, host := range elementalHosts.Items {
+		return &host, nil
+	}
+
+	// No hosts available for association
+	return nil, nil
+}
+
+func (r *ElementalMachineReconciler) lookUpAlreadyLinkedHost(ctx context.Context, elementalMachine infrastructurev1beta1.ElementalMachine) (*infrastructurev1beta1.ElementalHost, error) {
+	logger := log.FromContext(ctx).
+		WithValues(ilog.KeyNamespace, elementalMachine.Namespace).
+		WithValues(ilog.KeyElementalMachine, elementalMachine.Name)
+	logger.Info("Looking up for an already linked ElementalHost to finalize association")
+
+	elementalHosts := &infrastructurev1beta1.ElementalHostList{}
+	selector := labels.NewSelector()
+
+	requirement, err := labels.NewRequirement(infrastructurev1beta1.LabelElementalHostElementalMachineName, selection.Equals, []string{elementalMachine.Name})
+	if err != nil {
+		return nil, fmt.Errorf("adding elementalmachine name label requirement: %w", err)
+	}
+	selector = selector.Add(*requirement)
+	// Also select hosts that are not undergoing a Reset flow
+	requirement, err = labels.NewRequirement(infrastructurev1beta1.LabelElementalHostNeedsReset, selection.DoesNotExist, nil)
+	if err != nil {
+		return nil, fmt.Errorf("adding host needs reset label requirement: %w", err)
+	}
+	selector = selector.Add(*requirement)
+
+	if err := r.Client.List(ctx, elementalHosts, client.InNamespace(elementalMachine.Namespace), &client.ListOptions{LabelSelector: selector}); err != nil {
+		return nil, fmt.Errorf("listing previously linked ElementalHosts: %w", err)
+	}
+
+	logger.WithCallDepth(ilog.DebugLevel).Info(fmt.Sprintf("Found %d already linked hosts", len(elementalHosts.Items)))
+
+	// If there is an already asssociated host, return it to finalize association.
+	for _, host := range elementalHosts.Items {
+		return &host, nil
+	}
+
+	return nil, nil
 }
 
 func (r *ElementalMachineReconciler) reconcileDelete(ctx context.Context, elementalMachine *infrastructurev1beta1.ElementalMachine) (ctrl.Result, error) {
