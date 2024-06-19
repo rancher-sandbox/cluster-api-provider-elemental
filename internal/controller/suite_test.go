@@ -140,7 +140,7 @@ func setupAllWithManager(k8sManager manager.Manager) {
 		Client:        k8sManager.GetClient(),
 		Scheme:        k8sManager.GetScheme(),
 		Tracker:       remoteTrackerMock,
-		RequeuePeriod: time.Millisecond,
+		RequeuePeriod: time.Second,
 	}).SetupWithManager(ctx, k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

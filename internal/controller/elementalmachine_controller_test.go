@@ -347,6 +347,119 @@ var _ = Describe("ElementalMachine controller association with selector", Label(
 	})
 })
 
+var _ = Describe("ElementalMachine controller association with previously linked ElementalHost", Label("controller", "elemental-machine"), Ordered, func() {
+	ctx := context.Background()
+
+	// Unique namespace for test isolation
+	namespace := corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "elementalmachine-test-with-already-linked",
+		},
+	}
+
+	// CAPI Cluster & belonging Machine objects (Normally created by the Core CAPI provider)
+	cluster := clusterv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: namespace.Name,
+		},
+	}
+	machine := clusterv1.Machine{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: namespace.Name,
+		},
+		Spec: clusterv1.MachineSpec{
+			Bootstrap: clusterv1.Bootstrap{
+				DataSecretName: &testBootstrapSecretName,
+			},
+			ClusterName: "test",
+		},
+	}
+	// ElementalMachine owned by the CAPI Machine (ownership set after creation in BeforeAll())
+	elementalMachine := v1beta1.ElementalMachine{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: namespace.Name,
+			Labels:    map[string]string{"cluster.x-k8s.io/cluster-name": cluster.Name},
+		},
+		Spec: v1beta1.ElementalMachineSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"foo": "bar"},
+			},
+		},
+	}
+
+	// availableHost is free and could be selected for association, but should not in this test.
+	availableHost := v1beta1.ElementalHost{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-available",
+			Namespace: namespace.Name,
+			Labels: map[string]string{
+				v1beta1.LabelElementalHostInstalled: "true",
+			},
+		},
+	}
+
+	// alreadyLinkedHost is already linked to the ElementalMachine.
+	// It should be selected to finalize association.
+	alreadyLinkedHost := v1beta1.ElementalHost{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-already-linked",
+			Namespace: namespace.Name,
+			Labels: map[string]string{
+				v1beta1.LabelElementalHostElementalMachineName: elementalMachine.Name,
+			},
+		},
+	}
+
+	BeforeAll(func() {
+		// Create namespace
+		Expect(k8sClient.Create(ctx, &namespace)).Should(Succeed())
+
+		// Create CAPI Cluster and mark it as Infrastructure Ready
+		Expect(k8sClient.Create(ctx, &cluster)).Should(Succeed())
+		clusterStatusPatch := cluster
+		clusterStatusPatch.Status = clusterv1.ClusterStatus{
+			InfrastructureReady: true,
+		}
+		patchObject(ctx, k8sClient, &cluster, &clusterStatusPatch)
+
+		// Create CAPI Machine and owned ElementalMachine to be associated
+		Expect(k8sClient.Create(ctx, &machine)).Should(Succeed())
+		elementalMachine.ObjectMeta.OwnerReferences = []metav1.OwnerReference{{
+			APIVersion: "cluster.x-k8s.io/v1beta1",
+			Kind:       "Machine",
+			Name:       machine.Name,
+			UID:        machine.UID,
+		}}
+		Expect(k8sClient.Create(ctx, &elementalMachine)).Should(Succeed())
+		// Create a bunch of hosts
+		Expect(k8sClient.Create(ctx, &availableHost)).Should(Succeed())
+		Expect(k8sClient.Create(ctx, &alreadyLinkedHost)).Should(Succeed())
+	})
+	AfterAll(func() {
+		Expect(k8sClient.Delete(ctx, &namespace)).Should(Succeed())
+	})
+	It("should finalize association with already linked host", func() {
+		wantHostRef := corev1.ObjectReference{
+			APIVersion: v1beta1.GroupVersion.Identifier(),
+			Kind:       "ElementalHost",
+			Namespace:  alreadyLinkedHost.Namespace,
+			Name:       alreadyLinkedHost.Name,
+			UID:        alreadyLinkedHost.UID,
+		}
+		Eventually(func() *corev1.ObjectReference {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      elementalMachine.Name,
+				Namespace: elementalMachine.Namespace},
+				&elementalMachine)).Should(Succeed())
+			return elementalMachine.Spec.HostRef
+		}).WithTimeout(time.Minute).ShouldNot(BeNil(), "HostRef must be updated")
+		Expect(*elementalMachine.Spec.HostRef).Should(Equal(wantHostRef))
+	})
+})
+
 // This test sets up an "already provisioned environment" and breaks the association between ElementalMachine and ElementalHost.
 var _ = Describe("ElementalMachine controller association break", Label("controller", "elemental-machine"), Ordered, func() {
 	ctx := context.Background()
