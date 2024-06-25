@@ -88,7 +88,9 @@ RUN ARCH=$(uname -m); \
       sed \
       patch \
       iproute2 \
-      shim 
+      shim \
+      # glibc-gconv-modules-extra still missing from mtools required
+      glibc-gconv-modules-extra 
 
 # Install kubeadm stack dependencies
 RUN ARCH=$(uname -m); \
