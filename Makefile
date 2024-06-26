@@ -264,10 +264,13 @@ endif
 
 .PHONY: build-iso
 build-iso: build-os
-	$(CONTAINER_TOOL) run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ./iso:/iso \
-		--entrypoint /usr/bin/elemental docker.io/library/elemental-os:dev \
-		--config-dir . --debug build-iso -n elemental-dev \
-		--local -o /iso docker.io/library/elemental-os:dev
+	$(CONTAINER_TOOL) build \
+			--build-arg ELEMENTAL_OS_IMAGE=docker.io/library/elemental-os:dev \
+			-t docker.io/library/elemental-iso:dev \
+			-f Dockerfile.iso .
+	$(CONTAINER_TOOL) run -v ./iso:/iso \
+			--entrypoint cp docker.io/library/elemental-iso:dev \
+			-r /elemental-iso/. /iso
 
 .PHONY: build-os-kubeadm
 build-os-kubeadm: 
@@ -283,10 +286,13 @@ endif
 
 .PHONY: build-iso-kubeadm
 build-iso-kubeadm: build-os-kubeadm
-	$(CONTAINER_TOOL) run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ./iso:/iso \
-		--entrypoint /usr/bin/elemental docker.io/library/elemental-os:dev-kubeadm \
-		--config-dir . --debug build-iso -n elemental-dev-kubeadm \
-		--local -o /iso docker.io/library/elemental-os:dev-kubeadm
+	$(CONTAINER_TOOL) build \
+			--build-arg ELEMENTAL_OS_IMAGE=docker.io/library/elemental-os:dev-kubeadm \
+			-t docker.io/library/elemental-iso:dev-kubeadm \
+			-f Dockerfile.kubeadm.iso .
+	$(CONTAINER_TOOL) run -v ./iso:/iso \
+			--entrypoint cp docker.io/library/elemental-iso:dev-kubeadm \
+			-r /elemental-iso/. /iso
 
 .PHONY: update-test-capi-crds
 update-test-capi-crds: 

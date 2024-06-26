@@ -51,8 +51,6 @@ FROM registry.opensuse.org/opensuse/leap:15.5 as OS
 
 ARG AGENT_CONFIG_FILE=iso/config/example-config.yaml
 
-COPY iso/config/manifest.yaml manifest.yaml
-
 # install kernel, systemd, dracut, grub2 and other required tools
 RUN ARCH=$(uname -m); \
     if [[ $ARCH == "aarch64" ]]; then ARCH="arm64"; fi; \
@@ -117,12 +115,7 @@ RUN systemctl enable NetworkManager.service sshd
 RUN cp /usr/share/systemd/tmp.mount /etc/systemd/system
 
 # Generate initrd with required elemental services
-RUN elemental init -f && \
-    kernel=$(ls /boot/Image-* | head -n1) && \
-    if [ -e "$kernel" ]; then ln -sf "${kernel#/boot/}" /boot/vmlinuz; fi && \
-    rm -rf /var/log/update* && \
-    >/var/log/lastlog && \
-    rm -rf /boot/vmlinux*
+RUN elemental init --force elemental-rootfs,elemental-sysroot,grub-config,dracut-config,cloud-config-essentials,elemental-setup,boot-assessment
 
 # Update os-release file with some metadata
 RUN echo TIMESTAMP="`date +'%Y%m%d%H%M%S'`" >> /etc/os-release && \
