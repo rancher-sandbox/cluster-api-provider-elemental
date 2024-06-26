@@ -87,6 +87,9 @@ RUN ARCH=$(uname -m); \
       patch \
       iproute2 \
       shim \
+      btrfsprogs \
+      btrfsmaintenance \
+      snapper \
       # glibc-gconv-modules-extra still missing from mtools required
       glibc-gconv-modules-extra 
 
@@ -117,10 +120,6 @@ COPY --from=AGENT /workspace/dummy.so /usr/lib/elemental/plugins/dummy.so
 # Add framework files
 COPY framework/files/ /
 
-# Ensure permanent paths in the framework files mounted on read only base dirs are
-# present on the image file system
-RUN mkdir -p /usr/libexec
-
 # Add agent config
 COPY $AGENT_CONFIG_FILE /oem/elemental/agent/config.yaml
 
@@ -131,7 +130,7 @@ RUN systemctl enable NetworkManager.service sshd conntrackd containerd kubelet
 RUN echo "PermitRootLogin yes" > /etc/ssh/sshd_config.d/rootlogin.conf
 
 # Generate initrd with required elemental services
-RUN elemental init --force elemental-rootfs,elemental-sysroot,grub-config,dracut-config,cloud-config-essentials,elemental-setup,boot-assessment
+RUN elemental init --debug --force
 
 # Update os-release file with some metadata
 RUN echo TIMESTAMP="`date +'%Y%m%d%H%M%S'`" >> /etc/os-release && \
