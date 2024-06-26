@@ -51,8 +51,6 @@ FROM registry.opensuse.org/opensuse/tumbleweed:latest as OS
 
 ARG AGENT_CONFIG_FILE=iso/config/example-config.yaml
 
-COPY iso/config/manifest.yaml manifest.yaml
-
 # install kernel, systemd, dracut, grub2 and other required tools
 RUN ARCH=$(uname -m); \
     if [[ $ARCH == "aarch64" ]]; then ARCH="arm64"; fi; \
@@ -133,7 +131,7 @@ RUN systemctl enable NetworkManager.service sshd conntrackd containerd kubelet
 RUN echo "PermitRootLogin yes" > /etc/ssh/sshd_config.d/rootlogin.conf
 
 # Generate initrd with required elemental services
-RUN elemental --debug init --force
+RUN elemental init --force elemental-rootfs,elemental-sysroot,grub-config,dracut-config,cloud-config-essentials,elemental-setup,boot-assessment
 
 # Update os-release file with some metadata
 RUN echo TIMESTAMP="`date +'%Y%m%d%H%M%S'`" >> /etc/os-release && \
