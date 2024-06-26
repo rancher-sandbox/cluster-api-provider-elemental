@@ -129,6 +129,20 @@ RUN systemctl enable NetworkManager.service sshd conntrackd containerd kubelet
 # This is for automatic testing purposes, do not do this in production.
 RUN echo "PermitRootLogin yes" > /etc/ssh/sshd_config.d/rootlogin.conf
 
+# Make sure trusted certificates are properly generated
+RUN /usr/sbin/update-ca-certificates
+
+# Ensure /tmp is mounted as tmpfs by default
+RUN if [ -e /usr/share/systemd/tmp.mount ]; then \
+      cp /usr/share/systemd/tmp.mount /etc/systemd/system; \
+    fi
+
+# Save some space
+RUN zypper clean --all && \
+    rm -rf /var/log/update* && \
+    >/var/log/lastlog && \
+    rm -rf /boot/vmlinux*
+
 # Generate initrd with required elemental services
 RUN elemental init --debug --force
 
