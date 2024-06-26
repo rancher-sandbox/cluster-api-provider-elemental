@@ -107,6 +107,20 @@ COPY $AGENT_CONFIG_FILE /oem/elemental/agent/config.yaml
 # Enable essential services
 RUN systemctl enable NetworkManager.service sshd
 
+# Make sure trusted certificates are properly generated
+RUN /usr/sbin/update-ca-certificates
+
+# Ensure /tmp is mounted as tmpfs by default
+RUN if [ -e /usr/share/systemd/tmp.mount ]; then \
+      cp /usr/share/systemd/tmp.mount /etc/systemd/system; \
+    fi
+
+# Save some space
+RUN zypper clean --all && \
+    rm -rf /var/log/update* && \
+    >/var/log/lastlog && \
+    rm -rf /boot/vmlinux*
+
 # Enable /tmp to be on tmpfs
 RUN cp /usr/share/systemd/tmp.mount /etc/systemd/system
 
