@@ -126,6 +126,9 @@ COPY $AGENT_CONFIG_FILE /oem/elemental/agent/config.yaml
 # Enable essential services
 RUN systemctl enable NetworkManager.service sshd conntrackd containerd kubelet
 
+# This is for automatic testing purposes, do not do this in production.
+RUN echo "PermitRootLogin yes" > /etc/ssh/sshd_config.d/rootlogin.conf
+
 # Generate initrd with required elemental services
 RUN elemental init --debug --force
 
