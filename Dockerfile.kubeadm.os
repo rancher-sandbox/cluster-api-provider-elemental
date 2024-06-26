@@ -1,6 +1,6 @@
 ARG ELEMENTAL_TOOLKIT=ghcr.io/rancher/elemental-toolkit/elemental-cli:v2.1.0
 
-FROM registry.opensuse.org/opensuse/leap:15.5 as AGENT
+FROM registry.opensuse.org/opensuse/leap:15.6 as AGENT
 
 # Install Go 1.22
 RUN zypper install -y wget tar gzip gcc
@@ -47,7 +47,7 @@ RUN CGO_ENABLED=1 go build \
 FROM  ${ELEMENTAL_TOOLKIT} as TOOLKIT
 
 # OS base image of our choice
-FROM registry.opensuse.org/opensuse/tumbleweed:latest as OS
+FROM registry.opensuse.org/opensuse/leap:15.6 as OS
 
 ARG AGENT_CONFIG_FILE=iso/config/example-config.yaml
 
@@ -88,9 +88,7 @@ RUN ARCH=$(uname -m); \
       sed \
       patch \
       iproute2 \
-      shim \
-      # glibc-gconv-modules-extra still missing from mtools required
-      glibc-gconv-modules-extra 
+      shim
 
 # Install kubeadm stack dependencies
 RUN ARCH=$(uname -m); \
@@ -128,9 +126,6 @@ COPY $AGENT_CONFIG_FILE /oem/elemental/agent/config.yaml
 
 # Enable essential services
 RUN systemctl enable NetworkManager.service sshd conntrackd containerd kubelet
-
-# This is for automatic testing purposes, do not do this in production.
-RUN echo "PermitRootLogin yes" > /etc/ssh/sshd_config.d/rootlogin.conf
 
 # Generate initrd with required elemental services
 RUN elemental --debug init --force

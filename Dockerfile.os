@@ -1,6 +1,6 @@
 ARG ELEMENTAL_TOOLKIT=ghcr.io/rancher/elemental-toolkit/elemental-cli:v2.1.0
 
-FROM registry.opensuse.org/opensuse/leap:15.5 as AGENT
+FROM registry.opensuse.org/opensuse/leap:15.6 as AGENT
 
 # Install Go 1.22
 RUN zypper install -y wget tar gzip gcc
@@ -47,7 +47,7 @@ RUN CGO_ENABLED=1 go build \
 FROM  ${ELEMENTAL_TOOLKIT} as TOOLKIT
 
 # OS base image of our choice
-FROM registry.opensuse.org/opensuse/leap:15.5 as OS
+FROM registry.opensuse.org/opensuse/leap:15.6 as OS
 
 ARG AGENT_CONFIG_FILE=iso/config/example-config.yaml
 
