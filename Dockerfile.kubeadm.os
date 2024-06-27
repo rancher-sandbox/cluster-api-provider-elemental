@@ -144,7 +144,8 @@ RUN zypper clean --all && \
     rm -rf /boot/vmlinux*
 
 # Generate initrd with required elemental services
-RUN elemental init --debug --force
+# Features currently excluded: [cloud-config-defaults]
+RUN elemental init --debug --force boot-assessment,cloud-config-essentials,dracut-config,elemental-rootfs,elemental-setup,elemental-sysroot,grub-config,grub-default-bootargs
 
 # Update os-release file with some metadata
 RUN echo TIMESTAMP="`date +'%Y%m%d%H%M%S'`" >> /etc/os-release && \
