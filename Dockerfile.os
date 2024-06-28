@@ -124,6 +124,9 @@ RUN zypper clean --all && \
 # Enable /tmp to be on tmpfs
 RUN cp /usr/share/systemd/tmp.mount /etc/systemd/system
 
+# Required by k3s/rke2
+RUN mkdir -p /usr/libexec && touch /usr/libexec/.keep
+
 # Generate initrd with required elemental services
 # Features currently excluded: [cloud-config-defaults]
 RUN elemental init --debug --force boot-assessment,cloud-config-essentials,dracut-config,elemental-rootfs,elemental-setup,elemental-sysroot,grub-config,grub-default-bootargs
