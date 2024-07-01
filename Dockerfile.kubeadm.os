@@ -47,7 +47,7 @@ RUN CGO_ENABLED=1 go build \
 FROM  ${ELEMENTAL_TOOLKIT} as TOOLKIT
 
 # OS base image of our choice
-FROM registry.opensuse.org/opensuse/tumbleweed:latest as OS
+FROM registry.opensuse.org/opensuse/leap:15.5 as OS
 
 ARG AGENT_CONFIG_FILE=iso/config/example-config.yaml
 
@@ -89,9 +89,7 @@ RUN ARCH=$(uname -m); \
       shim \
       btrfsprogs \
       btrfsmaintenance \
-      snapper \
-      # glibc-gconv-modules-extra still missing from mtools required
-      glibc-gconv-modules-extra 
+      snapper
 
 # Install kubeadm stack dependencies
 RUN ARCH=$(uname -m); \
@@ -125,9 +123,6 @@ COPY $AGENT_CONFIG_FILE /oem/elemental/agent/config.yaml
 
 # Enable essential services
 RUN systemctl enable NetworkManager.service sshd conntrackd containerd kubelet
-
-# This is for automatic testing purposes, do not do this in production.
-RUN echo "PermitRootLogin yes" > /etc/ssh/sshd_config.d/rootlogin.conf
 
 # Make sure trusted certificates are properly generated
 RUN /usr/sbin/update-ca-certificates
