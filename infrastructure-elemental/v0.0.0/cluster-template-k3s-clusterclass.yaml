@@ -15,7 +15,7 @@ spec:
     serviceDomain: ${SERVICE_DOMAIN:="cluster.local"}
   topology:
     class: k3s
-    version: "v${KUBERNETES_VERSION:=1.28.5}+k3s1"
+    version: "v${KUBERNETES_VERSION:=1.30.2}+k3s1"
     controlPlane:
       metadata: {}
       replicas: ${CONTROL_PLANE_MACHINE_COUNT:=1}
@@ -30,4 +30,4 @@ spec:
     - name: controlPlaneEndpointPort
       value: ${CONTROL_PLANE_ENDPOINT_PORT:=6443}
     - name: k3sVersion
-      value: "v${KUBERNETES_VERSION:=1.28.5}+k3s1"
+      value: "v${KUBERNETES_VERSION:=1.30.2}+k3s1"

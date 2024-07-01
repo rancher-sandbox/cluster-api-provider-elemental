@@ -1,4 +1,4 @@
-apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KThreesConfigTemplate
 metadata:
   name: ${CLUSTER_NAME}-md-0
@@ -23,7 +23,7 @@ spec:
       cidrBlocks: ${POD_CIDR:=["10.244.0.0/16"]}
     serviceDomain: ${SERVICE_DOMAIN:="cluster.local"}
   controlPlaneRef:
-    apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta2
     kind: KThreesControlPlane
     name: ${CLUSTER_NAME}-control-plane
   infrastructureRef:
@@ -48,7 +48,7 @@ spec:
     spec:
       bootstrap:
         configRef:
-          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
           kind: KThreesConfigTemplate
           name: ${CLUSTER_NAME}-md-0
       clusterName: ${CLUSTER_NAME}
@@ -56,20 +56,21 @@ spec:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: ElementalMachineTemplate
         name: ${CLUSTER_NAME}-md-0
-      version: "v${KUBERNETES_VERSION:=1.28.5}+k3s1"
+      version: "v${KUBERNETES_VERSION:=1.30.2}+k3s1"
 ---
-apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
 kind: KThreesControlPlane
 metadata:
   name: ${CLUSTER_NAME}-control-plane
   namespace: ${NAMESPACE}
 spec:
-  infrastructureTemplate:
-    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-    kind: ElementalMachineTemplate
-    name: ${CLUSTER_NAME}-control-plane
+  machineTemplate:
+    infrastructureRef:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      kind: ElementalMachineTemplate
+      name: ${CLUSTER_NAME}-control-plane
   replicas: ${CONTROL_PLANE_MACHINE_COUNT:=1}
-  version: "v${KUBERNETES_VERSION:=1.28.5}+k3s1"
+  version: "v${KUBERNETES_VERSION:=1.30.2}+k3s1"
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: ElementalCluster
