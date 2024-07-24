@@ -68,21 +68,20 @@ k3s > $MANIFEST_K3S
 kubectl create namespace $MANIFEST_K3S_NAMESPACE
 kubectl apply -f $MANIFEST_K3S
 
-## k3s clusterclass not supported upstream yet
-# printf "\n##### k3s-clusterclass #####\n"
-# MANIFEST_K3S_CLUSTERCLASS="$MANIFESTS_DIR/k3s-clusterclass.yaml"
-# MANIFEST_K3S_CLUSTERCLASS_NAMESPACE="k3s-clusterclass"
-# kubectl delete namespace $MANIFEST_K3S_CLUSTERCLASS_NAMESPACE --ignore-not-found
-# clusterctl generate cluster --config $CONFIG_FILE \
-# --control-plane-machine-count=1 \
-# --worker-machine-count=1 \
-# --infrastructure elemental:$PROVIDER_VERSION \
-# --target-namespace $MANIFEST_K3S_CLUSTERCLASS_NAMESPACE \
-# --flavor k3s-clusterclass \
-# --v $LOG_LEVEL \
-# k3s-clusterclass > $MANIFEST_K3S_CLUSTERCLASS
-# kubectl create namespace $MANIFEST_K3S_CLUSTERCLASS_NAMESPACE
-# kubectl apply -f $MANIFEST_K3S_CLUSTERCLASS
+printf "\n##### k3s-clusterclass #####\n"
+MANIFEST_K3S_CLUSTERCLASS="$MANIFESTS_DIR/k3s-clusterclass.yaml"
+MANIFEST_K3S_CLUSTERCLASS_NAMESPACE="k3s-clusterclass"
+kubectl delete namespace $MANIFEST_K3S_CLUSTERCLASS_NAMESPACE --ignore-not-found
+clusterctl generate cluster --config $CONFIG_FILE \
+--control-plane-machine-count=1 \
+--worker-machine-count=1 \
+--infrastructure elemental:$PROVIDER_VERSION \
+--target-namespace $MANIFEST_K3S_CLUSTERCLASS_NAMESPACE \
+--flavor k3s-clusterclass \
+--v $LOG_LEVEL \
+k3s-clusterclass > $MANIFEST_K3S_CLUSTERCLASS
+kubectl create namespace $MANIFEST_K3S_CLUSTERCLASS_NAMESPACE
+kubectl apply -f $MANIFEST_K3S_CLUSTERCLASS
 
 # rke2
 printf "\n##### rke2 #####\n"
@@ -100,21 +99,20 @@ rke2 > $MANIFEST_RKE2
 kubectl create namespace $MANIFEST_RKE2_NAMESPACE
 kubectl apply -f $MANIFEST_RKE2
 
-# rke2 clusterclass not supported upstream yet
-# printf "\n##### rke2-clusterclass #####\n"
-# MANIFEST_RKE2_CLUSTERCLASS="$MANIFESTS_DIR/rke2-clusterclass.yaml"
-# MANIFEST_RKE2_CLUSTERCLASS_NAMESPACE="rke2-clusterclass"
-# kubectl delete namespace $MANIFEST_RKE2_CLUSTERCLASS_NAMESPACE --ignore-not-found
-# clusterctl generate cluster --config $CONFIG_FILE \
-# --control-plane-machine-count=1 \
-# --worker-machine-count=1 \
-# --infrastructure elemental:$PROVIDER_VERSION \
-# --target-namespace $MANIFEST_RKE2_CLUSTERCLASS_NAMESPACE \
-# --flavor rke2-clusterclass \
-# --v $LOG_LEVEL \
-# rke2-clusterclass > $MANIFEST_RKE2_CLUSTERCLASS
-# kubectl create namespace $MANIFEST_RKE2_CLUSTERCLASS_NAMESPACE
-# kubectl apply -f $MANIFEST_RKE2_CLUSTERCLASS
+printf "\n##### rke2-clusterclass #####\n"
+MANIFEST_RKE2_CLUSTERCLASS="$MANIFESTS_DIR/rke2-clusterclass.yaml"
+MANIFEST_RKE2_CLUSTERCLASS_NAMESPACE="rke2-clusterclass"
+kubectl delete namespace $MANIFEST_RKE2_CLUSTERCLASS_NAMESPACE --ignore-not-found
+clusterctl generate cluster --config $CONFIG_FILE \
+--control-plane-machine-count=1 \
+--worker-machine-count=1 \
+--infrastructure elemental:$PROVIDER_VERSION \
+--target-namespace $MANIFEST_RKE2_CLUSTERCLASS_NAMESPACE \
+--flavor rke2-clusterclass \
+--v $LOG_LEVEL \
+rke2-clusterclass > $MANIFEST_RKE2_CLUSTERCLASS
+kubectl create namespace $MANIFEST_RKE2_CLUSTERCLASS_NAMESPACE
+kubectl apply -f $MANIFEST_RKE2_CLUSTERCLASS
 
 # kubeadm
 printf "\n##### kubeadm #####\n"
