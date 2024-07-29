@@ -50,6 +50,11 @@ spec:
         openAPIV3Schema:
           type: string
           default: "eth0"
+    - name: k8sVersion
+      required: true
+      schema:
+        openAPIV3Schema:
+          type: string
   patches:
     - name: elementalClusterTemplate
       definitions:
@@ -76,7 +81,11 @@ spec:
               controlPlane: true
           jsonPatches:
             - op: add
-              path: "/spec/template/spec/kubeadmConfigSpec/files"
+              path: "/spec/template/spec/version"
+              valueFrom:
+                variable: k8sVersion
+            - op: add
+              path: "/spec/template/spec/files"
               valueFrom:
                 template: |
                   - content: |
