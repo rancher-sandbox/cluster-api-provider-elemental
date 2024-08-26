@@ -131,7 +131,6 @@
     CONTROL_PLANE_ENDPOINT_HOST=192.168.122.100 clusterctl generate cluster \
     --infrastructure elemental \
     --flavor k3s-single-node \
-    --kubernetes-version 1.28.5 \
     elemental-cluster-k3s > $HOME/elemental-cluster-k3s.yaml
     ```
 
@@ -183,7 +182,7 @@
 
 1. Wait for the `ElementalRegistration` to be ready:
 
-   This will ensure the provider created a new private key to sign Registration tokens and the trust CA Cert is also loaded.    
+   This will ensure the provider created a new private key to sign Registration tokens and the trust CA Cert is also loaded.  
 
    ```bash
    kubectl wait --for=condition=ready elementalregistration my-registration
