@@ -6,6 +6,10 @@ GIT_COMMIT_DATE?=$(shell git show -s --format='%cI' HEAD)
 IMG_NAME ?= ghcr.io/rancher-sandbox/cluster-api-provider-elemental
 IMG_TAG ?= latest
 IMG = ${IMG_NAME}:${IMG_TAG}
+# Image URL to use all building/pushing image targets
+IMG_NAME_AGENT ?= ghcr.io/rancher-sandbox/cluster-api-provider-elemental/agent
+IMG_TAG_AGENT ?= latest
+IMG_AGENT = ${IMG_NAME_AGENT}:${IMG_TAG_AGENT}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 # See: https://storage.googleapis.com/kubebuilder-tools
 ENVTEST_K8S_VERSION = 1.29.1
@@ -16,6 +20,10 @@ KUSTOMIZE_VERSION ?= v5.3.0
 CONTROLLER_TOOLS_VERSION ?= v0.14.0
 # CAPI version used for test CRDs
 CAPI_VERSION?=$(shell grep "sigs.k8s.io/cluster-api" go.mod | awk '{print $$NF}')
+# Dev Image building
+KUBEADM_READY_OS ?= ""
+ELEMENTAL_TOOLKIT_IMAGE ?= ghcr.io/rancher/elemental-toolkit/elemental-cli:nightly
+ELEMENTAL_AGENT_IMAGE ?= ghcr.io/rancher-sandbox/cluster-api-provider-elemental/agent:latest
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -136,16 +144,20 @@ run: manifests generate fmt vet ## Run a controller from your host.
 # (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
-docker-build: test ## Build docker image with the manager.
+docker-build: ## Build docker image with the manager.
 	$(CONTAINER_TOOL) build \
 		--build-arg "TAG=${GIT_TAG}" \
 		--build-arg "COMMIT=${GIT_COMMIT}" \
 		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
 		-t ${IMG} .
 
-.PHONY: docker-push
-docker-push: ## Push docker image with the manager.
-	$(CONTAINER_TOOL) push ${IMG}
+.PHONY: docker-build-agent
+docker-build-agent: ## Build docker image with the elemental-agent and plugins.
+	$(CONTAINER_TOOL) build \
+		--build-arg "TAG=${GIT_TAG}" \
+		--build-arg "COMMIT=${GIT_COMMIT}" \
+		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
+		-t ${IMG_AGENT} -f Dockerfile.agent .
 
 # PLATFORMS defines the target platforms for  the manager image be build to provide support to multiple
 # architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:
@@ -260,6 +272,7 @@ endif
 		--build-arg "COMMIT=${GIT_COMMIT}" \
 		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
 		--build-arg "AGENT_CONFIG_FILE=${AGENT_CONFIG_FILE}" \
+		--build-arg "KUBEADM_READY=${KUBEADM_READY_OS}" \
 		-t elemental-os:dev -f Dockerfile.os .
 
 .PHONY: build-iso
@@ -270,28 +283,6 @@ build-iso: build-os
 			-f Dockerfile.iso .
 	$(CONTAINER_TOOL) run -v ./iso:/iso \
 			--entrypoint cp docker.io/library/elemental-iso:dev \
-			-r /elemental-iso/. /iso
-
-.PHONY: build-os-kubeadm
-build-os-kubeadm: 
-ifeq ($(AGENT_CONFIG_FILE),"iso/config/example-config.yaml")
-	@echo "No AGENT_CONFIG_FILE set, using the default one at ${AGENT_CONFIG_FILE}"
-endif
-	$(CONTAINER_TOOL) build \
-		--build-arg "TAG=${GIT_TAG}" \
-		--build-arg "COMMIT=${GIT_COMMIT}" \
-		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
-		--build-arg "AGENT_CONFIG_FILE=${AGENT_CONFIG_FILE}" \
-		-t elemental-os:dev-kubeadm -f Dockerfile.kubeadm.os .
-
-.PHONY: build-iso-kubeadm
-build-iso-kubeadm: build-os-kubeadm
-	$(CONTAINER_TOOL) build \
-			--build-arg ELEMENTAL_OS_IMAGE=docker.io/library/elemental-os:dev-kubeadm \
-			-t docker.io/library/elemental-iso:dev-kubeadm \
-			-f Dockerfile.kubeadm.iso .
-	$(CONTAINER_TOOL) run -v ./iso:/iso \
-			--entrypoint cp docker.io/library/elemental-iso:dev-kubeadm \
 			-r /elemental-iso/. /iso
 
 .PHONY: update-test-capi-crds

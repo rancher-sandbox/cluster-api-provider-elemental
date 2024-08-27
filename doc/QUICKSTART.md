@@ -174,6 +174,8 @@
           install:
             debug: true
             device: "/dev/vda"
+            snapshotter:
+              type: btrfs
           reset:
             resetOem: true
             resetPersistent: true
@@ -226,7 +228,7 @@ You can configure a different device, editing the `ElementalRegistration` create
 A `kubeadm` ready image can be built with:
 
 ```bash
-AGENT_CONFIG_FILE=iso/config/my-config.yaml make build-iso-kubeadm
+AGENT_CONFIG_FILE=iso/config/my-config.yaml KUBEADM_READY_OS=true make build-iso
 ```
 
 Note that the Kubeadm cluster needs to be initialized with a CNI.
@@ -235,7 +237,7 @@ For example, using [calico](https://docs.tigera.io/calico/latest/getting-started
 ```bash
 export KUBECONFIG=/etc/kubernetes/super-admin.conf
 
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.2/manifests/tigera-operator.yaml
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.1/manifests/tigera-operator.yaml
 
 cat << EOF | kubectl apply -f -
 apiVersion: operator.tigera.io/v1
@@ -263,10 +265,9 @@ A Cluster manifest can be generated with:
 
 ```bash
 CONTROL_PLANE_ENDPOINT_HOST=192.168.122.50 \
-VIP_INTERFACE=enp1s0 \
 clusterctl generate cluster \
 --control-plane-machine-count=1 \
---worker-machine-count=2 \
+--worker-machine-count=1 \
 --infrastructure elemental \
 --flavor kubeadm \
 kubeadm > ~/kubeadm-cluster-manifest.yaml

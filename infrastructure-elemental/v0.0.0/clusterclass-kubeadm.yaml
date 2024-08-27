@@ -51,7 +51,7 @@ spec:
       schema:
         openAPIV3Schema:
           type: string
-          default: "eth0"
+          default: "enp1s0"
   patches:
     - name: elementalClusterTemplate
       definitions:
@@ -97,6 +97,10 @@ spec:
                             value: "true"
                           - name: port
                             value: {{ .controlPlaneEndpointPort }}
+                          - name: vip_nodename
+                            valueFrom:
+                              fieldRef:
+                                fieldPath: spec.nodeName
                           - name: vip_interface
                             value: {{ .vipInterface }}
                           - name: vip_cidr
@@ -125,8 +129,8 @@ spec:
                             value: {{ .controlPlaneEndpointHost }}
                           - name: prometheus_server
                             value: :2112
-                          image: ghcr.io/kube-vip/kube-vip:v0.7.2
-                          imagePullPolicy: Always
+                          image: ghcr.io/kube-vip/kube-vip:v0.8.2
+                          imagePullPolicy: IfNotPresent
                           name: kube-vip
                           resources: {}
                           securityContext:

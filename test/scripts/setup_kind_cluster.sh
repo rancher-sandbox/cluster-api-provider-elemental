@@ -124,6 +124,8 @@ spec:
       install:
         debug: true
         device: "/dev/vda"
+        snapshotter:
+          type: btrfs
       reset:
         resetOem: true
         resetPersistent: true

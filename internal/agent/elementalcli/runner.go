@@ -11,17 +11,22 @@ import (
 )
 
 type Install struct {
-	Firmware         string   `json:"firmware,omitempty" mapstructure:"firmware"`
-	Device           string   `json:"device,omitempty" mapstructure:"device"`
-	NoFormat         bool     `json:"noFormat,omitempty" mapstructure:"noFormat"`
-	ConfigURLs       []string `json:"configUrls,omitempty" mapstructure:"configUrls"`
-	ISO              string   `json:"iso,omitempty" mapstructure:"iso"`
-	SystemURI        string   `json:"systemUri,omitempty" mapstructure:"systemUri"`
-	Debug            bool     `json:"debug,omitempty" mapstructure:"debug"`
-	TTY              string   `json:"tty,omitempty" mapstructure:"tty"`
-	EjectCD          bool     `json:"ejectCd,omitempty" mapstructure:"ejectCd"`
-	DisableBootEntry bool     `json:"disableBootEntry,omitempty" mapstructure:"disableBootEntry"`
-	ConfigDir        string   `json:"configDir,omitempty" mapstructure:"configDir"`
+	Firmware         string      `json:"firmware,omitempty" mapstructure:"firmware"`
+	Device           string      `json:"device,omitempty" mapstructure:"device"`
+	NoFormat         bool        `json:"noFormat,omitempty" mapstructure:"noFormat"`
+	ConfigURLs       []string    `json:"configUrls,omitempty" mapstructure:"configUrls"`
+	ISO              string      `json:"iso,omitempty" mapstructure:"iso"`
+	SystemURI        string      `json:"systemUri,omitempty" mapstructure:"systemUri"`
+	Debug            bool        `json:"debug,omitempty" mapstructure:"debug"`
+	TTY              string      `json:"tty,omitempty" mapstructure:"tty"`
+	EjectCD          bool        `json:"ejectCd,omitempty" mapstructure:"ejectCd"`
+	DisableBootEntry bool        `json:"disableBootEntry,omitempty" mapstructure:"disableBootEntry"`
+	ConfigDir        string      `json:"configDir,omitempty" mapstructure:"configDir"`
+	Snapshotter      Snapshotter `json:"snapshotter,omitempty" mapstructure:"snapshotter"`
+}
+
+type Snapshotter struct {
+	Type string `json:"type,omitempty" mapstructure:"type"`
 }
 
 type Reset struct {
@@ -111,6 +116,7 @@ func mapToInstallEnv(conf Install) []string {
 	variables = append(variables, formatEV("ELEMENTAL_INSTALL_NO_FORMAT", strconv.FormatBool(conf.NoFormat)))
 	// See GetRunKeyEnvMap() in https://github.com/rancher/elemental-toolkit/blob/main/pkg/constants/constants.go
 	variables = append(variables, formatEV("ELEMENTAL_EJECT_CD", strconv.FormatBool(conf.EjectCD)))
+	variables = append(variables, formatEV("ELEMENTAL_SNAPSHOTTER_TYPE", conf.Snapshotter.Type))
 	return variables
 }
 
