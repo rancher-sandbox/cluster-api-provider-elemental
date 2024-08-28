@@ -56,7 +56,7 @@ spec:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: ElementalMachineTemplate
         name: ${CLUSTER_NAME}-md-0
-      version: ${KUBERNETES_VERSION:=1.29.3}
+      version: ${KUBERNETES_VERSION:=1.31.0}
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1beta1
 kind: KubeadmControlPlane
@@ -67,7 +67,7 @@ metadata:
   namespace: ${NAMESPACE}
 spec:
   replicas: ${CONTROL_PLANE_MACHINE_COUNT:=1}
-  version: ${KUBERNETES_VERSION:=1.29.3}
+  version: ${KUBERNETES_VERSION:=1.31.0}
   machineTemplate:
     infrastructureRef:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
@@ -112,8 +112,12 @@ spec:
               value: "true"
             - name: port
               value: "${CONTROL_PLANE_ENDPOINT_PORT:=6443}"
+            - name: vip_nodename
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
             - name: vip_interface
-              value: ${VIP_INTERFACE:=eth0}
+              value: ${VIP_INTERFACE:=enp1s0}
             - name: vip_cidr
               value: "32"
             - name: dns_mode
@@ -140,8 +144,8 @@ spec:
               value: ${CONTROL_PLANE_ENDPOINT_HOST}
             - name: prometheus_server
               value: :2112
-            image: ghcr.io/kube-vip/kube-vip:v0.7.2
-            imagePullPolicy: Always
+            image: ghcr.io/kube-vip/kube-vip:v0.8.2
+            imagePullPolicy: IfNotPresent
             name: kube-vip
             resources: {}
             securityContext:

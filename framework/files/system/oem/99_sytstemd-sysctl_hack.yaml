@@ -1,0 +1,6 @@
+# Workaround for https://github.com/rancher/elemental-toolkit/issues/2167
+name: "Workaround for systemd-sysctl missing boot"
+stages:
+  boot:
+  - commands:
+    - systemctl restart systemd-sysctl

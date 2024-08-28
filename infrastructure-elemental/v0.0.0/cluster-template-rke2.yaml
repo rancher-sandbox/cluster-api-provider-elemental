@@ -103,7 +103,7 @@ spec:
               fieldRef:
                 fieldPath: spec.nodeName
           - name: vip_interface
-            value: ${VIP_INTERFACE:=eth0}
+            value: ${VIP_INTERFACE:=enp1s0}
           - name: vip_cidr
             value: "32"
           - name: dns_mode
@@ -130,7 +130,7 @@ spec:
             value: ${CONTROL_PLANE_ENDPOINT_HOST}
           - name: prometheus_server
             value: :2112
-          image: ghcr.io/kube-vip/kube-vip:v0.8.0
+          image: ghcr.io/kube-vip/kube-vip:v0.8.2
           imagePullPolicy: IfNotPresent
           name: kube-vip
           resources: {}

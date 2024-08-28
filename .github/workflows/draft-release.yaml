@@ -42,6 +42,15 @@ jobs:
           context: .
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+      - name: Build and push Docker agent image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.agent
+          push: true
+          tags: 
+          - ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/agent:${{ github.ref_name }}
+          - ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/agent:latest
       # Update infrastructure manifest with new image tag
       - name: Update infrastructure manifest
         run: IMG_TAG=${{ github.ref_name }} make generate-infra-yaml

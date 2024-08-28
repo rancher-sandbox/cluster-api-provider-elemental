@@ -15,7 +15,7 @@ spec:
     serviceDomain: ${SERVICE_DOMAIN:="cluster.local"}
   topology:
     class: kubeadm
-    version: ${KUBERNETES_VERSION:="1.29.3"}
+    version: ${KUBERNETES_VERSION:="1.31.0"}
     controlPlane:
       metadata: {}
       replicas: ${CONTROL_PLANE_MACHINE_COUNT:=1}
@@ -30,4 +30,4 @@ spec:
     - name: controlPlaneEndpointPort
       value: ${CONTROL_PLANE_ENDPOINT_PORT:=6443}
     - name: vipInterface
-      value: ${VIP_INTERFACE:=eth0}
+      value: ${VIP_INTERFACE:=enp1s0}
