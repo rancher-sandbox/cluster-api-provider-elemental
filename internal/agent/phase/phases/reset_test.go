@@ -32,7 +32,7 @@ var _ = Describe("reset handler", Label("cli", "phases", "reset"), func() {
 		It("should trigger reset", func() {
 			gomock.InOrder(
 				plugin.EXPECT().TriggerReset().Return(nil),
-				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.ResetReady,
@@ -52,7 +52,7 @@ var _ = Describe("reset handler", Label("cli", "phases", "reset"), func() {
 
 			gomock.InOrder(
 				plugin.EXPECT().TriggerReset().Return(wantErr),
-				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.ResetReady,
@@ -75,7 +75,7 @@ var _ = Describe("reset handler", Label("cli", "phases", "reset"), func() {
 			Expect(err).ToNot(HaveOccurred())
 			gomock.InOrder(
 				mClient.EXPECT().DeleteHost(HostResponseFixture.Name).Return(errors.New("delete host test error")),
-				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.ResetReady,
@@ -89,7 +89,7 @@ var _ = Describe("reset handler", Label("cli", "phases", "reset"), func() {
 				mClient.EXPECT().DeleteHost(HostResponseFixture.Name).Return(nil),
 				// Make the first registration call fail. Expect to recover by calling again
 				mClient.EXPECT().GetRegistration().Return(nil, errors.New("get registration test error")),
-				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.ResetReady,
@@ -104,7 +104,7 @@ var _ = Describe("reset handler", Label("cli", "phases", "reset"), func() {
 				mClient.EXPECT().GetRegistration().Return(&RegistrationFixture, nil),
 				// Make the reset call fail. Expect to recover by getting registration and resetting again
 				plugin.EXPECT().Reset(wantReset).Return(errors.New("reset test error")),
-				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.ResetReady,
@@ -120,7 +120,7 @@ var _ = Describe("reset handler", Label("cli", "phases", "reset"), func() {
 				plugin.EXPECT().Reset(wantReset).Return(nil),
 				// Make the patch host fail. Expect to recover by patching it again
 				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, errors.New("patch host test fail")),
-				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.ResetReady,
@@ -132,7 +132,7 @@ var _ = Describe("reset handler", Label("cli", "phases", "reset"), func() {
 					))
 				}),
 				mClient.EXPECT().DeleteHost(HostResponseFixture.Name).Return(nil),
-				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(&HostResponseFixture, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(&HostResponseFixture, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					if patch.Reset == nil {
 						GinkgoT().Error("reset patch does not contain reset flag")
 					}

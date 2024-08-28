@@ -108,7 +108,7 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 				plugin.EXPECT().InstallFile(wantAgentConfigBytes, wantConfigPath, uint32(0640), 0, 0).Return(nil),
 				id.EXPECT().Marshal().Return(wantMarshalledIdentity, nil),
 				plugin.EXPECT().InstallFile(wantMarshalledIdentity, wantIdentityFilePath, uint32(0640), 0, 0).Return(nil),
-				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.RegistrationReady,
@@ -119,7 +119,7 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 						},
 					))
 				}),
-				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.InstallationReady,
@@ -140,7 +140,7 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 
 			gomock.InOrder(
 				plugin.EXPECT().InstallHostname(HostResponseFixture.Name).Return(wantErr),
-				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.RegistrationReady,
@@ -167,7 +167,7 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 				// First update condition error fails, expect a second attempt
 				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, errors.New("test update condition error")),
 				// Expect second attempt
-				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.RegistrationReady,
@@ -178,7 +178,7 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 						},
 					))
 				}),
-				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
 							Type:     infrastructurev1beta1.InstallationReady,

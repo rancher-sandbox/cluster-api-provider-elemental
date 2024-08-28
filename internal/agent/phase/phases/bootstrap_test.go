@@ -44,7 +44,7 @@ var _ = Describe("bootstrap handler", Label("cli", "phases", "bootstrap"), func(
 		gomock.InOrder(
 			mClient.EXPECT().GetBootstrap(HostResponseFixture.Name).Return(&bootstrapResponse, nil),
 			plugin.EXPECT().Bootstrap(bootstrapResponse.Format, []byte(bootstrapResponse.Config)).Return(nil),
-			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 				Expect(*patch.Condition).Should(Equal(
 					clusterv1.Condition{
 						Type:     infrastructurev1beta1.BootstrapReady,
@@ -66,7 +66,7 @@ var _ = Describe("bootstrap handler", Label("cli", "phases", "bootstrap"), func(
 		Expect(vfs.MkdirAll(fs, "/run/cluster-api", os.ModePerm)).Should(Succeed())
 		Expect(fs.WriteFile("/run/cluster-api/bootstrap-success.complete", []byte("anything"), os.ModePerm)).Should(Succeed())
 		gomock.InOrder(
-			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(&HostResponseFixture, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(&HostResponseFixture, nil).Do(func(patch api.HostPatchRequest, _ string) {
 				if patch.Bootstrapped == nil {
 					GinkgoT().Error("bootstrapped patch does not contain bootstrapped flag")
 				}
@@ -94,7 +94,7 @@ var _ = Describe("bootstrap handler", Label("cli", "phases", "bootstrap"), func(
 		gomock.InOrder(
 			mClient.EXPECT().GetBootstrap(HostResponseFixture.Name).Return(&bootstrapResponse, nil),
 			plugin.EXPECT().Bootstrap(bootstrapResponse.Format, []byte(bootstrapResponse.Config)).Return(wantErr),
-			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 				Expect(*patch.Condition).Should(Equal(
 					clusterv1.Condition{
 						Type:     infrastructurev1beta1.BootstrapReady,

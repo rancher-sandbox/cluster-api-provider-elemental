@@ -12,12 +12,17 @@ IMG_TAG_AGENT ?= latest
 IMG_AGENT = ${IMG_NAME_AGENT}:${IMG_TAG_AGENT}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 # See: https://storage.googleapis.com/kubebuilder-tools
-ENVTEST_K8S_VERSION = 1.29.1
+ENVTEST_K8S_VERSION = 1.30.0
 # Install with: go install github.com/onsi/ginkgo/v2/ginkgo
-GINKGO_VER := v2.17.1
+# See: https://github.com/onsi/ginkgo
+GINKGO_VER := v2.20.1
+# See: https://github.com/golangci/golangci-lint
+GOLANCI_LINT_VER := v1.60.3
 # Tool Versions
-KUSTOMIZE_VERSION ?= v5.3.0
-CONTROLLER_TOOLS_VERSION ?= v0.14.0
+# See: https://github.com/kubernetes-sigs/kustomize
+KUSTOMIZE_VERSION ?= v5.4.3
+# See: https://github.com/kubernetes-sigs/controller-tools
+CONTROLLER_TOOLS_VERSION ?= v0.16.1
 # CAPI version used for test CRDs
 CAPI_VERSION?=$(shell grep "sigs.k8s.io/cluster-api" go.mod | awk '{print $$NF}')
 # Dev Image building
@@ -243,22 +248,8 @@ generate-infra-yaml:kustomize manifests # Generate infrastructure-components.yam
 
 .PHONY: lint
 lint: ## See: https://golangci-lint.run/usage/linters/
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.2
-	golangci-lint run -v --timeout 10m \
-		-E bodyclose \
-		-E contextcheck \
-		-E errname \
-		-E errorlint \
-		-E exhaustive \
-		-E exportloopref \
-		-E godot \
-		-E gofmt \
-		-E goimports \
-		-E gosec \
-		-E makezero \
-		-E tagliatelle \
-		-E revive \
-		-E wrapcheck 
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANCI_LINT_VER)
+	golangci-lint run -v --timeout 10m
 
 AGENT_CONFIG_FILE?="iso/config/example-config.yaml"
 

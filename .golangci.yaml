@@ -1,0 +1,23 @@
+linters-settings:
+  revive:
+    rules:
+      - name: dot-imports
+        arguments:
+          - allowedPackages:
+            - "github.com/onsi/ginkgo/v2"
+            - "github.com/onsi/gomega"
+linters:
+  enable:
+    - bodyclose
+    - contextcheck
+    - errname
+    - errorlint
+    - exhaustive
+    - godot
+    - gofmt
+    - goimports
+    - gosec
+    - makezero
+    - tagliatelle
+    - revive
+    - wrapcheck 

@@ -18,6 +18,7 @@ import (
 
 var (
 	typeOfJSONRawMsg      = reflect.TypeOf(json.RawMessage{})
+	typeOfByteSlice       = reflect.TypeOf([]byte{})
 	typeOfTime            = reflect.TypeOf(time.Time{})
 	typeOfDate            = reflect.TypeOf(Date{})
 	typeOfTextUnmarshaler = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
@@ -731,6 +732,24 @@ func (r *Reflector) applySubSchemas(v reflect.Value, rc *ReflectContext, schema 
 }
 
 func (r *Reflector) isWellKnownType(t reflect.Type, schema *Schema) bool {
+	ts := refl.GoType(t)
+
+	switch ts {
+	case "github.com/google/uuid.UUID", "github.com/gofrs/uuid.UUID", "github.com/gofrs/uuid/v5::uuid.UUID":
+		schema.AddType(String)
+		schema.WithFormat("uuid")
+		schema.WithExamples("248df4b7-aa70-47b8-a036-33ac447e668d")
+
+		return true
+	}
+
+	if t == typeOfByteSlice {
+		schema.AddType(String)
+		schema.WithFormat("base64")
+
+		return true
+	}
+
 	if t == typeOfTime {
 		schema.AddType(String)
 		schema.WithFormat("date-time")

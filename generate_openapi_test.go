@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -9,6 +8,8 @@ import (
 	"github.com/swaggest/openapi-go/openapi3"
 	"github.com/swaggest/rest/gorillamux"
 )
+
+const outputFile = "elemental-openapi.yaml"
 
 func TestGenerateOpenAPI(t *testing.T) {
 	server := api.Server{}
@@ -28,12 +29,12 @@ func TestGenerateOpenAPI(t *testing.T) {
 	c := gorillamux.NewOpenAPICollector(refl)
 
 	if err := router.Walk(c.Walker); err != nil {
-		t.Fatalf(fmt.Errorf("Walking routes: %w", err).Error())
+		t.Fatalf("Could not walk API routes: %s", err.Error())
 	}
 
 	// Get the resulting schema.
 	if yaml, err := refl.Spec.MarshalYAML(); err != nil {
-		t.Fatalf(fmt.Errorf("marshalling YAML: %w", err).Error())
+		t.Fatalf("Could not marshal OpenAPI YAML: %s", err.Error())
 	} else {
 		writeOpenAPISpecFile(t, yaml)
 	}
@@ -42,15 +43,15 @@ func TestGenerateOpenAPI(t *testing.T) {
 func writeOpenAPISpecFile(t *testing.T, spec []byte) {
 	t.Helper()
 
-	f, err := os.Create("elemental-openapi.yaml")
+	f, err := os.Create(outputFile)
 	if err != nil {
-		t.Fatalf(fmt.Errorf("creating file: %w", err).Error())
+		t.Fatalf("Could not create file '%s': %s", outputFile, err.Error())
 	}
 
 	defer f.Close()
 
 	_, err = f.Write(spec)
 	if err != nil {
-		t.Fatalf(fmt.Errorf("Writing file: %w", err).Error())
+		t.Fatalf("Could not write file '%s': %s", outputFile, err.Error())
 	}
 }
