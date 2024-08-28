@@ -264,6 +264,8 @@ endif
 		--build-arg "COMMITDATE=${GIT_COMMIT_DATE}" \
 		--build-arg "AGENT_CONFIG_FILE=${AGENT_CONFIG_FILE}" \
 		--build-arg "KUBEADM_READY=${KUBEADM_READY_OS}" \
+		--build-arg "ELEMENTAL_TOOLKIT=${ELEMENTAL_TOOLKIT_IMAGE}" \
+		--build-arg "ELEMENTAL_AGENT=${ELEMENTAL_AGENT_IMAGE}" \
 		-t elemental-os:dev -f Dockerfile.os .
 
 .PHONY: build-iso

@@ -1,5 +1,5 @@
-ARG ELEMENTAL_TOOLKIT=ghcr.io/rancher/elemental-toolkit/elemental-cli:nightly
-ARG ELEMENTAL_AGENT=ghcr.io/rancher-sandbox/cluster-api-provider-elemental/agent:latest
+ARG ELEMENTAL_TOOLKIT
+ARG ELEMENTAL_AGENT
 
 FROM ${ELEMENTAL_AGENT} as AGENT
 FROM  ${ELEMENTAL_TOOLKIT} as TOOLKIT
