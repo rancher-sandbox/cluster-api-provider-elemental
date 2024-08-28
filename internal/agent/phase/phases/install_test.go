@@ -39,7 +39,7 @@ var _ = Describe("install handler", Label("cli", "phases", "install"), func() {
 		gomock.InOrder(
 			// Make the first get registration call fail. Expect to recover by calling again
 			mClient.EXPECT().GetRegistration().Return(nil, errors.New("get registration test error")),
-			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 				Expect(*patch.Condition).Should(Equal(
 					clusterv1.Condition{
 						Type:     infrastructurev1beta1.InstallationReady,
@@ -53,7 +53,7 @@ var _ = Describe("install handler", Label("cli", "phases", "install"), func() {
 			mClient.EXPECT().GetRegistration().Return(&RegistrationFixture, nil),
 			// Make the cloud init apply fail. Expect to recover by getting registration and applying cloud init again
 			plugin.EXPECT().InstallCloudInit(wantCloudInit).Return(errors.New("cloud init test failed")),
-			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 				Expect(*patch.Condition).Should(Equal(
 					clusterv1.Condition{
 						Type:     infrastructurev1beta1.InstallationReady,
@@ -68,7 +68,7 @@ var _ = Describe("install handler", Label("cli", "phases", "install"), func() {
 			plugin.EXPECT().InstallCloudInit(wantCloudInit).Return(nil),
 			// Make the install fail. Expect to recover by getting registration and installing again
 			plugin.EXPECT().Install(wantInstall).Return(errors.New("install test fail")),
-			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 				Expect(*patch.Condition).Should(Equal(
 					clusterv1.Condition{
 						Type:     infrastructurev1beta1.InstallationReady,
@@ -83,7 +83,7 @@ var _ = Describe("install handler", Label("cli", "phases", "install"), func() {
 			plugin.EXPECT().Install(wantInstall).Return(nil),
 			// Make the patch host fail. Expect to recover by patching it again
 			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, errors.New("patch host test fail")),
-			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 				Expect(*patch.Condition).Should(Equal(
 					clusterv1.Condition{
 						Type:     infrastructurev1beta1.InstallationReady,
@@ -94,7 +94,7 @@ var _ = Describe("install handler", Label("cli", "phases", "install"), func() {
 					},
 				))
 			}),
-			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(&HostResponseFixture, nil).Do(func(patch api.HostPatchRequest, hostName string) {
+			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(&HostResponseFixture, nil).Do(func(patch api.HostPatchRequest, _ string) {
 				if patch.Installed == nil {
 					GinkgoT().Error("installation patch does not contain installed flag")
 				}

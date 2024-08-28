@@ -64,7 +64,7 @@ func newCommand(fs vfs.FS, pluginLoader osplugin.Loader, client client.Client, p
 		Use:   "elemental-agent",
 		Short: "Elemental Agent command",
 		Long:  "elemental-agent registers a node with the elemental-operator via a config file",
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			// Display version
 			if versionFlag {
 				log.Infof("Agent version %s, commit %s, commit date %s", version.Version, version.Commit, version.CommitDate)
