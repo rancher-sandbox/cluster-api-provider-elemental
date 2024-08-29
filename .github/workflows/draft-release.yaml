@@ -57,3 +57,5 @@ jobs:
       # Create release
       - name: Create release
         run: gh release create ${{ github.ref_name }} --draft --generate-notes ./bin/elemental_agent_linux_* ./bin/*.so ./infrastructure-elemental/v0.0.0/*.yaml
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
