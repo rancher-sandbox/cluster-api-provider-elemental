@@ -7,10 +7,11 @@
    The setup assumes `192.168.122.10` will be used for the CAPI management cluster (and to expose the Elemental API).  
    `192.168.122.100` will be used by the host and used as `CONTROL_PLANE_ENDPOINT_HOST` of the downstream k3s cluster.  
 
+   Note that CAPI requires bi-directional communication between the **management** cluster and any provisioned downstream control plane endpoint.  
+   For simplicity and demo purposes, it is recommended to run the **management** and all Elemental hosts within the same network.  
+
 1. On the **management** machine, [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) is used to bootstrap a CAPI management cluster.  
    The ElementalAPI will be exposed using a `NodePort` on `30009`. This port needs to be free and not blocked by any firewall.  
-
-1. On the **host** machine, it is recommended to disable and stop the firewall to not interfere with the k3s deployment.  
 
 ## Preparation
 
@@ -36,14 +37,6 @@
     # Reboot to please docker
     reboot
     ```
-
-1. On the **host** machine, no dependencies are needed since they will be included by `k3s`.  
-   The firewall however should be disabled.  
-
-   ```bash
-   systemctl disable firewalld
-   systemctl stop firewalld
-   ```
 
 ## Management Cluster configuration
 
