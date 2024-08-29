@@ -6,7 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/context"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
@@ -40,15 +40,15 @@ var _ = Describe("reset handler", Label("cli", "phases", "reset"), func() {
 	When("triggering reset", func() {
 		It("should trigger reset", func() {
 			gomock.InOrder(
-				mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1beta1.PhaseTriggeringReset)}, HostResponseFixture.Name),
+				mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1.PhaseTriggeringReset)}, HostResponseFixture.Name),
 				plugin.EXPECT().TriggerReset().Return(nil),
 				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
-							Type:     infrastructurev1beta1.ResetReady,
+							Type:     infrastructurev1.ResetReady,
 							Status:   corev1.ConditionFalse,
 							Severity: clusterv1.ConditionSeverityInfo,
-							Reason:   infrastructurev1beta1.WaitingForResetReason,
+							Reason:   infrastructurev1.WaitingForResetReason,
 							Message:  "Reset was triggered successfully. Waiting for host to reset.",
 						},
 					))
@@ -61,15 +61,15 @@ var _ = Describe("reset handler", Label("cli", "phases", "reset"), func() {
 			wantErr := errors.New("test trigger reset error")
 
 			gomock.InOrder(
-				mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1beta1.PhaseTriggeringReset)}, HostResponseFixture.Name),
+				mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1.PhaseTriggeringReset)}, HostResponseFixture.Name),
 				plugin.EXPECT().TriggerReset().Return(wantErr),
 				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
-							Type:     infrastructurev1beta1.ResetReady,
+							Type:     infrastructurev1.ResetReady,
 							Status:   corev1.ConditionFalse,
 							Severity: clusterv1.ConditionSeverityError,
-							Reason:   infrastructurev1beta1.ResetFailedReason,
+							Reason:   infrastructurev1.ResetFailedReason,
 							Message:  "triggering reset: " + wantErr.Error(),
 						},
 					))
@@ -85,15 +85,15 @@ var _ = Describe("reset handler", Label("cli", "phases", "reset"), func() {
 			wantReset, err := json.Marshal(RegistrationFixture.Config.Elemental.Reset)
 			Expect(err).ToNot(HaveOccurred())
 			gomock.InOrder(
-				mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1beta1.PhaseResetting)}, HostResponseFixture.Name),
+				mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1.PhaseResetting)}, HostResponseFixture.Name),
 				mClient.EXPECT().DeleteHost(HostResponseFixture.Name).Return(errors.New("delete host test error")),
 				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
-							Type:     infrastructurev1beta1.ResetReady,
+							Type:     infrastructurev1.ResetReady,
 							Status:   corev1.ConditionFalse,
 							Severity: clusterv1.ConditionSeverityError,
-							Reason:   infrastructurev1beta1.ResetFailedReason,
+							Reason:   infrastructurev1.ResetFailedReason,
 							Message:  "marking host for deletion: delete host test error",
 						},
 					))
@@ -104,10 +104,10 @@ var _ = Describe("reset handler", Label("cli", "phases", "reset"), func() {
 				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
-							Type:     infrastructurev1beta1.ResetReady,
+							Type:     infrastructurev1.ResetReady,
 							Status:   corev1.ConditionFalse,
 							Severity: clusterv1.ConditionSeverityError,
-							Reason:   infrastructurev1beta1.ResetFailedReason,
+							Reason:   infrastructurev1.ResetFailedReason,
 							Message:  "getting remote Registration: get registration test error",
 						},
 					))
@@ -119,10 +119,10 @@ var _ = Describe("reset handler", Label("cli", "phases", "reset"), func() {
 				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
-							Type:     infrastructurev1beta1.ResetReady,
+							Type:     infrastructurev1.ResetReady,
 							Status:   corev1.ConditionFalse,
 							Severity: clusterv1.ConditionSeverityError,
-							Reason:   infrastructurev1beta1.ResetFailedReason,
+							Reason:   infrastructurev1.ResetFailedReason,
 							Message:  "resetting host: reset test error",
 						},
 					))
@@ -135,10 +135,10 @@ var _ = Describe("reset handler", Label("cli", "phases", "reset"), func() {
 				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
-							Type:     infrastructurev1beta1.ResetReady,
+							Type:     infrastructurev1.ResetReady,
 							Status:   corev1.ConditionFalse,
 							Severity: clusterv1.ConditionSeverityError,
-							Reason:   infrastructurev1beta1.ResetFailedReason,
+							Reason:   infrastructurev1.ResetFailedReason,
 							Message:  "patching host with reset successful: patch host test fail",
 						},
 					))
@@ -153,7 +153,7 @@ var _ = Describe("reset handler", Label("cli", "phases", "reset"), func() {
 					}
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
-							Type:     infrastructurev1beta1.ResetReady,
+							Type:     infrastructurev1.ResetReady,
 							Status:   corev1.ConditionTrue,
 							Severity: clusterv1.ConditionSeverityInfo,
 							Reason:   "",

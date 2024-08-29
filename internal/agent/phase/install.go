@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/context"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
@@ -34,7 +34,7 @@ type installHandler struct {
 }
 
 func (i *installHandler) Install() {
-	setPhase(i.agentContext.Client, i.agentContext.Hostname, infrastructurev1beta1.PhaseInstalling)
+	setPhase(i.agentContext.Client, i.agentContext.Hostname, infrastructurev1.PhaseInstalling)
 	i.installLoop()
 }
 
@@ -43,14 +43,14 @@ func (i *installHandler) installLoop() {
 	cloudConfigAlreadyApplied := false
 	alreadyInstalled := false
 	var installationError error
-	installationErrorReason := infrastructurev1beta1.InstallationFailedReason
+	installationErrorReason := infrastructurev1.InstallationFailedReason
 	for {
 		if installationError != nil {
 			// Log error
 			log.Error(installationError, "installing host")
 			// Attempt to report failed condition on management server
 			updateCondition(i.agentContext.Client, i.agentContext.Hostname, clusterv1.Condition{
-				Type:     infrastructurev1beta1.InstallationReady,
+				Type:     infrastructurev1.InstallationReady,
 				Status:   corev1.ConditionFalse,
 				Severity: clusterv1.ConditionSeverityError,
 				Reason:   installationErrorReason,
@@ -58,7 +58,7 @@ func (i *installHandler) installLoop() {
 			})
 			// Clear error for next attempt
 			installationError = nil
-			installationErrorReason = infrastructurev1beta1.InstallationFailedReason
+			installationErrorReason = infrastructurev1.InstallationFailedReason
 			// Wait for recovery (end user may fix the remote installation instructions meanwhile)
 			log.Debugf("Waiting '%s' on installation error for installation instructions to mutate", i.agentContext.Config.Agent.Reconciliation)
 			time.Sleep(i.agentContext.Config.Agent.Reconciliation)
@@ -79,12 +79,12 @@ func (i *installHandler) installLoop() {
 			cloudConfigBytes, err := json.Marshal(registration.Config.CloudConfig)
 			if err != nil {
 				installationError = fmt.Errorf("marshalling cloud config: %w", err)
-				installationErrorReason = infrastructurev1beta1.CloudConfigInstallationFailedReason
+				installationErrorReason = infrastructurev1.CloudConfigInstallationFailedReason
 				continue
 			}
 			if err := i.agentContext.Plugin.InstallCloudInit(cloudConfigBytes); err != nil {
 				installationError = fmt.Errorf("installing cloud config: %w", err)
-				installationErrorReason = infrastructurev1beta1.CloudConfigInstallationFailedReason
+				installationErrorReason = infrastructurev1.CloudConfigInstallationFailedReason
 				continue
 			}
 			cloudConfigAlreadyApplied = true
@@ -104,7 +104,7 @@ func (i *installHandler) installLoop() {
 		}
 		// Report installation success
 		patchRequest := api.HostPatchRequest{Installed: ptr.To(true)}
-		patchRequest.SetCondition(infrastructurev1beta1.InstallationReady,
+		patchRequest.SetCondition(infrastructurev1.InstallationReady,
 			corev1.ConditionTrue,
 			clusterv1.ConditionSeverityInfo,
 			"", "")

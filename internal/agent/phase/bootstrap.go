@@ -12,7 +12,7 @@ import (
 	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
-	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 )
 
 const (
@@ -20,7 +20,7 @@ const (
 )
 
 type BootstrapHandler interface {
-	Bootstrap() (infrastructurev1beta1.PostAction, error)
+	Bootstrap() (infrastructurev1.PostAction, error)
 }
 
 var _ BootstrapHandler = (*bootstrapHandler)(nil)
@@ -53,32 +53,32 @@ type bootstrapHandler struct {
 // If reboot happens and `/run/cluster-api/bootstrap-success.complete` is not found on the already-bootstrapped system,
 // the plugin will be invoked again to re-apply the bootstrap config. It's up to the plugin implementation to recover
 // from this state if possible, or to just return an error to highlight manual intervention is needed (and possibly a machine reset).
-func (b *bootstrapHandler) Bootstrap() (infrastructurev1beta1.PostAction, error) {
-	setPhase(b.agentContext.Client, b.agentContext.Hostname, infrastructurev1beta1.PhaseBootstrapping)
+func (b *bootstrapHandler) Bootstrap() (infrastructurev1.PostAction, error) {
+	setPhase(b.agentContext.Client, b.agentContext.Hostname, infrastructurev1.PhaseBootstrapping)
 	post, err := b.bootstrap()
 	if err != nil {
 		updateCondition(b.agentContext.Client, b.agentContext.Hostname, clusterv1.Condition{
-			Type:     infrastructurev1beta1.BootstrapReady,
+			Type:     infrastructurev1.BootstrapReady,
 			Status:   corev1.ConditionFalse,
 			Severity: clusterv1.ConditionSeverityError,
-			Reason:   infrastructurev1beta1.BootstrapFailedReason,
+			Reason:   infrastructurev1.BootstrapFailedReason,
 			Message:  err.Error(),
 		})
 	}
 	return post, err
 }
 
-func (b *bootstrapHandler) bootstrap() (infrastructurev1beta1.PostAction, error) {
+func (b *bootstrapHandler) bootstrap() (infrastructurev1.PostAction, error) {
 	_, err := b.fs.Stat(bootstrapSentinelFile)
 
 	// Assume system is successfully bootstrapped if sentinel file is found
 	if err == nil {
 		log.Infof("Found file: %s. System is bootstrapped.", bootstrapSentinelFile)
 		if err := b.updateBoostrappedStatus(b.agentContext.Hostname); err != nil {
-			return infrastructurev1beta1.PostAction{}, fmt.Errorf("updating bootstrapped status: %w", err)
+			return infrastructurev1.PostAction{}, fmt.Errorf("updating bootstrapped status: %w", err)
 		}
 		log.Info("Bootstrap config applied successfully")
-		return infrastructurev1beta1.PostAction{}, nil
+		return infrastructurev1.PostAction{}, nil
 	}
 
 	// Sentinel file not found, assume system needs bootstrapping
@@ -86,29 +86,29 @@ func (b *bootstrapHandler) bootstrap() (infrastructurev1beta1.PostAction, error)
 		log.Debug("Fetching bootstrap config")
 		bootstrap, err := b.agentContext.Client.GetBootstrap(b.agentContext.Hostname)
 		if err != nil {
-			return infrastructurev1beta1.PostAction{}, fmt.Errorf("fetching bootstrap config: %w", err)
+			return infrastructurev1.PostAction{}, fmt.Errorf("fetching bootstrap config: %w", err)
 		}
 		log.Info("Applying bootstrap config")
 		if err := b.agentContext.Plugin.Bootstrap(bootstrap.Format, []byte(bootstrap.Config)); err != nil {
-			return infrastructurev1beta1.PostAction{}, fmt.Errorf("applying bootstrap config: %w", err)
+			return infrastructurev1.PostAction{}, fmt.Errorf("applying bootstrap config: %w", err)
 		}
 		updateCondition(b.agentContext.Client, b.agentContext.Hostname, clusterv1.Condition{
-			Type:     infrastructurev1beta1.BootstrapReady,
+			Type:     infrastructurev1.BootstrapReady,
 			Status:   corev1.ConditionFalse,
-			Severity: infrastructurev1beta1.WaitingForBootstrapReasonSeverity,
-			Reason:   infrastructurev1beta1.WaitingForBootstrapReason,
+			Severity: infrastructurev1.WaitingForBootstrapReasonSeverity,
+			Reason:   infrastructurev1.WaitingForBootstrapReason,
 			Message:  "Waiting for bootstrap to be executed",
 		})
 		log.Info("System is rebooting to execute the bootstrap configuration...")
-		return infrastructurev1beta1.PostAction{Reboot: true}, nil
+		return infrastructurev1.PostAction{Reboot: true}, nil
 	}
 
-	return infrastructurev1beta1.PostAction{}, fmt.Errorf("reading file '%s': %w", bootstrapSentinelFile, err)
+	return infrastructurev1.PostAction{}, fmt.Errorf("reading file '%s': %w", bootstrapSentinelFile, err)
 }
 
 func (b *bootstrapHandler) updateBoostrappedStatus(hostname string) error {
 	patchRequest := api.HostPatchRequest{Bootstrapped: ptr.To(true)}
-	patchRequest.SetCondition(infrastructurev1beta1.BootstrapReady,
+	patchRequest.SetCondition(infrastructurev1.BootstrapReady,
 		corev1.ConditionTrue,
 		clusterv1.ConditionSeverityInfo,
 		"", "")

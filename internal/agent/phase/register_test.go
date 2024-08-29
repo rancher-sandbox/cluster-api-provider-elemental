@@ -6,7 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/context"
@@ -78,7 +78,7 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 				mClient.EXPECT().PatchHost(api.HostPatchRequest{}, HostResponseFixture.Name).Return(nil, errors.New("test not found")),
 				mClient.EXPECT().CreateHost(wantRequest).Return(nil),
 				// Expect phase to be updated
-				mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1beta1.PhaseRegistering)}, HostResponseFixture.Name),
+				mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1.PhaseRegistering)}, HostResponseFixture.Name),
 			)
 
 			err := handler.Register()
@@ -96,7 +96,7 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 				// No errors on patch request, means this host exists already and matches our current identity (due to authentication success)
 				mClient.EXPECT().PatchHost(api.HostPatchRequest{}, HostResponseFixture.Name).Return(nil, nil),
 				// Expect phase to be updated
-				mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1beta1.PhaseRegistering)}, HostResponseFixture.Name),
+				mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1.PhaseRegistering)}, HostResponseFixture.Name),
 			)
 
 			err := handler.Register()
@@ -113,7 +113,7 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 			Expect(err).ToNot(HaveOccurred())
 			wantIdentityFilePath := fmt.Sprintf("%s/%s", ConfigFixture.Agent.WorkDir, identity.PrivateKeyFile)
 			gomock.InOrder(
-				mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1beta1.PhaseFinalizingRegistration)}, HostResponseFixture.Name),
+				mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1.PhaseFinalizingRegistration)}, HostResponseFixture.Name),
 				plugin.EXPECT().InstallHostname(HostResponseFixture.Name).Return(nil),
 				plugin.EXPECT().InstallFile(wantAgentConfigBytes, agentContext.ConfigPath, uint32(0640), 0, 0).Return(nil),
 				id.EXPECT().Marshal().Return(wantMarshalledIdentity, nil),
@@ -121,7 +121,7 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
-							Type:     infrastructurev1beta1.RegistrationReady,
+							Type:     infrastructurev1.RegistrationReady,
 							Status:   corev1.ConditionTrue,
 							Severity: clusterv1.ConditionSeverityInfo,
 							Reason:   "",
@@ -132,10 +132,10 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
-							Type:     infrastructurev1beta1.InstallationReady,
+							Type:     infrastructurev1.InstallationReady,
 							Status:   corev1.ConditionFalse,
-							Severity: infrastructurev1beta1.WaitingForInstallationReasonSeverity,
-							Reason:   infrastructurev1beta1.WaitingForInstallationReason,
+							Severity: infrastructurev1.WaitingForInstallationReasonSeverity,
+							Reason:   infrastructurev1.WaitingForInstallationReason,
 							Message:  "Host is registered successfully. Waiting for installation.",
 						},
 					))
@@ -148,15 +148,15 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 			wantErr := errors.New("test finalizing registration error")
 
 			gomock.InOrder(
-				mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1beta1.PhaseFinalizingRegistration)}, HostResponseFixture.Name),
+				mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1.PhaseFinalizingRegistration)}, HostResponseFixture.Name),
 				plugin.EXPECT().InstallHostname(HostResponseFixture.Name).Return(wantErr),
 				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
-							Type:     infrastructurev1beta1.RegistrationReady,
+							Type:     infrastructurev1.RegistrationReady,
 							Status:   corev1.ConditionFalse,
 							Severity: clusterv1.ConditionSeverityError,
-							Reason:   infrastructurev1beta1.RegistrationFailedReason,
+							Reason:   infrastructurev1.RegistrationFailedReason,
 							Message:  "persisting hostname '" + HostResponseFixture.Name + "': " + wantErr.Error(),
 						},
 					))
@@ -173,7 +173,7 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 			Expect(err).ToNot(HaveOccurred())
 			wantIdentityFilePath := fmt.Sprintf("%s/%s", ConfigFixture.Agent.WorkDir, identity.PrivateKeyFile)
 			gomock.InOrder(
-				mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1beta1.PhaseFinalizingRegistration)}, HostResponseFixture.Name),
+				mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1.PhaseFinalizingRegistration)}, HostResponseFixture.Name),
 				plugin.EXPECT().InstallHostname(HostResponseFixture.Name).Return(nil),
 				plugin.EXPECT().InstallFile(wantAgentConfigBytes, agentContext.ConfigPath, uint32(0640), 0, 0).Return(nil),
 				id.EXPECT().Marshal().Return(wantMarshalledIdentity, nil),
@@ -185,7 +185,7 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
-							Type:     infrastructurev1beta1.RegistrationReady,
+							Type:     infrastructurev1.RegistrationReady,
 							Status:   corev1.ConditionTrue,
 							Severity: clusterv1.ConditionSeverityInfo,
 							Reason:   "",
@@ -196,10 +196,10 @@ var _ = Describe("registration handler", Label("cli", "phases", "registration"),
 				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
 						clusterv1.Condition{
-							Type:     infrastructurev1beta1.InstallationReady,
+							Type:     infrastructurev1.InstallationReady,
 							Status:   corev1.ConditionFalse,
-							Severity: infrastructurev1beta1.WaitingForInstallationReasonSeverity,
-							Reason:   infrastructurev1beta1.WaitingForInstallationReason,
+							Severity: infrastructurev1.WaitingForInstallationReasonSeverity,
+							Reason:   infrastructurev1.WaitingForInstallationReason,
 							Message:  "Host is registered successfully. Waiting for installation.",
 						},
 					))

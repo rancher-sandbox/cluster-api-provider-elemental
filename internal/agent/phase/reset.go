@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/context"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
@@ -33,30 +33,30 @@ type resetHandler struct {
 }
 
 func (r *resetHandler) TriggerReset() error {
-	setPhase(r.agentContext.Client, r.agentContext.Hostname, infrastructurev1beta1.PhaseTriggeringReset)
+	setPhase(r.agentContext.Client, r.agentContext.Hostname, infrastructurev1.PhaseTriggeringReset)
 	if err := r.agentContext.Plugin.TriggerReset(); err != nil {
 		err := fmt.Errorf("triggering reset: %w", err)
 		updateCondition(r.agentContext.Client, r.agentContext.Hostname, clusterv1.Condition{
-			Type:     infrastructurev1beta1.ResetReady,
+			Type:     infrastructurev1.ResetReady,
 			Status:   corev1.ConditionFalse,
 			Severity: clusterv1.ConditionSeverityError,
-			Reason:   infrastructurev1beta1.ResetFailedReason,
+			Reason:   infrastructurev1.ResetFailedReason,
 			Message:  err.Error(),
 		})
 		return err
 	}
 	updateCondition(r.agentContext.Client, r.agentContext.Hostname, clusterv1.Condition{
-		Type:     infrastructurev1beta1.ResetReady,
+		Type:     infrastructurev1.ResetReady,
 		Status:   corev1.ConditionFalse,
-		Severity: infrastructurev1beta1.WaitingForResetReasonSeverity,
-		Reason:   infrastructurev1beta1.WaitingForResetReason,
+		Severity: infrastructurev1.WaitingForResetReasonSeverity,
+		Reason:   infrastructurev1.WaitingForResetReason,
 		Message:  "Reset was triggered successfully. Waiting for host to reset.",
 	})
 	return nil
 }
 
 func (r *resetHandler) Reset() {
-	setPhase(r.agentContext.Client, r.agentContext.Hostname, infrastructurev1beta1.PhaseResetting)
+	setPhase(r.agentContext.Client, r.agentContext.Hostname, infrastructurev1.PhaseResetting)
 	r.resetLoop()
 }
 
@@ -71,10 +71,10 @@ func (r *resetHandler) resetLoop() {
 			log.Error(resetError, "resetting")
 			// Attempt to report failed condition on management server
 			updateCondition(r.agentContext.Client, r.agentContext.Hostname, clusterv1.Condition{
-				Type:     infrastructurev1beta1.ResetReady,
+				Type:     infrastructurev1.ResetReady,
 				Status:   corev1.ConditionFalse,
 				Severity: clusterv1.ConditionSeverityError,
-				Reason:   infrastructurev1beta1.ResetFailedReason,
+				Reason:   infrastructurev1.ResetFailedReason,
 				Message:  resetError.Error(),
 			})
 			// Clear error for next attempt
@@ -113,7 +113,7 @@ func (r *resetHandler) resetLoop() {
 		// Report reset success
 		log.Debug("Patching ElementalHost as reset")
 		patchRequest := api.HostPatchRequest{Reset: ptr.To(true)}
-		patchRequest.SetCondition(infrastructurev1beta1.ResetReady,
+		patchRequest.SetCondition(infrastructurev1.ResetReady,
 			corev1.ConditionTrue,
 			clusterv1.ConditionSeverityInfo,
 			"", "")

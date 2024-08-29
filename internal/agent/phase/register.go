@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/config"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/context"
@@ -43,19 +43,19 @@ func (r *registrationHandler) Register() error {
 	log.Infof("Successfully registered as '%s'", hostname)
 	r.agentContext.Hostname = hostname
 	r.agentContext.Config = config
-	setPhase(r.agentContext.Client, r.agentContext.Hostname, infrastructurev1beta1.PhaseRegistering) // Note that we set the phase **after* its conclusion, because we do not have any remote ElementalHost to patch before.
+	setPhase(r.agentContext.Client, r.agentContext.Hostname, infrastructurev1.PhaseRegistering) // Note that we set the phase **after* its conclusion, because we do not have any remote ElementalHost to patch before.
 	return nil
 }
 
 func (r *registrationHandler) FinalizeRegistration() error {
-	setPhase(r.agentContext.Client, r.agentContext.Hostname, infrastructurev1beta1.PhaseFinalizingRegistration)
+	setPhase(r.agentContext.Client, r.agentContext.Hostname, infrastructurev1.PhaseFinalizingRegistration)
 	err := r.finalize(r.agentContext.Hostname, r.agentContext.ConfigPath, r.agentContext.Config)
 	if err != nil {
 		updateCondition(r.agentContext.Client, r.agentContext.Hostname, clusterv1.Condition{
-			Type:     infrastructurev1beta1.RegistrationReady,
+			Type:     infrastructurev1.RegistrationReady,
 			Status:   corev1.ConditionFalse,
 			Severity: clusterv1.ConditionSeverityError,
-			Reason:   infrastructurev1beta1.RegistrationFailedReason,
+			Reason:   infrastructurev1.RegistrationFailedReason,
 			Message:  err.Error(),
 		})
 		return fmt.Errorf("finalizing registration: %w", err)
@@ -69,7 +69,7 @@ func (r *registrationHandler) FinalizeRegistration() error {
 	// Therefore we must prevent the entire registration process from failing on recoverable errors (in this case a network issue).
 	for {
 		if err := updateConditionOrFail(r.agentContext.Client, r.agentContext.Hostname, clusterv1.Condition{
-			Type:     infrastructurev1beta1.RegistrationReady,
+			Type:     infrastructurev1.RegistrationReady,
 			Status:   corev1.ConditionTrue,
 			Severity: clusterv1.ConditionSeverityInfo,
 		}); err != nil {
@@ -82,10 +82,10 @@ func (r *registrationHandler) FinalizeRegistration() error {
 	}
 
 	updateCondition(r.agentContext.Client, r.agentContext.Hostname, clusterv1.Condition{
-		Type:     infrastructurev1beta1.InstallationReady,
+		Type:     infrastructurev1.InstallationReady,
 		Status:   corev1.ConditionFalse,
-		Severity: infrastructurev1beta1.WaitingForInstallationReasonSeverity,
-		Reason:   infrastructurev1beta1.WaitingForInstallationReason,
+		Severity: infrastructurev1.WaitingForInstallationReasonSeverity,
+		Reason:   infrastructurev1.WaitingForInstallationReason,
 		Message:  "Host is registered successfully. Waiting for installation.",
 	})
 	return nil

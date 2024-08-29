@@ -34,7 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	ilog "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/log"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
@@ -53,10 +53,10 @@ type ElementalClusterReconciler struct {
 // SetupWithManager sets up the controller with the Manager.
 func (r *ElementalClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
 	if err := ctrl.NewControllerManagedBy(mgr).
-		For(&infrastructurev1beta1.ElementalCluster{}).
+		For(&infrastructurev1.ElementalCluster{}).
 		Watches(
 			&clusterv1.Cluster{},
-			handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, infrastructurev1beta1.GroupVersion.WithKind("ElementalCluster"), mgr.GetClient(), &infrastructurev1beta1.ElementalCluster{})),
+			handler.EnqueueRequestsFromMapFunc(util.ClusterToInfrastructureMapFunc(ctx, infrastructurev1.GroupVersion.WithKind("ElementalCluster"), mgr.GetClient(), &infrastructurev1.ElementalCluster{})),
 			builder.WithPredicates(
 				predicates.ClusterUnpaused(ctrl.LoggerFrom(ctx)),
 			),
@@ -89,7 +89,7 @@ func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	logger.Info("Reconciling ElementalCluster")
 
 	// Fetch the ElementalCluster
-	elementalCluster := &infrastructurev1beta1.ElementalCluster{}
+	elementalCluster := &infrastructurev1.ElementalCluster{}
 	if err := r.Client.Get(ctx, req.NamespacedName, elementalCluster); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -119,26 +119,26 @@ func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	if err != nil {
 		err := fmt.Errorf("getting CAPI Cluster owner: %w", err)
 		conditions.Set(elementalCluster, &clusterv1.Condition{
-			Type:     infrastructurev1beta1.CAPIClusterReady,
+			Type:     infrastructurev1.CAPIClusterReady,
 			Status:   corev1.ConditionFalse,
 			Severity: clusterv1.ConditionSeverityError,
-			Reason:   infrastructurev1beta1.MissingClusterOwnerReason,
+			Reason:   infrastructurev1.MissingClusterOwnerReason,
 			Message:  err.Error(),
 		})
 		return ctrl.Result{}, err
 	}
 	if cluster == nil {
 		conditions.Set(elementalCluster, &clusterv1.Condition{
-			Type:     infrastructurev1beta1.CAPIClusterReady,
+			Type:     infrastructurev1.CAPIClusterReady,
 			Status:   corev1.ConditionFalse,
 			Severity: clusterv1.ConditionSeverityError,
-			Reason:   infrastructurev1beta1.MissingClusterOwnerReason,
+			Reason:   infrastructurev1.MissingClusterOwnerReason,
 			Message:  ErrMissingCAPIClusterOwner.Error(),
 		})
 		return ctrl.Result{}, ErrMissingCAPIClusterOwner
 	}
 	conditions.Set(elementalCluster, &clusterv1.Condition{
-		Type:     infrastructurev1beta1.CAPIClusterReady,
+		Type:     infrastructurev1.CAPIClusterReady,
 		Status:   corev1.ConditionTrue,
 		Severity: clusterv1.ConditionSeverityInfo,
 	})
@@ -164,7 +164,7 @@ func (r *ElementalClusterReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	return ctrl.Result{}, nil
 }
 
-func (r *ElementalClusterReconciler) reconcileNormal(ctx context.Context, elementalCluster *infrastructurev1beta1.ElementalCluster) error {
+func (r *ElementalClusterReconciler) reconcileNormal(ctx context.Context, elementalCluster *infrastructurev1.ElementalCluster) error {
 	logger := log.FromContext(ctx).
 		WithValues(ilog.KeyNamespace, elementalCluster.Namespace).
 		WithValues(ilog.KeyElementalCluster, elementalCluster.Name)
@@ -172,16 +172,16 @@ func (r *ElementalClusterReconciler) reconcileNormal(ctx context.Context, elemen
 	// Reconciliation step #5: If the provider created a load balancer for the control plane, record its hostname or IP
 	if !elementalCluster.Spec.ControlPlaneEndpoint.IsValid() {
 		conditions.Set(elementalCluster, &clusterv1.Condition{
-			Type:     infrastructurev1beta1.ControlPlaneEndpointReady,
+			Type:     infrastructurev1.ControlPlaneEndpointReady,
 			Status:   corev1.ConditionFalse,
 			Severity: clusterv1.ConditionSeverityError,
-			Reason:   infrastructurev1beta1.MissingControlPlaneEndpointReason,
+			Reason:   infrastructurev1.MissingControlPlaneEndpointReason,
 			Message:  ErrMissingControlPlaneEndpoint.Error(),
 		})
 		return ErrMissingControlPlaneEndpoint
 	}
 	conditions.Set(elementalCluster, &clusterv1.Condition{
-		Type:     infrastructurev1beta1.ControlPlaneEndpointReady,
+		Type:     infrastructurev1.ControlPlaneEndpointReady,
 		Status:   corev1.ConditionTrue,
 		Severity: clusterv1.ConditionSeverityInfo,
 	})
@@ -191,7 +191,7 @@ func (r *ElementalClusterReconciler) reconcileNormal(ctx context.Context, elemen
 	return nil
 }
 
-func (r *ElementalClusterReconciler) reconcileDelete(ctx context.Context, elementalCluster *infrastructurev1beta1.ElementalCluster) error {
+func (r *ElementalClusterReconciler) reconcileDelete(ctx context.Context, elementalCluster *infrastructurev1.ElementalCluster) error {
 	logger := log.FromContext(ctx).
 		WithValues(ilog.KeyNamespace, elementalCluster.Namespace).
 		WithValues(ilog.KeyElementalCluster, elementalCluster.Name)

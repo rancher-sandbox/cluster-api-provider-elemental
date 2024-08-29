@@ -38,7 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/golang-jwt/jwt/v5"
-	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
 	ilog "github.com/rancher-sandbox/cluster-api-provider-elemental/internal/log"
@@ -60,7 +60,7 @@ type ElementalRegistrationReconciler struct {
 // SetupWithManager sets up the controller with the Manager.
 func (r *ElementalRegistrationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err := ctrl.NewControllerManagedBy(mgr).
-		For(&infrastructurev1beta1.ElementalRegistration{}).
+		For(&infrastructurev1.ElementalRegistration{}).
 		Complete(r); err != nil {
 		return fmt.Errorf("initializing ElementalRegistrationReconciler builder: %w", err)
 	}
@@ -84,7 +84,7 @@ func (r *ElementalRegistrationReconciler) Reconcile(ctx context.Context, req ctr
 	logger.Info("Reconciling ElementalRegistration")
 
 	// Fetch the ElementalRegistration
-	registration := &infrastructurev1beta1.ElementalRegistration{}
+	registration := &infrastructurev1.ElementalRegistration{}
 	if err := r.Client.Get(ctx, req.NamespacedName, registration); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -143,7 +143,7 @@ func (r *ElementalRegistrationReconciler) Reconcile(ctx context.Context, req ctr
 	return ctrl.Result{}, nil
 }
 
-func (r *ElementalRegistrationReconciler) setURI(registration *infrastructurev1beta1.ElementalRegistration) error {
+func (r *ElementalRegistrationReconciler) setURI(registration *infrastructurev1.ElementalRegistration) error {
 	if r.APIUrl == nil {
 		return ErrAPIEndpointNil
 	}
@@ -156,7 +156,7 @@ func (r *ElementalRegistrationReconciler) setURI(registration *infrastructurev1b
 	return nil
 }
 
-func (r *ElementalRegistrationReconciler) generateNewIdentity(ctx context.Context, registration *infrastructurev1beta1.ElementalRegistration) error {
+func (r *ElementalRegistrationReconciler) generateNewIdentity(ctx context.Context, registration *infrastructurev1.ElementalRegistration) error {
 	id, err := identity.NewED25519Identity()
 	if err != nil {
 		return fmt.Errorf("generating new ed25519 identity: %w", err)
@@ -196,7 +196,7 @@ func (r *ElementalRegistrationReconciler) generateNewIdentity(ctx context.Contex
 	return nil
 }
 
-func (r *ElementalRegistrationReconciler) setNewToken(ctx context.Context, registration *infrastructurev1beta1.ElementalRegistration) error {
+func (r *ElementalRegistrationReconciler) setNewToken(ctx context.Context, registration *infrastructurev1.ElementalRegistration) error {
 	secret := &corev1.Secret{}
 	if err := r.Client.Get(ctx, types.NamespacedName{
 		Name:      registration.Name,

@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
-	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/controller/utils"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -659,13 +659,13 @@ var _ = Describe("ElementalMachine controller conditions", Label("controller", "
 				Name:      elementalMachine.Name,
 				Namespace: elementalMachine.Namespace},
 				&elementalMachine)).Should(Succeed())
-			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady)
+			condition := conditions.Get(&elementalMachine, infrastructurev1.AssociationReady)
 			if condition == nil {
 				return ""
 			}
 			return condition.Reason
-		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1beta1.MissingMachineOwnerReason))
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady).Status).Should(Equal(corev1.ConditionFalse), "AssociationReady condition must be false")
+		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1.MissingMachineOwnerReason))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.AssociationReady).Status).Should(Equal(corev1.ConditionFalse), "AssociationReady condition must be false")
 		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
 		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionFalse), "Conditions summary should be false")
 	})
@@ -685,13 +685,13 @@ var _ = Describe("ElementalMachine controller conditions", Label("controller", "
 				Name:      elementalMachine.Name,
 				Namespace: elementalMachine.Namespace},
 				&elementalMachine)).Should(Succeed())
-			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady)
+			condition := conditions.Get(&elementalMachine, infrastructurev1.AssociationReady)
 			if condition == nil {
 				return ""
 			}
 			return condition.Reason
-		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1beta1.MissingAssociatedClusterReason))
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady).Status).Should(Equal(corev1.ConditionFalse), "AssociationReady condition must be false")
+		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1.MissingAssociatedClusterReason))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.AssociationReady).Status).Should(Equal(corev1.ConditionFalse), "AssociationReady condition must be false")
 		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
 		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionFalse), "Conditions summary should be false")
 	})
@@ -704,13 +704,13 @@ var _ = Describe("ElementalMachine controller conditions", Label("controller", "
 				Name:      elementalMachine.Name,
 				Namespace: elementalMachine.Namespace},
 				&elementalMachine)).Should(Succeed())
-			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady)
+			condition := conditions.Get(&elementalMachine, infrastructurev1.AssociationReady)
 			if condition == nil {
 				return ""
 			}
 			return condition.Reason
-		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1beta1.MissingClusterInfrastructureReadyReason))
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady).Status).Should(Equal(corev1.ConditionFalse), "AssociationReady condition must be false")
+		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1.MissingClusterInfrastructureReadyReason))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.AssociationReady).Status).Should(Equal(corev1.ConditionFalse), "AssociationReady condition must be false")
 		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
 		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionFalse), "Conditions summary should be false")
 	})
@@ -726,13 +726,13 @@ var _ = Describe("ElementalMachine controller conditions", Label("controller", "
 				Name:      elementalMachine.Name,
 				Namespace: elementalMachine.Namespace},
 				&elementalMachine)).Should(Succeed())
-			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady)
+			condition := conditions.Get(&elementalMachine, infrastructurev1.AssociationReady)
 			if condition == nil {
 				return ""
 			}
 			return condition.Reason
-		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1beta1.MissingBootstrapSecretReason))
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady).Status).Should(Equal(corev1.ConditionFalse), "AssociationReady condition must be false")
+		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1.MissingBootstrapSecretReason))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.AssociationReady).Status).Should(Equal(corev1.ConditionFalse), "AssociationReady condition must be false")
 		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
 		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionFalse), "Conditions summary should be false")
 	})
@@ -748,14 +748,14 @@ var _ = Describe("ElementalMachine controller conditions", Label("controller", "
 				Name:      elementalMachine.Name,
 				Namespace: elementalMachine.Namespace},
 				&elementalMachine)).Should(Succeed())
-			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady)
+			condition := conditions.Get(&elementalMachine, infrastructurev1.AssociationReady)
 			if condition == nil {
 				return ""
 			}
 			return condition.Reason
-		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1beta1.MissingAvailableHostsReason))
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady).Status).Should(Equal(corev1.ConditionFalse), "AssociationReady condition must be false")
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady).Severity).Should(Equal(clusterv1.ConditionSeverityWarning), "Severity should be warning")
+		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1.MissingAvailableHostsReason))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.AssociationReady).Status).Should(Equal(corev1.ConditionFalse), "AssociationReady condition must be false")
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.AssociationReady).Severity).Should(Equal(clusterv1.ConditionSeverityWarning), "Severity should be warning")
 		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
 		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionFalse), "Conditions summary should be false")
 	})
@@ -767,7 +767,7 @@ var _ = Describe("ElementalMachine controller conditions", Label("controller", "
 				Name:      elementalMachine.Name,
 				Namespace: elementalMachine.Namespace},
 				&elementalMachine)).Should(Succeed())
-			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady)
+			condition := conditions.Get(&elementalMachine, infrastructurev1.AssociationReady)
 			if condition == nil {
 				return corev1.ConditionUnknown
 			}
@@ -779,14 +779,14 @@ var _ = Describe("ElementalMachine controller conditions", Label("controller", "
 				Name:      elementalMachine.Name,
 				Namespace: elementalMachine.Namespace},
 				&elementalMachine)).Should(Succeed())
-			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady)
+			condition := conditions.Get(&elementalMachine, infrastructurev1.HostReady)
 			if condition == nil {
 				return corev1.ConditionUnknown
 			}
 			return condition.Status
 		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionFalse), "HostReady condition must be false")
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady).Reason).Should(Equal(infrastructurev1beta1.HostWaitingForBootstrapReason))
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady).Severity).Should(Equal(infrastructurev1beta1.HostWaitingForBootstrapReasonSeverity))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.HostReady).Reason).Should(Equal(infrastructurev1.HostWaitingForBootstrapReason))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.HostReady).Severity).Should(Equal(infrastructurev1.HostWaitingForBootstrapReasonSeverity))
 		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
 		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionFalse), "Conditions summary should be false")
 	})
@@ -796,14 +796,14 @@ var _ = Describe("ElementalMachine controller conditions", Label("controller", "
 			Name:      installedHost.Name,
 			Namespace: installedHost.Namespace},
 			&installedHost)).Should(Succeed())
-		installedHost.Labels[infrastructurev1beta1.LabelElementalHostBootstrapped] = "true"
+		installedHost.Labels[infrastructurev1.LabelElementalHostBootstrapped] = "true"
 		Expect(k8sClient.Update(ctx, &installedHost)).Should(Succeed())
 		Eventually(func() corev1.ConditionStatus {
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
 				Name:      elementalMachine.Name,
 				Namespace: elementalMachine.Namespace},
 				&elementalMachine)).Should(Succeed())
-			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady)
+			condition := conditions.Get(&elementalMachine, infrastructurev1.HostReady)
 			if condition == nil {
 				return corev1.ConditionUnknown
 			}
@@ -818,23 +818,23 @@ var _ = Describe("ElementalMachine controller conditions", Label("controller", "
 			Name:      installedHost.Name,
 			Namespace: installedHost.Namespace},
 			&installedHost)).Should(Succeed())
-		delete(installedHost.Labels, infrastructurev1beta1.LabelElementalHostInstalled)
+		delete(installedHost.Labels, infrastructurev1.LabelElementalHostInstalled)
 		Expect(k8sClient.Update(ctx, &installedHost)).Should(Succeed())
 		Eventually(func() corev1.ConditionStatus {
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
 				Name:      elementalMachine.Name,
 				Namespace: elementalMachine.Namespace},
 				&elementalMachine)).Should(Succeed())
-			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady)
+			condition := conditions.Get(&elementalMachine, infrastructurev1.HostReady)
 			if condition == nil {
 				return corev1.ConditionUnknown
 			}
 			return condition.Status
 		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionFalse), "HostReady condition must be false")
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady).Reason).Should(Equal(infrastructurev1beta1.HostWaitingForInstallReason))
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady).Severity).Should(Equal(clusterv1.ConditionSeverityError))
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady)).ShouldNot(BeNil(), "AssociationReady condition must be present")
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady).Status).Should(Equal(corev1.ConditionTrue), "AssociationReady condition must be true")
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.HostReady).Reason).Should(Equal(infrastructurev1.HostWaitingForInstallReason))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.HostReady).Severity).Should(Equal(clusterv1.ConditionSeverityError))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.AssociationReady)).ShouldNot(BeNil(), "AssociationReady condition must be present")
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.AssociationReady).Status).Should(Equal(corev1.ConditionTrue), "AssociationReady condition must be true")
 		Eventually(func() corev1.ConditionStatus {
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
 				Name:      elementalMachine.Name,
@@ -858,7 +858,7 @@ var _ = Describe("ElementalMachine controller conditions", Label("controller", "
 			Name:      installedHost.Name,
 			Namespace: installedHost.Namespace},
 			&installedHost)).Should(Succeed())
-		installedHost.Labels[infrastructurev1beta1.LabelElementalHostReset] = "true" // Mark it as already reset
+		installedHost.Labels[infrastructurev1.LabelElementalHostReset] = "true" // Mark it as already reset
 		Expect(k8sClient.Update(ctx, &installedHost)).Should(Succeed())
 		Expect(k8sClient.Delete(ctx, &installedHost)).Should(Succeed())
 		Eventually(func() corev1.ConditionStatus {
@@ -866,14 +866,14 @@ var _ = Describe("ElementalMachine controller conditions", Label("controller", "
 				Name:      elementalMachine.Name,
 				Namespace: elementalMachine.Namespace},
 				&elementalMachine)).Should(Succeed())
-			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady)
+			condition := conditions.Get(&elementalMachine, infrastructurev1.AssociationReady)
 			if condition == nil {
 				return corev1.ConditionUnknown
 			}
 			return condition.Status
 		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionFalse), "AssociationReady condition must be false")
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady).Reason).Should(Equal(infrastructurev1beta1.AssociatedHostNotFoundReason))
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady).Severity).Should(Equal(infrastructurev1beta1.AssociatedHostNotFoundReasonSeverity))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.AssociationReady).Reason).Should(Equal(infrastructurev1.AssociatedHostNotFoundReason))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.AssociationReady).Severity).Should(Equal(infrastructurev1.AssociatedHostNotFoundReasonSeverity))
 		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
 		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionFalse), "Conditions summary should be false")
 		Expect(elementalMachine.Status.Ready).Should(BeFalse())
@@ -886,7 +886,7 @@ var _ = Describe("ElementalMachine controller conditions", Label("controller", "
 				Name:      elementalMachine.Name,
 				Namespace: elementalMachine.Namespace},
 				&elementalMachine)).Should(Succeed())
-			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.AssociationReady)
+			condition := conditions.Get(&elementalMachine, infrastructurev1.AssociationReady)
 			if condition == nil {
 				return corev1.ConditionUnknown
 			}
@@ -898,14 +898,14 @@ var _ = Describe("ElementalMachine controller conditions", Label("controller", "
 				Name:      elementalMachine.Name,
 				Namespace: elementalMachine.Namespace},
 				&elementalMachine)).Should(Succeed())
-			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady)
+			condition := conditions.Get(&elementalMachine, infrastructurev1.HostReady)
 			if condition == nil {
 				return ""
 			}
 			return condition.Reason
-		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1beta1.HostWaitingForBootstrapReason), "HostReady condition must have HostWaitingForBootstrapReason reason")
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady).Status).Should(Equal(corev1.ConditionFalse))
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady).Severity).Should(Equal(infrastructurev1beta1.HostWaitingForBootstrapReasonSeverity))
+		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1.HostWaitingForBootstrapReason), "HostReady condition must have HostWaitingForBootstrapReason reason")
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.HostReady).Status).Should(Equal(corev1.ConditionFalse))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.HostReady).Severity).Should(Equal(infrastructurev1.HostWaitingForBootstrapReasonSeverity))
 		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
 		Expect(conditions.Get(&elementalMachine, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionFalse), "Conditions summary should be false")
 		Expect(elementalMachine.Status.Ready).Should(BeFalse())
@@ -916,14 +916,14 @@ var _ = Describe("ElementalMachine controller conditions", Label("controller", "
 			Name:      newHost.Name,
 			Namespace: newHost.Namespace},
 			&newHost)).Should(Succeed())
-		newHost.Labels[infrastructurev1beta1.LabelElementalHostBootstrapped] = "true"
+		newHost.Labels[infrastructurev1.LabelElementalHostBootstrapped] = "true"
 		Expect(k8sClient.Update(ctx, &newHost)).Should(Succeed())
 		Eventually(func() corev1.ConditionStatus {
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
 				Name:      elementalMachine.Name,
 				Namespace: elementalMachine.Namespace},
 				&elementalMachine)).Should(Succeed())
-			condition := conditions.Get(&elementalMachine, infrastructurev1beta1.HostReady)
+			condition := conditions.Get(&elementalMachine, infrastructurev1.HostReady)
 			if condition == nil {
 				return corev1.ConditionUnknown
 			}
@@ -932,10 +932,10 @@ var _ = Describe("ElementalMachine controller conditions", Label("controller", "
 
 	})
 	It("ProviderIDReady should have WaitingForControlPlaneReason", func() {
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.ProviderIDReady)).ShouldNot(BeNil())
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.ProviderIDReady).Status).Should(Equal(corev1.ConditionFalse))
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.ProviderIDReady).Reason).Should(Equal(infrastructurev1beta1.WaitingForControlPlaneReason))
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.ProviderIDReady).Severity).Should(Equal(infrastructurev1beta1.WaitingForControlPlaneReasonSeverity))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.ProviderIDReady)).ShouldNot(BeNil())
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.ProviderIDReady).Status).Should(Equal(corev1.ConditionFalse))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.ProviderIDReady).Reason).Should(Equal(infrastructurev1.WaitingForControlPlaneReason))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.ProviderIDReady).Severity).Should(Equal(infrastructurev1.WaitingForControlPlaneReasonSeverity))
 	})
 	It("ProviderIDReady should have NodeNotFoundReason", func() {
 		wantCluster := types.NamespacedName{Name: cluster.Name, Namespace: cluster.Namespace}
@@ -957,11 +957,11 @@ var _ = Describe("ElementalMachine controller conditions", Label("controller", "
 				Name:      elementalMachine.Name,
 				Namespace: elementalMachine.Namespace},
 				&elementalMachine)).Should(Succeed())
-			return conditions.Get(&elementalMachine, infrastructurev1beta1.ProviderIDReady).Reason
-		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1beta1.NodeNotFoundReason), "ProviderIDReady should have NodeNotFound reason")
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.ProviderIDReady).Status).Should(Equal(corev1.ConditionFalse))
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.ProviderIDReady).Reason).Should(Equal(infrastructurev1beta1.NodeNotFoundReason))
-		Expect(conditions.Get(&elementalMachine, infrastructurev1beta1.ProviderIDReady).Severity).Should(Equal(clusterv1.ConditionSeverityError))
+			return conditions.Get(&elementalMachine, infrastructurev1.ProviderIDReady).Reason
+		}).WithTimeout(time.Minute).Should(Equal(infrastructurev1.NodeNotFoundReason), "ProviderIDReady should have NodeNotFound reason")
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.ProviderIDReady).Status).Should(Equal(corev1.ConditionFalse))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.ProviderIDReady).Reason).Should(Equal(infrastructurev1.NodeNotFoundReason))
+		Expect(conditions.Get(&elementalMachine, infrastructurev1.ProviderIDReady).Severity).Should(Equal(clusterv1.ConditionSeverityError))
 	})
 	It("ProviderIDReady should be true", func() {
 		wantProviderID := fmt.Sprintf("elemental://%s/%s", newHost.Namespace, newHost.Name)
@@ -976,7 +976,7 @@ var _ = Describe("ElementalMachine controller conditions", Label("controller", "
 				Name:      elementalMachine.Name,
 				Namespace: elementalMachine.Namespace},
 				&elementalMachine)).Should(Succeed())
-			return conditions.Get(&elementalMachine, infrastructurev1beta1.ProviderIDReady).Status
+			return conditions.Get(&elementalMachine, infrastructurev1.ProviderIDReady).Status
 		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionTrue), "ProviderIDReady should have true status")
 		// Test Conditions summary
 		Eventually(func() corev1.ConditionStatus {

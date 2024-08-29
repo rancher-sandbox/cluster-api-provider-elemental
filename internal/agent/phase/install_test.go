@@ -6,7 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/context"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
@@ -48,16 +48,16 @@ var _ = Describe("install handler", Label("cli", "phases", "install"), func() {
 		Expect(err).ToNot(HaveOccurred())
 		gomock.InOrder(
 			// Expect phase to be updated
-			mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1beta1.PhaseInstalling)}, HostResponseFixture.Name),
+			mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1.PhaseInstalling)}, HostResponseFixture.Name),
 			// Make the first get registration call fail. Expect to recover by calling again
 			mClient.EXPECT().GetRegistration().Return(nil, errors.New("get registration test error")),
 			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 				Expect(*patch.Condition).Should(Equal(
 					clusterv1.Condition{
-						Type:     infrastructurev1beta1.InstallationReady,
+						Type:     infrastructurev1.InstallationReady,
 						Status:   corev1.ConditionFalse,
 						Severity: clusterv1.ConditionSeverityError,
-						Reason:   infrastructurev1beta1.InstallationFailedReason,
+						Reason:   infrastructurev1.InstallationFailedReason,
 						Message:  "getting remote Registration: get registration test error",
 					},
 				))
@@ -68,10 +68,10 @@ var _ = Describe("install handler", Label("cli", "phases", "install"), func() {
 			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 				Expect(*patch.Condition).Should(Equal(
 					clusterv1.Condition{
-						Type:     infrastructurev1beta1.InstallationReady,
+						Type:     infrastructurev1.InstallationReady,
 						Status:   corev1.ConditionFalse,
 						Severity: clusterv1.ConditionSeverityError,
-						Reason:   infrastructurev1beta1.CloudConfigInstallationFailedReason,
+						Reason:   infrastructurev1.CloudConfigInstallationFailedReason,
 						Message:  "installing cloud config: cloud init test failed",
 					},
 				))
@@ -83,10 +83,10 @@ var _ = Describe("install handler", Label("cli", "phases", "install"), func() {
 			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 				Expect(*patch.Condition).Should(Equal(
 					clusterv1.Condition{
-						Type:     infrastructurev1beta1.InstallationReady,
+						Type:     infrastructurev1.InstallationReady,
 						Status:   corev1.ConditionFalse,
 						Severity: clusterv1.ConditionSeverityError,
-						Reason:   infrastructurev1beta1.InstallationFailedReason,
+						Reason:   infrastructurev1.InstallationFailedReason,
 						Message:  "installing host: install test fail",
 					},
 				))
@@ -98,10 +98,10 @@ var _ = Describe("install handler", Label("cli", "phases", "install"), func() {
 			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 				Expect(*patch.Condition).Should(Equal(
 					clusterv1.Condition{
-						Type:     infrastructurev1beta1.InstallationReady,
+						Type:     infrastructurev1.InstallationReady,
 						Status:   corev1.ConditionFalse,
 						Severity: clusterv1.ConditionSeverityError,
-						Reason:   infrastructurev1beta1.InstallationFailedReason,
+						Reason:   infrastructurev1.InstallationFailedReason,
 						Message:  "patching host with installation successful: patch host test fail",
 					},
 				))
@@ -115,7 +115,7 @@ var _ = Describe("install handler", Label("cli", "phases", "install"), func() {
 				}
 				Expect(*patch.Condition).Should(Equal(
 					clusterv1.Condition{
-						Type:     infrastructurev1beta1.InstallationReady,
+						Type:     infrastructurev1.InstallationReady,
 						Status:   corev1.ConditionTrue,
 						Severity: clusterv1.ConditionSeverityInfo,
 						Reason:   "",

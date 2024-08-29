@@ -3,7 +3,7 @@ package phase
 import (
 	"fmt"
 
-	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
@@ -35,7 +35,7 @@ func updateConditionOrFail(client client.Client, hostname string, condition clus
 
 // setPhase is a best-effort attempt to reconcile the remote HostPhase.
 // In case of failures (ex. due to connection errors), it should eventually recover.
-func setPhase(client client.Client, hostname string, phase infrastructurev1beta1.HostPhase) {
+func setPhase(client client.Client, hostname string, phase infrastructurev1.HostPhase) {
 	if _, err := client.PatchHost(api.HostPatchRequest{
 		Phase: &phase,
 	}, hostname); err != nil {

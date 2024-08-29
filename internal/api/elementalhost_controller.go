@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
-	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/log"
 	"github.com/swaggest/openapi-go"
 	corev1 "k8s.io/api/core/v1"
@@ -66,7 +66,7 @@ func (h *PatchElementalHostHandler) ServeHTTP(response http.ResponseWriter, requ
 	logger.Info("Patching ElementalHost")
 
 	// Fetch registration
-	registration := &infrastructurev1beta1.ElementalRegistration{}
+	registration := &infrastructurev1.ElementalRegistration{}
 	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: registrationName}, registration); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			response.WriteHeader(http.StatusNotFound)
@@ -80,7 +80,7 @@ func (h *PatchElementalHostHandler) ServeHTTP(response http.ResponseWriter, requ
 	}
 
 	// Fetch host
-	host := &infrastructurev1beta1.ElementalHost{}
+	host := &infrastructurev1.ElementalHost{}
 	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: hostName}, host); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			response.WriteHeader(http.StatusNotFound)
@@ -138,7 +138,7 @@ func (h *PatchElementalHostHandler) ServeHTTP(response http.ResponseWriter, requ
 	}
 
 	// Fetch the updated host
-	host = &infrastructurev1beta1.ElementalHost{}
+	host = &infrastructurev1.ElementalHost{}
 	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: hostName}, host); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			response.WriteHeader(http.StatusNotFound)
@@ -212,7 +212,7 @@ func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, reque
 	logger.Info("Creating new ElementalHost")
 
 	// Fetch registration
-	registration := &infrastructurev1beta1.ElementalRegistration{}
+	registration := &infrastructurev1.ElementalRegistration{}
 	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: registrationName}, registration); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			response.WriteHeader(http.StatusNotFound)
@@ -236,7 +236,7 @@ func (h *PostElementalHostHandler) ServeHTTP(response http.ResponseWriter, reque
 	if registration.APIVersion == "" || registration.Kind == "" {
 		logger.V(log.DebugLevel).Info("Sanitizing empty TypeMeta in ElementalRegistration")
 		registration.Kind = "ElementalRegistration"
-		registration.APIVersion = infrastructurev1beta1.GroupVersion.String()
+		registration.APIVersion = infrastructurev1.GroupVersion.String()
 	}
 
 	// Unmarshal POST request body.
@@ -345,7 +345,7 @@ func (h *DeleteElementalHostHandler) ServeHTTP(response http.ResponseWriter, req
 	logger.Info("Deleting ElementalHost")
 
 	// Fetch ElementalRegistration
-	registration := &infrastructurev1beta1.ElementalRegistration{}
+	registration := &infrastructurev1.ElementalRegistration{}
 	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: registrationName}, registration); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			logger.Info("ElementalRegistration not found")
@@ -360,7 +360,7 @@ func (h *DeleteElementalHostHandler) ServeHTTP(response http.ResponseWriter, req
 	}
 
 	// Fetch ElementalHost
-	host := &infrastructurev1beta1.ElementalHost{}
+	host := &infrastructurev1.ElementalHost{}
 	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: hostName}, host); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			logger.Info("ElementalHost not found")
@@ -445,7 +445,7 @@ func (h *GetElementalHostBootstrapHandler) ServeHTTP(response http.ResponseWrite
 	logger.Info("Getting ElementalHost Bootstrap")
 
 	// Fetch registration
-	registration := &infrastructurev1beta1.ElementalRegistration{}
+	registration := &infrastructurev1.ElementalRegistration{}
 	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: registrationName}, registration); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			response.WriteHeader(http.StatusNotFound)
@@ -459,7 +459,7 @@ func (h *GetElementalHostBootstrapHandler) ServeHTTP(response http.ResponseWrite
 	}
 
 	// Fetch host
-	host := &infrastructurev1beta1.ElementalHost{}
+	host := &infrastructurev1.ElementalHost{}
 	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: hostName}, host); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			response.WriteHeader(http.StatusNotFound)

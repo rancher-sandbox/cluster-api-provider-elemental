@@ -3,7 +3,7 @@ package agent
 import (
 	"time"
 
-	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/phase"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
@@ -27,7 +27,7 @@ This command will reconcile the remote ElementalHost resource describing this ho
 		}
 		// Normal reconcile
 		log.Info("Entering reconciliation loop")
-		runningPhase := infrastructurev1beta1.PhaseRunning
+		runningPhase := infrastructurev1.PhaseRunning
 		for {
 			// Patch the host and receive the patched remote host back
 			log.Debug("Patching host")
@@ -89,7 +89,7 @@ func init() {
 
 // handlePost handles post conditions such as Reboot or PowerOff.
 // A true flag is returned if any of the conditions is true, to highlight the program should exit.
-func handlePost(osPlugin osplugin.Plugin, post infrastructurev1beta1.PostAction) bool {
+func handlePost(osPlugin osplugin.Plugin, post infrastructurev1.PostAction) bool {
 	if post.PowerOff {
 		log.Info("Powering off system")
 		if err := osPlugin.PowerOff(); err != nil {
