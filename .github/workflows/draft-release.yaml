@@ -48,9 +48,9 @@ jobs:
           context: .
           file: Dockerfile.agent
           push: true
-          tags: 
-          - ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/agent:${{ github.ref_name }}
-          - ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/agent:latest
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/agent:${{ github.ref_name }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/agent:latest
       # Update infrastructure manifest with new image tag
       - name: Update infrastructure manifest
         run: IMG_TAG=${{ github.ref_name }} make generate-infra-yaml
