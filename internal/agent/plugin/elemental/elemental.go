@@ -290,8 +290,8 @@ func (p *ElementalPlugin) TriggerReset() error {
 					If:   "[ -f /run/elemental/recovery_mode ]",
 					Name: "Runs elemental reset and re-register the system",
 					Commands: []string{
-						"elemental-agent --debug --reset --config /oem/elemental/agent/config.yaml",
-						"elemental-agent --debug --register --install --config /oem/elemental/agent/config.yaml",
+						"elemental-agent reset --debug --config /oem/elemental/agent/config.yaml",
+						"elemental-agent register --debug --install --config /oem/elemental/agent/config.yaml",
 						"reboot -f",
 					},
 				},

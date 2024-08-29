@@ -16,7 +16,6 @@ require (
 	github.com/swaggest/openapi-go v0.2.53
 	github.com/swaggest/rest v0.2.66
 	github.com/twpayne/go-vfs/v4 v4.3.0
-	github.com/twpayne/go-vfsafero/v4 v4.0.0
 	go.uber.org/mock v0.4.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20240823005443-9b4947da3948

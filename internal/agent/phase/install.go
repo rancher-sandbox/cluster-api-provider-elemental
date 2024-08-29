@@ -1,4 +1,4 @@
-package phases
+package phase
 
 import (
 	corev1 "k8s.io/api/core/v1"
@@ -11,42 +11,35 @@ import (
 
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/context"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/pkg/agent/osplugin"
 	"k8s.io/utils/ptr"
 )
 
 type InstallHandler interface {
-	Install(hostname string)
+	Install()
 }
 
 var _ InstallHandler = (*installHandler)(nil)
 
-func NewInstallHandler(client client.Client, osPlugin osplugin.Plugin, id identity.Identity, reconciliation time.Duration) InstallHandler {
+func NewInstallHandler(agentContext context.AgentContext) InstallHandler {
 	return &installHandler{
-		client:         client,
-		osPlugin:       osPlugin,
-		id:             id,
-		reconciliation: reconciliation,
+		agentContext: agentContext,
 	}
 }
 
 type installHandler struct {
-	client         client.Client
-	osPlugin       osplugin.Plugin
-	id             identity.Identity
-	reconciliation time.Duration
+	agentContext context.AgentContext
 }
 
-func (i *installHandler) Install(hostname string) {
-	i.installLoop(hostname)
+func (i *installHandler) Install() {
+	setPhase(i.agentContext.Client, i.agentContext.Hostname, infrastructurev1beta1.PhaseInstalling)
+	i.installLoop()
 }
 
 // installLoop **indefinitely** tries to fetch the remote registration and install the ElementalHost.
-func (i *installHandler) installLoop(hostname string) {
+func (i *installHandler) installLoop() {
 	cloudConfigAlreadyApplied := false
 	alreadyInstalled := false
 	var installationError error
@@ -56,7 +49,7 @@ func (i *installHandler) installLoop(hostname string) {
 			// Log error
 			log.Error(installationError, "installing host")
 			// Attempt to report failed condition on management server
-			updateCondition(i.client, hostname, clusterv1.Condition{
+			updateCondition(i.agentContext.Client, i.agentContext.Hostname, clusterv1.Condition{
 				Type:     infrastructurev1beta1.InstallationReady,
 				Status:   corev1.ConditionFalse,
 				Severity: clusterv1.ConditionSeverityError,
@@ -67,15 +60,15 @@ func (i *installHandler) installLoop(hostname string) {
 			installationError = nil
 			installationErrorReason = infrastructurev1beta1.InstallationFailedReason
 			// Wait for recovery (end user may fix the remote installation instructions meanwhile)
-			log.Debugf("Waiting '%s' on installation error for installation instructions to mutate", i.reconciliation)
-			time.Sleep(i.reconciliation)
+			log.Debugf("Waiting '%s' on installation error for installation instructions to mutate", i.agentContext.Config.Agent.Reconciliation)
+			time.Sleep(i.agentContext.Config.Agent.Reconciliation)
 		}
 		// Fetch remote Registration
 		var registration *api.RegistrationResponse
 		var err error
 		if !cloudConfigAlreadyApplied || !alreadyInstalled {
 			log.Debug("Fetching remote registration")
-			registration, err = i.client.GetRegistration()
+			registration, err = i.agentContext.Client.GetRegistration()
 			if err != nil {
 				installationError = fmt.Errorf("getting remote Registration: %w", err)
 				continue
@@ -89,7 +82,7 @@ func (i *installHandler) installLoop(hostname string) {
 				installationErrorReason = infrastructurev1beta1.CloudConfigInstallationFailedReason
 				continue
 			}
-			if err := i.osPlugin.InstallCloudInit(cloudConfigBytes); err != nil {
+			if err := i.agentContext.Plugin.InstallCloudInit(cloudConfigBytes); err != nil {
 				installationError = fmt.Errorf("installing cloud config: %w", err)
 				installationErrorReason = infrastructurev1beta1.CloudConfigInstallationFailedReason
 				continue
@@ -103,7 +96,7 @@ func (i *installHandler) installLoop(hostname string) {
 				installationError = fmt.Errorf("marshalling install config: %w", err)
 				continue
 			}
-			if err := i.osPlugin.Install(installBytes); err != nil {
+			if err := i.agentContext.Plugin.Install(installBytes); err != nil {
 				installationError = fmt.Errorf("installing host: %w", err)
 				continue
 			}
@@ -115,7 +108,7 @@ func (i *installHandler) installLoop(hostname string) {
 			corev1.ConditionTrue,
 			clusterv1.ConditionSeverityInfo,
 			"", "")
-		if _, err := i.client.PatchHost(patchRequest, hostname); err != nil {
+		if _, err := i.agentContext.Client.PatchHost(patchRequest, i.agentContext.Hostname); err != nil {
 			installationError = fmt.Errorf("patching host with installation successful: %w", err)
 			continue
 		}

@@ -1,19 +1,20 @@
-package phases
+package phase
 
 import (
 	"encoding/json"
 	"errors"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/context"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/identity"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/pkg/agent/osplugin"
 	gomock "go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
@@ -23,13 +24,22 @@ var _ = Describe("install handler", Label("cli", "phases", "install"), func() {
 	var plugin *osplugin.MockPlugin
 	var id *identity.MockIdentity
 	var handler InstallHandler
+	var agentContext context.AgentContext
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
 		mClient = client.NewMockClient(mockCtrl)
 		plugin = osplugin.NewMockPlugin(mockCtrl)
 		id = identity.NewMockIdentity(mockCtrl)
-		handler = NewInstallHandler(mClient, plugin, id, time.Microsecond)
+		agentContext = context.AgentContext{
+			Identity:   id,
+			Plugin:     plugin,
+			Client:     mClient,
+			Config:     ConfigFixture,
+			ConfigPath: ConfigPathFixture,
+			Hostname:   HostResponseFixture.Name,
+		}
+		handler = NewInstallHandler(agentContext)
 	})
 	It("should apply cloud init, install, and mark the host as installed", func() {
 		wantCloudInit, err := json.Marshal(RegistrationFixture.Config.CloudConfig)
@@ -37,6 +47,8 @@ var _ = Describe("install handler", Label("cli", "phases", "install"), func() {
 		wantInstall, err := json.Marshal(RegistrationFixture.Config.Elemental.Install)
 		Expect(err).ToNot(HaveOccurred())
 		gomock.InOrder(
+			// Expect phase to be updated
+			mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1beta1.PhaseInstalling)}, HostResponseFixture.Name),
 			// Make the first get registration call fail. Expect to recover by calling again
 			mClient.EXPECT().GetRegistration().Return(nil, errors.New("get registration test error")),
 			mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
@@ -113,6 +125,6 @@ var _ = Describe("install handler", Label("cli", "phases", "install"), func() {
 			}),
 		)
 
-		handler.Install(HostResponseFixture.Name)
+		handler.Install()
 	})
 })

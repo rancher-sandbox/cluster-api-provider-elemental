@@ -1,18 +1,19 @@
-package phases
+package phase
 
 import (
 	"encoding/json"
 	"errors"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/context"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/pkg/agent/osplugin"
 	gomock "go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
@@ -21,16 +22,25 @@ var _ = Describe("reset handler", Label("cli", "phases", "reset"), func() {
 	var mClient *client.MockClient
 	var plugin *osplugin.MockPlugin
 	var handler ResetHandler
+	var agentContext context.AgentContext
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
 		mClient = client.NewMockClient(mockCtrl)
 		plugin = osplugin.NewMockPlugin(mockCtrl)
-		handler = NewResetHandler(mClient, plugin, time.Microsecond)
+		agentContext = context.AgentContext{
+			Plugin:     plugin,
+			Client:     mClient,
+			Config:     ConfigFixture,
+			ConfigPath: ConfigPathFixture,
+			Hostname:   HostResponseFixture.Name,
+		}
+		handler = NewResetHandler(agentContext)
 	})
 	When("triggering reset", func() {
 		It("should trigger reset", func() {
 			gomock.InOrder(
+				mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1beta1.PhaseTriggeringReset)}, HostResponseFixture.Name),
 				plugin.EXPECT().TriggerReset().Return(nil),
 				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
@@ -44,13 +54,14 @@ var _ = Describe("reset handler", Label("cli", "phases", "reset"), func() {
 					))
 				}),
 			)
-			err := handler.TriggerReset(HostResponseFixture.Name)
+			err := handler.TriggerReset()
 			Expect(err).ToNot(HaveOccurred())
 		})
 		It("should fail on trigger reset error", func() {
 			wantErr := errors.New("test trigger reset error")
 
 			gomock.InOrder(
+				mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1beta1.PhaseTriggeringReset)}, HostResponseFixture.Name),
 				plugin.EXPECT().TriggerReset().Return(wantErr),
 				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
@@ -64,7 +75,7 @@ var _ = Describe("reset handler", Label("cli", "phases", "reset"), func() {
 					))
 				}),
 			)
-			err := handler.TriggerReset(HostResponseFixture.Name)
+			err := handler.TriggerReset()
 			Expect(err).To(HaveOccurred())
 			Expect(errors.Is(err, wantErr)).To(BeTrue())
 		})
@@ -74,6 +85,7 @@ var _ = Describe("reset handler", Label("cli", "phases", "reset"), func() {
 			wantReset, err := json.Marshal(RegistrationFixture.Config.Elemental.Reset)
 			Expect(err).ToNot(HaveOccurred())
 			gomock.InOrder(
+				mClient.EXPECT().PatchHost(api.HostPatchRequest{Phase: ptr.To(infrastructurev1beta1.PhaseResetting)}, HostResponseFixture.Name),
 				mClient.EXPECT().DeleteHost(HostResponseFixture.Name).Return(errors.New("delete host test error")),
 				mClient.EXPECT().PatchHost(gomock.Any(), HostResponseFixture.Name).Return(nil, nil).Do(func(patch api.HostPatchRequest, _ string) {
 					Expect(*patch.Condition).Should(Equal(
@@ -151,7 +163,7 @@ var _ = Describe("reset handler", Label("cli", "phases", "reset"), func() {
 				}),
 			)
 
-			handler.Reset(HostResponseFixture.Name)
+			handler.Reset()
 		})
 	})
 })
