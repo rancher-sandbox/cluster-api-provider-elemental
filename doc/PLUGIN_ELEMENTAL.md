@@ -23,7 +23,7 @@ Status:
 
 ### 1. Finalizing Registration
 
-When running `elemental-agent --register`, upon successful registration, the plugin will be invoked by the agent to perform the following actions:
+When running `elemental-agent register`, upon successful registration, the plugin will be invoked by the agent to perform the following actions:
 
 - Set the chosen hostname on the host.  
 - Install the agent config in the work directory: `/oem/elemental/agent/config.yaml`
@@ -33,12 +33,12 @@ For each action, the elemental plugin will create an `elemental-toolkit` cloud-i
 
 ### 2. Installing
 
-When running `elemental-agent --install`, assuming registration was performed successfully, the plugin will be invoked to:
+When running `elemental-agent install`, assuming registration was performed successfully, the plugin will be invoked to:
 
 - Apply the `cloudConfig` from the remote `ElementalRegistration`.
 - Invoke `elemental install` using the remote `ElementalRegistration` `spec.config.elemental.install` config.
 
-In a default elemental installation, the `--register` and `--install` phases are executed together by the `elemental-agent-install` service from the `Elemental recovery` partition.  
+In a default elemental installation, the `register` and `install` phases are executed together by the `elemental-agent-install` service from the `Elemental recovery` partition.  
 To debug installation issues you can run: `journalctl -xeu elemental-agent-install` on the host.  
 
 Note that when installing, the plugin will only invoke `elemental install` from a live system.  
@@ -79,8 +79,8 @@ When the `elemental-agent` receives a reset trigger, for example because the CAP
             - if: '[ -f /run/elemental/recovery_mode ]'
             name: Runs elemental reset and re-register the system
             commands:
-                - elemental-agent --debug --reset --config /oem/elemental/agent/config.yaml
-                - elemental-agent --debug --register --install --config /oem/elemental/agent/config.yaml
+                - elemental-agent reset  --debug --config /oem/elemental/agent/config.yaml
+                - elemental-agent register --debug  --install --config /oem/elemental/agent/config.yaml
                 - reboot -f
     ```
 
@@ -90,10 +90,10 @@ When the `elemental-agent` receives a reset trigger, for example because the CAP
 ### 5. Resetting
 
 In a typical Elemental installation, the reset phase is executed from the above mentioned `Elemental Reset` plan.  
-When running `elemental-agent --reset`, the plugin will make a copy of the agent config in `/tmp/elemental-agent-config.yaml` and then invoke `elemental reset` using the remote `ElementalRegistration` `spec.config.elemental.reset` config.  
+When running `elemental-agent reset`, the plugin will make a copy of the agent config in `/tmp/elemental-agent-config.yaml` and then invoke `elemental reset` using the remote `ElementalRegistration` `spec.config.elemental.reset` config.  
 If no errors occur, the previously copied agent config is moved back to `/oem/elemental/agent/config.yaml`.  
 
 Similarly to the bootstrap phase, if any issues arise, you can manually execute and debug the reset plan by running: `elemental --debug run-stage network`  
 
-Upon successful reset, the plan should run `elemental-agent --register --install` to register a new `ElementalHost` and mark it as installed.  
+Upon successful reset, the plan should run `elemental-agent register --install` to register a new `ElementalHost` and mark it as installed.  
 Finally, the host will reboot to the active partition and be ready for CAPI provisioning.  

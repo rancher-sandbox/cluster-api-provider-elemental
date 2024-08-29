@@ -35,7 +35,7 @@ eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJFbGVtZW50YWxSZWdpc3RyYXRpb25SZWN
 The token is in JWT format. You can inspect it using the web app at [jwt.io](https://jwt.io).  
 By default registration tokens do not and should not expire.  
 The registration tokens are normally shared with hosts during the provisioning phase and are used by the `elemental-agent` to register a new ElementalHost.  
-Note that during the registration phase (`elemental-agent --register`), the `elemental-agent` will exchange its registration token for a fresh one, when fetching the remote ElementalRegistration to update (and override) the agent config file.  
+Note that during the registration phase (`elemental-agent register`), the `elemental-agent` will exchange its registration token for a fresh one, when fetching the remote ElementalRegistration to update (and override) the agent config file.  
 For this reason issuing tokens with an expiration date will eventually impact the ability of the hosts to reset and re-register.  
 
 You can generate a valid `elemental-agent` config file from any registration, using the conveniency `print_agent_config.sh` script from this repo (depends on `kubectl` and `yq`):
@@ -164,7 +164,7 @@ This is also documented in in the [OpenAPI specs](../elemental-openapi.yaml).
 Similarly to the registration tokens, host tokens are also in JWT format.  
 The `elemental-agent` will always generate a new private signing key in a `private.key` file within its work directory.  
 If no file exists, a new one is created, otherwise it's simply loaded.  
-This gives the possibility of pre-creating a signing key before running `elemental-agent --register`.  
+This gives the possibility of pre-creating a signing key before running `elemental-agent register`.  
 The key must be an EdDSA key in PEM format.  
 
 When registering a new `ElementalHost`, the agent will pass the public key that should be used to validate its signature and also a signed JWT so that the controller can validate the request.  

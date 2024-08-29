@@ -63,7 +63,7 @@ func (r *registrationHandler) FinalizeRegistration() error {
 
 	// We try to catch and recover errors here since this is not recoverable once the cli exits with an error.
 	//
-	// If this steps fail and `elemental-agent --register` is called again, it will try to register using a new identity,
+	// If this steps fail and `elemental-agent register` is called again, it will try to register using a new identity,
 	// since the system is not installed yet and the previously registered identity lived in-memory.
 	//
 	// Therefore we must prevent the entire registration process from failing on recoverable errors (in this case a network issue).

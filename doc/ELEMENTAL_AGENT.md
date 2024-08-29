@@ -96,11 +96,11 @@ agent:
   hostname:
     useExisting: false
     prefix: ""
-  # Post Install behavior (when running --install)
+  # Post Install behavior (when running install)
   postInstall:
     powerOff: false
     reboot: false
-  # Post Reset behavior (when running --reset)
+  # Post Reset behavior (when running reset)
   postReset:
     powerOff: false
     reboot: false

@@ -8,7 +8,7 @@ The `elemental-agent` goes through several [phases](../../doc/HOST_PHASES.md), n
 
 ### 1. Finalizing Registration
 
-When running `elemental-agent --register`, upon successful registration, the plugin will be invoked by the agent to perform the following actions:
+When running `elemental-agent register`, upon successful registration, the plugin will be invoked by the agent to perform the following actions:
 
 - Set the chosen hostname on the host. This step relies on: `hostnamectl set-hostname`
 - Install the agent config in the work directory: `/var/lib/elemental/agent/config.yaml`
@@ -16,7 +16,7 @@ When running `elemental-agent --register`, upon successful registration, the plu
 
 ### 2. Installing
 
-When running `elemental-agent --install`, this plugin will dump the remote `ElementalRegistration` `spec.config.elemental.install` config into an `install.yaml` file in the agent work directory.  
+When running `elemental-agent install`, this plugin will dump the remote `ElementalRegistration` `spec.config.elemental.install` config into an `install.yaml` file in the agent work directory.  
 No further action is taken by the plugin, once the file is created the system will be considered **installed** and ready to be bootstrapped.  
 An administrator can implement logic around this expected file, for example leveraging [Systemd's Path Units](https://www.freedesktop.org/software/systemd/man/latest/systemd.path.html).  
 
@@ -35,12 +35,12 @@ Upon reboot, the bootstrap config is expected to create the `/run/cluster-api/bo
 When the `elemental-agent` receives a reset trigger, the plugin will create a `needs.reset` file in the agent work directory.  
 No further action is taken by the plugin.
 
-When the `needs.reset` file is created, some logic should take place to prepare the machine for reset, delete the `needs.reset` file and start the agent with the `--reset` argument to mark the host as reset.  
+When the `needs.reset` file is created, some logic should take place to prepare the machine for reset, delete the `needs.reset` file and start the agent with the `reset` command to mark the host as reset.  
 In this stage some host services may also be stopped or uninstalled, for example `k3s`.  
 
 ### 5. Resetting
 
-Similarly to the installation, a `reset.yaml` in the agent work directory will be created when the agent is called with the `--reset` argument.  
+Similarly to the installation, a `reset.yaml` in the agent work directory will be created when the agent is called with the `reset` command.  
 This is a simple dump of the `ElementalRegistration` `spec.config.elemental.reset` configuration.
 
 The reset will fail if the `needs.reset` file exists. This highlight that the host was not prepared for reset first.  

@@ -34,7 +34,7 @@ type Plugin interface {
 	// InstallFile should install any file to the input path, given a content.
 	InstallFile(content []byte, path string, permission uint32, owner int, group int) error
 	// Install should install any needed components to the machine, given an input install config (in JSON format).
-	// This is called by the agent on '--install' argument.
+	// This is called by the agent on 'install' command.
 	Install(input []byte) error
 	// Bootstrap should apply the CAPI bootstrap config to the machine.
 	// The format can be either "cloud-init" or "ignition".
@@ -42,7 +42,7 @@ type Plugin interface {
 	// TriggerReset should prepare the machine for reset.
 	TriggerReset() error
 	// Reset should reset the machine to an installable state, given an input reset config (in JSON format).
-	// This is called by the agent on '--reset' argument.
+	// This is called by the agent on 'reset' command.
 	Reset(input []byte) error
 	// PowerOff should poweroff the machine.
 	PowerOff() error

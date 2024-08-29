@@ -22,18 +22,18 @@ If an `ElementalHost` with the same name and public key already exists, the `ele
 Normally the `Registering` phase is very short living and transitory.  
 Upon successful registration, the `elemental-agent` will automatically execute the `Finalizing Registration` phase.  
 
-This phase is ran using the `elemental-agent --register` argument.  
+This phase is ran using the `elemental-agent register` command.  
 
 ### Finalizing Registration
 
-The `Finalizing Registration` immediately follows the `Registration` phase when `elemental-agent --register` is used.  
+The `Finalizing Registration` immediately follows the `Registration` phase when `elemental-agent register` is used.  
 
 During this phase the `elemental-agent` will take the following steps:  
 
 1. Install the registered hostname. (OSPlugin dependent)
 
 1. Fetch the remote `ElementalRegistration` and use it to install a new agent config file. (OSPlugin dependent)  
-**Note:** During this phase the current agent config path is used to determine the install location. This is important if you are using a custom path (ex. `elemental-agent --config /my/custom/config.yaml`) and you will need to change it later. Migration of this file is going to be needed and depending on how the `OSPlugin` installs files (for ex. in an immutable system), the migration strategy may differ.  
+**Note:** During this phase the current agent config path is used to determine the install location. This is important if you are using a custom path (ex. `elemental-agent run --config /my/custom/config.yaml`) and you will need to change it later. Migration of this file is going to be needed and depending on how the `OSPlugin` installs files (for ex. in an immutable system), the migration strategy may differ.  
 
 1. Install the generated private key used for the host registration. (OSPlugin dependent)
 The private key is used by the `elemental-agent` for authentication and is going to be installed in the agent `workDir` (from the `ElementalRegistration` derived config) under the `private.key` filename.  
@@ -46,8 +46,8 @@ Finally it installs the system.
 Both steps are heavily `OSPlugin` dependent.  
 The `ElementalRegistration.spec.elemental.install` is a schemaless field that can be used to pass arbitrary data to the `OSPlugin`, when executing this phase.  
 
-This phase is ran using the `elemental-agent --install` argument.  
-Note that if `elemental-agent --register --install` is used, this phase will happen automatically after the registration has been finalized.  
+This phase is ran using the `elemental-agent install` command.  
+Note that if `elemental-agent register --install` is used instead, this phase will happen automatically after the registration has been finalized.  
 
 ### Bootstrapping
 
@@ -82,11 +82,11 @@ During this phase, the `elemental-agent` will inform the `OSPlugin` that reset h
 Implementation details are plugin dependent, this is the occasion for the plugin to stop services and do anything needed to prepare the system for a reset.  
 
 The `elemental-agent` will exit once reset has been triggered.  
-It is expected to run `elemental-agent --reset` after, to actually perform the reset of the host.  
+It is expected to run `elemental-agent reset` after, to actually perform the reset of the host.  
 
 ### Resetting
 
-The `Resetting` phase happens when `elemental-agent --reset` is ran.  
+The `Resetting` phase happens when `elemental-agent reset` is ran.  
 
 The `elemental-agent` will first delete the remote `ElementalHost`.  
 This will add a `deletionTimestamp` to the remote resource, however a finalizer will prevent deletion until reset is deemed successful.  
@@ -96,4 +96,4 @@ After deleting the remote `ElementalHost`, the `elemental-agent` will fetch the 
 If the `OSPlugin` resets the host successfully, the remote `ElementalHost` is updated one last time to highlight reset has been completed. This will allow the deletion of the `ElementalHost`.  
 
 It is expected to re-start the lifecycle of the host at this point if desired.  
-This means running `elemental-agent --register --install` to perform a new registration and a fresh installation of the system.  
+This means running `elemental-agent register --install` to perform a new registration and a fresh installation of the system.  
