@@ -1,19 +1,14 @@
-package phases
+package phase
 
 import (
 	"fmt"
 
+	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/client"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
-
-// PostAction is used to return instructions to the cli after a Phase is handled.
-type PostAction struct {
-	PowerOff bool
-	Reboot   bool
-}
 
 // updateCondition is a best effort method to update the remote condition.
 // Due to the unexpected nature of failures, we should not attempt indefinitely as there is no indication for recovery.
@@ -23,7 +18,7 @@ func updateCondition(client client.Client, hostname string, condition clusterv1.
 	if _, err := client.PatchHost(api.HostPatchRequest{
 		Condition: &condition,
 	}, hostname); err != nil {
-		log.Error(err, "reporting condition", "conditionType", condition.Type, "conditionReason", condition.Reason)
+		log.Error(err, "Could not report condition", "conditionType", condition.Type, "conditionReason", condition.Reason)
 	}
 }
 
@@ -36,4 +31,14 @@ func updateConditionOrFail(client client.Client, hostname string, condition clus
 		return fmt.Errorf("reporting condition: %w", err)
 	}
 	return nil
+}
+
+// setPhase is a best-effort attempt to reconcile the remote HostPhase.
+// In case of failures (ex. due to connection errors), it should eventually recover.
+func setPhase(client client.Client, hostname string, phase infrastructurev1.HostPhase) {
+	if _, err := client.PatchHost(api.HostPatchRequest{
+		Phase: &phase,
+	}, hostname); err != nil {
+		log.Errorf(err, "Could not report phase: %s", phase)
+	}
 }

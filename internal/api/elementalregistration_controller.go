@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
-	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/log"
 	"github.com/swaggest/openapi-go"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -59,7 +59,7 @@ func (h *GetElementalRegistrationHandler) ServeHTTP(response http.ResponseWriter
 	logger.Info("Getting ElementalRegistration")
 
 	// Fetch registration
-	registration := &infrastructurev1beta1.ElementalRegistration{}
+	registration := &infrastructurev1.ElementalRegistration{}
 	if err := h.k8sClient.Get(request.Context(), k8sclient.ObjectKey{Namespace: namespace, Name: registrationName}, registration); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			response.WriteHeader(http.StatusNotFound)

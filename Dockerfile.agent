@@ -8,7 +8,8 @@ WORKDIR /workspace
 # Copy the go source
 COPY go.mod go.mod
 COPY go.sum go.sum
-COPY cmd/agent/main.go cmd/agent/main.go
+COPY main.go main.go
+COPY cmd/agent/ cmd/agent/
 COPY api/ api/
 COPY internal/ internal/
 COPY pkg/ pkg/
@@ -24,7 +25,7 @@ RUN CGO_ENABLED=1 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build \
     -X github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.Version=$TAG  \
     -X github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.Commit=$COMMIT  \
     -X github.com/rancher-sandbox/cluster-api-provider-elemental/internal/version.CommitDate=$COMMITDATE"  \
-    -a -o elemental-agent cmd/agent/main.go
+    -a -o elemental-agent main.go
 
 # Build elemental-toolkit plugin
 RUN CGO_ENABLED=1 go build \

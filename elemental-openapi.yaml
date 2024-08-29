@@ -402,9 +402,9 @@ components:
         osPlugin:
           type: string
         postInstall:
-          $ref: '#/components/schemas/V1Beta1PostInstall'
+          $ref: '#/components/schemas/V1Beta1PostAction'
         postReset:
-          $ref: '#/components/schemas/V1Beta1PostReset'
+          $ref: '#/components/schemas/V1Beta1PostAction'
         reconciliation:
           type: integer
         useSystemCertPool:
@@ -458,14 +458,7 @@ components:
         useExisting:
           type: boolean
       type: object
-    V1Beta1PostInstall:
-      properties:
-        powerOff:
-          type: boolean
-        reboot:
-          type: boolean
-      type: object
-    V1Beta1PostReset:
+    V1Beta1PostAction:
       properties:
         powerOff:
           type: boolean

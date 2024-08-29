@@ -1,4 +1,4 @@
-package phases
+package phase
 
 import (
 	"testing"
@@ -13,6 +13,8 @@ import (
 )
 
 var (
+	ConfigPathFixture = "/etc/just/for/test/config.yaml"
+
 	ConfigFixture = config.Config{
 		Registration: v1beta1.Registration{
 			URI:    "https://test.test/elemental/v1/namespaces/test/registrations/test",
@@ -32,11 +34,11 @@ var (
 			InsecureAllowHTTP:     false,
 			InsecureSkipTLSVerify: false,
 			UseSystemCertPool:     false,
-			PostInstall: v1beta1.PostInstall{
+			PostInstall: v1beta1.PostAction{
 				PowerOff: true,
 				Reboot:   true, // If PowerOff is also true, this will be ignored
 			},
-			PostReset: v1beta1.PostReset{
+			PostReset: v1beta1.PostAction{
 				PowerOff: false,
 				Reboot:   true,
 			},

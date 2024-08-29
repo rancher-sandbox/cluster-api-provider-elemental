@@ -25,7 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 )
 
 // ElementalClusterTemplateReconciler reconciles a ElementalClusterTemplate object.
@@ -52,7 +52,7 @@ func (r *ElementalClusterTemplateReconciler) Reconcile(ctx context.Context, _ ct
 // SetupWithManager sets up the controller with the Manager.
 func (r *ElementalClusterTemplateReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err := ctrl.NewControllerManagedBy(mgr).
-		For(&infrastructurev1beta1.ElementalClusterTemplate{}).
+		For(&infrastructurev1.ElementalClusterTemplate{}).
 		Complete(r); err != nil {
 		return fmt.Errorf("initializing ElementalClusterTemplateReconciler builder: %w", err)
 	}

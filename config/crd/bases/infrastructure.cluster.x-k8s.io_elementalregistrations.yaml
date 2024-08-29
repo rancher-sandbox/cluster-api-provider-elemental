@@ -77,6 +77,8 @@ spec:
                             default: /usr/lib/elemental/plugins/elemental.so
                             type: string
                           postInstall:
+                            description: PostAction is used to return instructions
+                              to the cli after a Phase is handled.
                             properties:
                               powerOff:
                                 type: boolean
@@ -84,6 +86,8 @@ spec:
                                 type: boolean
                             type: object
                           postReset:
+                            description: PostAction is used to return instructions
+                              to the cli after a Phase is handled.
                             properties:
                               powerOff:
                                 type: boolean

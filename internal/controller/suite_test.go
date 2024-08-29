@@ -37,7 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/controller/utils"
 
@@ -89,7 +89,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
-	Expect(infrastructurev1beta1.AddToScheme(scheme.Scheme)).Should(Succeed())
+	Expect(infrastructurev1.AddToScheme(scheme.Scheme)).Should(Succeed())
 	Expect(clusterv1.AddToScheme(scheme.Scheme)).Should(Succeed())
 
 	//+kubebuilder:scaffold:scheme

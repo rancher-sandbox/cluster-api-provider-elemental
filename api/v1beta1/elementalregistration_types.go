@@ -126,23 +126,17 @@ type Agent struct {
 	// +optional
 	UseSystemCertPool bool `json:"useSystemCertPool,omitempty" yaml:"useSystemCertPool,omitempty" mapstructure:"useSystemCertPool"`
 	// +optional
-	PostInstall PostInstall `json:"postInstall,omitempty" yaml:"postInstall,omitempty" mapstructure:"postInstall"`
+	PostInstall PostAction `json:"postInstall,omitempty" yaml:"postInstall,omitempty" mapstructure:"postInstall"`
 	// +optional
-	PostReset PostReset `json:"postReset,omitempty" yaml:"postReset,omitempty" mapstructure:"postReset"`
+	PostReset PostAction `json:"postReset,omitempty" yaml:"postReset,omitempty" mapstructure:"postReset"`
 }
 
-type PostInstall struct {
-	// +optional
-	Reboot bool `json:"reboot,omitempty" yaml:"reboot,omitempty" mapstructure:"reboot"`
-	// +optional
-	PowerOff bool `json:"powerOff,omitempty" yaml:"powerOff,omitempty" mapstructure:"powerOff"`
-}
-
-type PostReset struct {
-	// +optional
-	Reboot bool `json:"reboot,omitempty" yaml:"reboot,omitempty" mapstructure:"reboot"`
+// PostAction is used to return instructions to the cli after a Phase is handled.
+type PostAction struct {
 	// +optional
 	PowerOff bool `json:"powerOff,omitempty" yaml:"powerOff,omitempty" mapstructure:"powerOff"`
+	// +optional
+	Reboot bool `json:"reboot,omitempty" yaml:"reboot,omitempty" mapstructure:"reboot"`
 }
 
 type Hostname struct {

@@ -2,22 +2,52 @@
 
 ## Usage
 
+```text
+elemental-agent takes care of the entire lifecycle of an Elemental host, 
+first boot registration, installation, CAPI bootstrapping, upgrades, and reset.
+
+Usage:
+  elemental-agent [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  install     Installs the OS on this Elemental host
+  register    Registers this Elemental host to the remote CAPI management cluster
+  reset       Resets this Elemental host
+  run         Operates this Elemental host according to the remote CAPI conditions
+  version     Returns the version of the elemental-agent
+
+Flags:
+      --config string   Config file (default is /etc/elemental/agent/config.yaml) (default "/etc/elemental/agent/config.yaml")
+      --debug           Enables debug logging
+  -h, --help            help for elemental-agent
+
+Use "elemental-agent [command] --help" for more information about a command.
+```
+
 1. On a clean host, register and install Elemental:
 
     ```bash
-    elemental-agent --register --install
+    elemental-agent register --install
     ```
 
-    The `--register` argument will pick a new hostname and register a new `ElementalHost` using the Elemental API.  
+    The `register` command will pick a new hostname and register a new `ElementalHost` using the Elemental API.  
     Upon successful registration, the remote `ElementalRegistration` is used to update and override the agent config.  
 
-    If `--install` argument is also included (can be used standalone), the agent will then install the machine and flag the `ElementalHost` as **installed**.  
+    If `--install` argument is also included, the agent will then install the machine and flag the `ElementalHost` as **installed**.  
     Any **installed** host is considered ready to be bootstrapped by the Elemental CAPI provider.  
+
+    Alternatively it is possible to run the `install` command standalone once registration is successful.
+
+    ```bash
+    elemental-agent install
+    ```
 
 1. Operating normally:  
 
     ```bash
-    elemental-agent
+    elemental-agent run
     ```
 
     During normal operation, the agent will periodically patch the remote `ElementalHost` with current host information.  
@@ -27,10 +57,10 @@
 1. Resetting the host:  
 
     ```bash
-    elemental-agent --reset
+    elemental-agent reset
     ```
 
-    When `--reset` is invoked, the agent will trigger the remote `ElementalHost` deletion using the Elemental API.  
+    When `reset` command is invoked, the agent will trigger the remote `ElementalHost` deletion using the Elemental API.  
     After that the agent will reset the system, and upon successful reset, the remote `ElementalHost` will be patched as **reset**.  
     The Elemental CAPI Provider will delete any `ElementalHost` that was up for deletion, only when also marked as **reset**.  
     This gives a way to track hosts that are supposed to reset, but fail to do it successfully.  

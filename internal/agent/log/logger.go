@@ -2,6 +2,7 @@ package log
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
@@ -39,6 +40,7 @@ func EnableDebug() {
 		panic(fmt.Sprintf("enabling debug on logger (%v)?", err))
 	}
 	log = zapr.NewLogger(zap)
+	Debug("Debug logging enabled")
 }
 
 func Info(msg string, keysAndValues ...any) {
@@ -63,4 +65,14 @@ func Error(err error, msg string, keysAndValues ...any) {
 
 func Errorf(err error, format string, values ...any) {
 	log.WithCallDepth(1).Error(err, fmt.Sprintf(format, values...))
+}
+
+func Fatal(err error, msg string, keysAndValues ...any) {
+	log.WithCallDepth(1).Error(err, msg, keysAndValues...)
+	os.Exit(1)
+}
+
+func Fatalf(err error, format string, values ...any) {
+	log.WithCallDepth(1).Error(err, fmt.Sprintf(format, values...))
+	os.Exit(1)
 }

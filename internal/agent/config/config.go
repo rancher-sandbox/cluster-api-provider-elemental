@@ -3,7 +3,7 @@ package config
 import (
 	"time"
 
-	infrastructurev1beta1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
+	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 )
 
@@ -17,14 +17,14 @@ const (
 // Config represents the CAPI Elemental agent configuration.
 type Config struct {
 	// Registration config
-	Registration infrastructurev1beta1.Registration `yaml:"registration" mapstructure:"registration"`
+	Registration infrastructurev1.Registration `yaml:"registration" mapstructure:"registration"`
 	// Agent config
-	Agent infrastructurev1beta1.Agent `yaml:"agent" mapstructure:"agent"`
+	Agent infrastructurev1.Agent `yaml:"agent" mapstructure:"agent"`
 }
 
 // FromInfrastructure can be used to convert the ElementalRegistration CAPI infrastructure resource to an agent config file.
 // This function can be used by the operator to generate an initial agent config.
-func FromInfrastructure(conf infrastructurev1beta1.Config) Config {
+func FromInfrastructure(conf infrastructurev1.Config) Config {
 	return Config{
 		Registration: conf.Elemental.Registration,
 		Agent:        conf.Elemental.Agent,
@@ -42,7 +42,7 @@ func FromAPI(conf api.RegistrationResponse) Config {
 
 func DefaultConfig() Config {
 	return Config{
-		Agent: infrastructurev1beta1.Agent{
+		Agent: infrastructurev1.Agent{
 			WorkDir:        defaultWorkDir,
 			Reconciliation: defaultReconciliation,
 			OSPlugin:       defaultPlugin,
