@@ -20,15 +20,14 @@
 
     ```bash
     # Install dependencies
-    zypper install -y docker helm kubernetes1.27-client
+    zypper install -y docker helm kubernetes-client make yq
 
     # Install kind
-    [ $(uname -m) = x86_64 ] && curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
-    chmod +x ./kind
-    mv ./kind /usr/local/bin/kind
+    curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64
+    install -o root -g root -m 0755 kind /usr/local/bin/kind
 
     # Install clusterctl
-    curl -L https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.5.3/clusterctl-linux-amd64 -o clusterctl
+    curl -L https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.8.1/clusterctl-linux-amd64 -o clusterctl
     install -o root -g root -m 0755 clusterctl /usr/local/bin/clusterctl
 
     systemctl enable docker
@@ -48,7 +47,7 @@
     apiVersion: kind.x-k8s.io/v1alpha4
     nodes:
     - role: control-plane
-      image: kindest/node:v1.26.6
+      image: kindest/node:v1.31.0
       kubeadmConfigPatches:
       - |
         kind: InitConfiguration

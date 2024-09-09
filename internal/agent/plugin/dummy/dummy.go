@@ -18,6 +18,7 @@ import (
 const (
 	cloudInitFile           = "cloud-init.yaml"
 	installFile             = "install.yaml"
+	osVersionFile           = "os-version.yaml"
 	resetFile               = "reset.yaml"
 	sentinelFileResetNeeded = "reset.needed"
 	bootstrapCloudInitPath  = "/etc/cloud/cloud.cfg.d/elemental-capi-bootstrap.cfg"
@@ -137,6 +138,19 @@ func (p *DummyPlugin) Bootstrap(format string, input []byte) error {
 		return fmt.Errorf("using bootstrapping format '%s': %w", format, ErrUnsupportedBootstrapFormat)
 	}
 	return nil
+}
+
+func (p *DummyPlugin) ReconcileOSVersion(input []byte) (bool, error) {
+	path := fmt.Sprintf("%s/%s", p.workDir, osVersionFile)
+	log.Debugf("Copying OS Version config to file: %s", path)
+	bytes, err := plugin.UnmarshalRawJSONToYaml(input)
+	if err != nil {
+		return false, fmt.Errorf("unmarshalling OS Version config: %w", err)
+	}
+	if err := p.fs.WriteFile(path, bytes, os.ModePerm); err != nil {
+		return false, fmt.Errorf("writing OS Version config: %w", err)
+	}
+	return false, nil
 }
 
 func (p *DummyPlugin) TriggerReset() error {

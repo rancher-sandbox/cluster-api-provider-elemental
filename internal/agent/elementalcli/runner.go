@@ -10,6 +10,10 @@ import (
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 )
 
+const (
+	CorrelationIDLabelKey = "correlationID"
+)
+
 type Install struct {
 	Firmware         string      `json:"firmware,omitempty" mapstructure:"firmware"`
 	Device           string      `json:"device,omitempty" mapstructure:"device"`
@@ -38,9 +42,16 @@ type Reset struct {
 	Debug           bool     `json:"debug,omitempty" mapstructure:"debug"`
 }
 
+type Upgrade struct {
+	ImageURI        string `json:"imageUri,omitempty" mapstructure:"imageUri"`
+	UpgradeRecovery bool   `json:"upgradeRecovery,omitempty" mapstructure:"upgradeRecovery"`
+	Debug           bool   `json:"debug,omitempty" mapstructure:"debug"`
+}
+
 type Runner interface {
 	Install(Install) error
 	Reset(Reset) error
+	Upgrade(Upgrade, string) error
 }
 
 func NewRunner() Runner {
@@ -103,6 +114,30 @@ func (r *runner) Reset(conf Reset) error {
 	return nil
 }
 
+func (r *runner) Upgrade(conf Upgrade, correlationID string) error {
+	log.Debug("Running elemental upgrade")
+	installerOpts := []string{"elemental"}
+	// There are no env var bindings in elemental-cli for elemental root options
+	// so root flags should be passed within the command line
+	if conf.Debug {
+		installerOpts = append(installerOpts, "--debug")
+	}
+	installerOpts = append(installerOpts, "upgrade")
+
+	cmd := exec.Command("elemental")
+	environmentVariables := mapToUpgradeEnv(conf, correlationID)
+	cmd.Env = append(os.Environ(), environmentVariables...)
+	cmd.Stdout = os.Stdout
+	cmd.Args = installerOpts
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
+	log.Debugf("running: %s\n with ENV:\n%s", strings.Join(installerOpts, " "), strings.Join(environmentVariables, "\n"))
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("running elemental upgrade: %w", err)
+	}
+	return nil
+}
+
 func mapToInstallEnv(conf Install) []string {
 	var variables []string
 	// See GetInstallKeyEnvMap() in https://github.com/rancher/elemental-toolkit/blob/main/pkg/constants/constants.go
@@ -127,6 +162,15 @@ func mapToResetEnv(conf Reset) []string {
 	variables = append(variables, formatEV("ELEMENTAL_RESET_SYSTEM", conf.SystemURI))
 	variables = append(variables, formatEV("ELEMENTAL_RESET_PERSISTENT", strconv.FormatBool(conf.ResetPersistent)))
 	variables = append(variables, formatEV("ELEMENTAL_RESET_OEM", strconv.FormatBool(conf.ResetOEM)))
+	return variables
+}
+
+func mapToUpgradeEnv(conf Upgrade, correlationID string) []string {
+	var variables []string
+	// See GetUpgradeKeyEnvMap() in https://github.com/rancher/elemental-toolkit/blob/main/pkg/constants/constants.go
+	variables = append(variables, formatEV("ELEMENTAL_UPGRADE_RECOVERY", strconv.FormatBool(conf.UpgradeRecovery)))
+	variables = append(variables, formatEV("ELEMENTAL_UPGRADE_SYSTEM", conf.ImageURI))
+	variables = append(variables, formatEV("ELEMENTAL_UPGRADE_SNAPSHOT_LABELS", fmt.Sprintf("%s=%s", CorrelationIDLabelKey, correlationID)))
 	return variables
 }
 
