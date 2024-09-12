@@ -1,6 +1,7 @@
 package elementalcli
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -8,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -48,10 +50,24 @@ type Upgrade struct {
 	Debug           bool   `json:"debug,omitempty" mapstructure:"debug"`
 }
 
+type State struct {
+	StatePartition PartitionState `yaml:"state,omitempty"`
+}
+
+type PartitionState struct {
+	Snapshots map[int]*Snapshot `yaml:"snapshots,omitempty"`
+}
+
+type Snapshot struct {
+	Active bool              `yaml:"active,omitempty"`
+	Labels map[string]string `yaml:"labels,omitempty"`
+}
+
 type Runner interface {
 	Install(Install) error
 	Reset(Reset) error
 	Upgrade(Upgrade, string) error
+	GetState() (State, error)
 }
 
 func NewRunner() Runner {
@@ -136,6 +152,29 @@ func (r *runner) Upgrade(conf Upgrade, correlationID string) error {
 		return fmt.Errorf("running elemental upgrade: %w", err)
 	}
 	return nil
+}
+
+func (r *runner) GetState() (State, error) {
+	state := State{}
+	buffer := new(bytes.Buffer)
+
+	log.Debug("Getting elemental state")
+	installerOpts := []string{"elemental", "state"}
+	cmd := exec.Command("elemental")
+	cmd.Stdout = buffer
+	cmd.Args = installerOpts
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
+	log.Debugf("running: %s", strings.Join(installerOpts, " "))
+	if err := cmd.Run(); err != nil {
+		return state, fmt.Errorf("running elemental state: %w", err)
+	}
+
+	if err := yaml.Unmarshal(buffer.Bytes(), state); err != nil {
+		return state, fmt.Errorf("unmarshalling elemental state: %w", err)
+	}
+
+	return state, nil
 }
 
 func mapToInstallEnv(conf Install) []string {

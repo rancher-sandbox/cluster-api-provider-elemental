@@ -31,7 +31,6 @@ const (
 	resetCloudConfigPath  = "/oem/reset-cloud-config.yaml"
 	bootstrapPath         = "/oem/bootstrap-cloud-config.yaml"
 	liveModeFile          = "/run/elemental/live_mode"
-	stateFile             = "/run/initramfs/elemental-state/state.yaml"
 	bootstrapSentinelPath = "/run/cluster-api/bootstrap-success.complete"
 )
 
@@ -40,19 +39,6 @@ var (
 	ErrBootstrapAlreadyApplied    = errors.New("bootstrap already applied")
 	ErrUnsupportedCloudInitSchema = errors.New("unsupported cloud-init schema")
 )
-
-type ElementalState struct {
-	StatePartition PartitionState `yaml:"state,omitempty"`
-}
-
-type PartitionState struct {
-	Snapshots map[int]*Snapshot `yaml:"snapshots,omitempty"`
-}
-
-type Snapshot struct {
-	Active bool              `yaml:"active,omitempty"`
-	Labels map[string]string `yaml:"labels,omitempty"`
-}
 
 var _ osplugin.Plugin = (*ElementalPlugin)(nil)
 
@@ -379,7 +365,7 @@ func (p *ElementalPlugin) ReconcileOSVersion(input []byte) (bool, error) {
 		return false, nil
 	}
 	// Generate the expected correlation_id value from this config
-	correlationID, err := p.osVersionHash(input)
+	correlationID, err := osVersionHash(input)
 	if err != nil {
 		return false, fmt.Errorf("calculating osVersion hash: %w", err)
 	}
@@ -403,14 +389,9 @@ func (p *ElementalPlugin) ReconcileOSVersion(input []byte) (bool, error) {
 }
 
 func (p *ElementalPlugin) isCorrelationIDFound(correlationID string) (bool, error) {
-	stateBytes, err := p.fs.ReadFile(stateFile)
+	elementalState, err := p.cliRunner.GetState()
 	if err != nil {
-		return false, fmt.Errorf("reading file '%s': %w", stateFile, err)
-	}
-
-	elementalState := &ElementalState{}
-	if err := yaml.Unmarshal(stateBytes, elementalState); err != nil {
-		return false, fmt.Errorf("unmarshalling elemental state: %w", err)
+		return false, fmt.Errorf("getting elemental state: %w", err)
 	}
 
 	// This is normally not supposed to happen, as we expect at least the first snapshot to be present after install.
@@ -447,7 +428,7 @@ func (p *ElementalPlugin) isCorrelationIDFound(correlationID string) (bool, erro
 	return false, nil
 }
 
-func (p *ElementalPlugin) osVersionHash(osVersion []byte) (string, error) {
+func osVersionHash(osVersion []byte) (string, error) {
 	hash := sha256.New()
 	if _, err := hash.Write(osVersion); err != nil {
 		return "", fmt.Errorf("writing hash: %w", err)
