@@ -272,8 +272,8 @@ This part of the quickstart only covers upgrading the single k3s node that was p
 
 ### Setup a test registry
 
-In order to upgrade the node, we are going to need a registry where to push the new OS image to be applied.
-The registry can be also exposed through a NodePort.  
+In order to upgrade the node, we are going to need a registry where to push the new OS image to be applied.  
+The registry needs to be installed on the **management** cluster and can be exposed through a NodePort.  
 For this example we are going to use `192.168.122.10:30000` as our test registry.  
 
 ```bash
