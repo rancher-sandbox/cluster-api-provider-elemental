@@ -337,7 +337,7 @@ components:
           type: boolean
         condition:
           $ref: '#/components/schemas/V1Beta1Condition'
-        inPlaceUpgrade:
+        inPlaceUpdate:
           nullable: true
           type: string
         installed:
