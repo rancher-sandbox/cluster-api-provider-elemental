@@ -59,10 +59,12 @@ var _ = Describe("Elemental Plugin", Label("agent", "plugin", "elemental"), func
 		SystemURI:       "test system uri",
 		Debug:           true,
 	}
-	upgrade := elementalcli.Upgrade{
-		ImageURI:        "oci://foo:bar",
-		UpgradeRecovery: true,
-		Debug:           true,
+	osVersionManagement := OSVersionManagement{
+		OSVersion: elementalcli.Upgrade{
+			ImageURI:        "oci://foo:bar",
+			UpgradeRecovery: true,
+			Debug:           true,
+		},
 	}
 
 	BeforeEach(func() {
@@ -160,7 +162,7 @@ var _ = Describe("Elemental Plugin", Label("agent", "plugin", "elemental"), func
 		Expect(plugin.Bootstrap("ignition", []byte(""))).ShouldNot(Succeed())
 	})
 	It("should invoke elemental upgrade", func() {
-		upgradeBytes, err := json.Marshal(upgrade)
+		upgradeBytes, err := json.Marshal(osVersionManagement)
 		Expect(err).ToNot(HaveOccurred())
 		wantCorrelationID, err := osVersionHash(upgradeBytes)
 		Expect(err).ToNot(HaveOccurred())
@@ -179,14 +181,14 @@ var _ = Describe("Elemental Plugin", Label("agent", "plugin", "elemental"), func
 		}
 
 		cliRunner.EXPECT().GetState().Return(stateFixture, nil)
-		cliRunner.EXPECT().Upgrade(upgrade, wantCorrelationID).Return(nil)
+		cliRunner.EXPECT().Upgrade(osVersionManagement.OSVersion, wantCorrelationID).Return(nil)
 
 		reboot, err := plugin.ReconcileOSVersion(upgradeBytes)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(reboot).Should(Equal(true), "host should reboot if upgrade has to be applied")
 	})
 	It("should not invoke elemental upgrade if snapshot already exists", func() {
-		upgradeBytes, err := json.Marshal(upgrade)
+		upgradeBytes, err := json.Marshal(osVersionManagement)
 		Expect(err).ToNot(HaveOccurred())
 		wantCorrelationID, err := osVersionHash(upgradeBytes)
 		Expect(err).ToNot(HaveOccurred())
@@ -211,7 +213,7 @@ var _ = Describe("Elemental Plugin", Label("agent", "plugin", "elemental"), func
 		Expect(reboot).Should(Equal(false), "host should not reboot if no upgrade has to be applied")
 	})
 	It("should not invoke elemental upgrade if snapshot already exists, but is not active", func() {
-		upgradeBytes, err := json.Marshal(upgrade)
+		upgradeBytes, err := json.Marshal(osVersionManagement)
 		Expect(err).ToNot(HaveOccurred())
 		wantCorrelationID, err := osVersionHash(upgradeBytes)
 		Expect(err).ToNot(HaveOccurred())

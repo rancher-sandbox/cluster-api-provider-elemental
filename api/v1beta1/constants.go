@@ -35,9 +35,9 @@ const (
 	LabelElementalHostBootstrapped         = "elementalhost.infrastructure.cluster.x-k8s.io/bootstrapped"
 	LabelElementalHostNeedsReset           = "elementalhost.infrastructure.cluster.x-k8s.io/needs-reset"
 	LabelElementalHostReset                = "elementalhost.infrastructure.cluster.x-k8s.io/reset"
-	LabelElementalHostInPlaceUpgrade       = "elementalhost.infrastructure.cluster.x-k8s.io/in-place-upgrade"
-	InPlaceUpgradePending                  = "pending"
-	InPlaceUpgradeDone                     = "done"
+	LabelElementalHostInPlaceUpdate        = "elementalhost.infrastructure.cluster.x-k8s.io/in-place-update"
+	InPlaceUpdatePending                   = "pending"
+	InPlaceUpdateDone                      = "done"
 )
 
 // HostPhases.
@@ -95,6 +95,12 @@ const (
 
 	// OSVersionReady describes the Host OS version reconciliation phase.
 	OSVersionReady clusterv1.ConditionType = "OSVersionReady"
+	// WaitingOSReconcileReason indicates that the Host OS version needs to be reconciled.
+	WaitingOSReconcileReason                                     = "WaitingForOSReconcile"
+	WaitingOSReconcileReasonSeverity clusterv1.ConditionSeverity = clusterv1.ConditionSeverityInfo
+	// InPlaceUpdateNotPending indicates that the Host OS version needs to be reconciled, but no in-place-update is pending.
+	InPlaceUpdateNotPending                                     = "InPlaceUpdateNotPending"
+	InPlaceUpdateNotPendingSeverity clusterv1.ConditionSeverity = clusterv1.ConditionSeverityWarning
 	// OSVersionReconciliationFailedReason indicates that the attempted Host OS version reconciliation failed.
 	OSVersionReconciliationFailedReason = "OSVersionReconciliationFailed"
 	// WaitingForPostReconcileRebootReason indicates that the Host OS version was applied and the Host is going to reboot.

@@ -60,10 +60,11 @@ This command will reconcile the remote ElementalHost resource describing this ho
 			}
 
 			// Handle Upgrade
-			if !host.Bootstrapped || host.InPlaceUpgrade == infrastructurev1.InPlaceUpgradePending {
+			needsInplaceUpdate := host.InPlaceUpgrade == infrastructurev1.InPlaceUpdatePending
+			if !host.Bootstrapped || needsInplaceUpdate {
 				log.Info("Reconciling OS Version")
 				osVersionHandler := phase.NewOSVersionHandler(*agentContext)
-				post, err := osVersionHandler.Reconcile(host.OSVersionManagement)
+				post, err := osVersionHandler.Reconcile(host.OSVersionManagement, needsInplaceUpdate)
 				if err != nil {
 					log.Error(err, "handling OS reconciliation")
 					log.Debugf("Waiting %s...", agentContext.Config.Agent.Reconciliation.String())

@@ -265,6 +265,100 @@ clusterctl generate cluster \
 kubeadm > ~/kubeadm-cluster-manifest.yaml
 ```
 
+## Host upgrade
+
+For more information about OS Version Reconcile, please consult the related [documentation](./OS_VERSION_RECONCILE.md).  
+This part of the quickstart only covers upgrading the single k3s node that was provisioned previously.  
+
+### Setup a test registry
+
+In order to upgrade the node, we are going to need a registry where to push the new OS image to be applied.
+The registry can be also exposed through a NodePort.  
+For this example we are going to use `192.168.122.10:30000` as our test registry.  
+
+```bash
+cat << EOF | kubectl apply -f -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-registry
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-registry
+  namespace: test-registry
+  labels:
+    app: test-registry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-registry
+  template:
+    metadata:
+      labels:
+        app: test-registry
+    spec:
+      containers:
+      - name: registry
+        image: registry:2
+        ports:
+        - containerPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: registry-nodeport
+  namespace: test-registry
+spec:
+  type: NodePort
+  selector:
+    app: test-registry
+  ports:
+  - nodePort: 30000
+    port: 5000
+    protocol: TCP
+    targetPort: 5000  
+EOF
+```
+
+### Build an updated OS Image
+
+A fresh OS image can be rebuilt with `make build-os`.  
+For conveniency, the `ELEMENTAL_OS_IMAGE` can be used to specify the tag.  
+
+```bash
+AGENT_CONFIG_FILE=iso/config/my-config.yaml ELEMENTAL_OS_IMAGE="192.168.122.10:30000/elemental-capi-os:v1.2.3" make build-os
+```
+
+The image can be pushed to the registry:
+
+```bash
+docker push 192.168.122.10:30000/elemental-capi-os:v1.2.3
+```
+
+### Apply the new OS Version to the ElementalHost
+
+The `ElementalMachine` associated with the `ElementalHost` can now be upgraded simply patching the `.spec.osVersionManagement` to it:
+
+```bash
+kubectl patch elementalmachine elemental-cluster-k3s-control-plane-p8jzq -p '{"spec":{"osVersionManagement":{"osVersion":{"imageUri":"oci://192.168.122.10:30000/elemental-capi-os:v1.2.3","debug":true}}}}' --type=merge
+```
+
+Since this `ElementalHost` is already bootstrapped, we are going to apply the `pending` `in-place-update` label.
+
+```bash
+kubectl label elementalhost m-aa90d0b4-f81a-4eb7-aa9f-f835f06cb527 elementalhost.infrastructure.cluster.x-k8s.io/in-place-update=pending
+```
+
+The host should then upgrade to the new image and reboot.
+Upon update completion, the `in-place-update` label will mutate to `done`, the `ElementalHost` will also be ready:
+
+```yaml
+kubectl wait --for=condition=ready elementalhost m-aa90d0b4-f81a-4eb7-aa9f-f835f06cb527
+```
+
 ## Trigger a Host reset
 
 A Host can receive a trigger reset instruction on the following scenarios:

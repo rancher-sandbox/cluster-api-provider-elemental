@@ -6,13 +6,14 @@ import (
 
 	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/context"
+	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
 type OSVersionHandler interface {
-	Reconcile(map[string]runtime.RawExtension) (infrastructurev1.PostAction, error)
+	Reconcile(map[string]runtime.RawExtension, bool) (infrastructurev1.PostAction, error)
 }
 
 var _ OSVersionHandler = (*osVersionHandler)(nil)
@@ -27,7 +28,7 @@ type osVersionHandler struct {
 	agentContext context.AgentContext
 }
 
-func (o *osVersionHandler) Reconcile(osVersionManagement map[string]runtime.RawExtension) (infrastructurev1.PostAction, error) {
+func (o *osVersionHandler) Reconcile(osVersionManagement map[string]runtime.RawExtension, needsInplaceUpdate bool) (infrastructurev1.PostAction, error) {
 	post := infrastructurev1.PostAction{}
 	// Serialize input to JSON
 	bytes, err := json.Marshal(osVersionManagement)
@@ -78,6 +79,16 @@ func (o *osVersionHandler) Reconcile(osVersionManagement map[string]runtime.RawE
 		Message:  "",
 	}); err != nil {
 		return post, fmt.Errorf("updating OSVersionReady=true condition: %w", err)
+	}
+	// If it was an inPlaceUpdate, mark it as done.
+	if needsInplaceUpdate {
+		updateDone := infrastructurev1.InPlaceUpdateDone
+		patchRequest := api.HostPatchRequest{
+			InPlaceUpdate: &updateDone,
+		}
+		if _, err := o.agentContext.Client.PatchHost(patchRequest, o.agentContext.Hostname); err != nil {
+			return post, fmt.Errorf("updating InPlaceUpgrade done label: %w", err)
+		}
 	}
 	return post, nil
 }

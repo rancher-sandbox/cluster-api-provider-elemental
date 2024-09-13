@@ -30,7 +30,16 @@ When the `elemental-agent` receives a CAPI bootstrap config, the plugin will sim
 The host will then reboot.  
 Upon reboot, the bootstrap config is expected to create the `/run/cluster-api/bootstrap-success.complete` sentinel file, as described by the [Bootstrap contract](https://cluster-api.sigs.k8s.io/developer/providers/bootstrap#sentinel-file).  
 
-### 4. Trigger Reset
+### 4. OS Version Reconcile
+
+[OS Version Reconcile](./OS_VERSION_RECONCILE.md) can happen before bootstrap, for example on idling hosts or during CAPI Machine rollouts.  
+Most likely however reconciling an OS version will be a part of a bootstrapped node lifecycle. This can be achieved with the [in-place-updates](./OS_VERSION_RECONCILE.md#in-place-updates) functionality.  
+
+In any case, whenever an OS Version needs to be reconciled, the plugin will dump the content of the `ElementalHost.spec.osVersionManagement` in the `os-version.yaml` file within the `elemental-agent` work directory.  
+
+The system will not be rebooted and the OS version will be considered reconciled after the file has been written.
+
+### 5. Trigger Reset
 
 When the `elemental-agent` receives a reset trigger, the plugin will create a `needs.reset` file in the agent work directory.  
 No further action is taken by the plugin.
@@ -38,7 +47,7 @@ No further action is taken by the plugin.
 When the `needs.reset` file is created, some logic should take place to prepare the machine for reset, delete the `needs.reset` file and start the agent with the `reset` command to mark the host as reset.  
 In this stage some host services may also be stopped or uninstalled, for example `k3s`.  
 
-### 5. Resetting
+### 6. Resetting
 
 Similarly to the installation, a `reset.yaml` in the agent work directory will be created when the agent is called with the `reset` command.  
 This is a simple dump of the `ElementalRegistration` `spec.config.elemental.reset` configuration.

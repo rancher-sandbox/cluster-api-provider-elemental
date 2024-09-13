@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -209,7 +210,30 @@ func (r *ElementalHostReconciler) reconcileOSVersionManagement(ctx context.Conte
 		return fmt.Errorf("fetching associated ElementalMachine '%s': %w", host.Spec.MachineRef.Name, err)
 	}
 
-	host.Spec.OSVersionManagement = machine.Spec.OSVersionManagement
+	// If we have a different OS Version to reconcile, then set the `OSVersionReady` false.
+	if !reflect.DeepEqual(host.Spec.OSVersionManagement, machine.Spec.OSVersionManagement) {
+		// Propagate the OSVersionManagement data
+		host.Spec.OSVersionManagement = machine.Spec.OSVersionManagement
+
+		// Since we are already bootstrapped, mutating the OSVersionManagement should be a warning if the in-place-update label was not set to pending.
+		if value, found := host.Labels[infrastructurev1.LabelElementalHostInPlaceUpdate]; found && value != infrastructurev1.InPlaceUpdatePending {
+			conditions.Set(host, &v1beta1.Condition{
+				Type:     infrastructurev1.OSVersionReady,
+				Status:   v1.ConditionFalse,
+				Severity: infrastructurev1.InPlaceUpdateNotPendingSeverity,
+				Reason:   infrastructurev1.InPlaceUpdateNotPending,
+				Message:  fmt.Sprintf("ElementalMachine %s OSVersionManagement mutated, but no in-place-upgrade is pending. Mutation will be ignored.", machine.Name),
+			})
+		} else {
+			conditions.Set(host, &v1beta1.Condition{
+				Type:     infrastructurev1.OSVersionReady,
+				Status:   v1.ConditionFalse,
+				Severity: infrastructurev1.WaitingOSReconcileReasonSeverity,
+				Reason:   infrastructurev1.WaitingOSReconcileReason,
+				Message:  fmt.Sprintf("ElementalMachine %s OSVersionManagement mutated", machine.Name),
+			})
+		}
+	}
 	return nil
 }
 

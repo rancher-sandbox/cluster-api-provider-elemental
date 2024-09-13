@@ -40,6 +40,11 @@ var (
 	ErrUnsupportedCloudInitSchema = errors.New("unsupported cloud-init schema")
 )
 
+// OSVersionManagement defines all intstructions to reconcile an OSVersion.
+type OSVersionManagement struct {
+	OSVersion elementalcli.Upgrade `json:"osVersion,omitempty" mapstructure:"osVersion"`
+}
+
 var _ osplugin.Plugin = (*ElementalPlugin)(nil)
 
 type ElementalPlugin struct {
@@ -354,13 +359,13 @@ func (p *ElementalPlugin) Reset(input []byte) error {
 
 func (p *ElementalPlugin) ReconcileOSVersion(input []byte) (bool, error) {
 	log.Debug("Reconciling Elemental OS Version")
-	oSVersionManagement := elementalcli.Upgrade{}
+	oSVersionManagement := OSVersionManagement{}
 	// Try to unmarshal first to validate the config.
 	if err := json.Unmarshal(input, &oSVersionManagement); err != nil {
 		return false, fmt.Errorf("unmarshalling oSVersionManagement config: %w", err)
 	}
 	// No version was defined, nothing to do.
-	if len(oSVersionManagement.ImageURI) == 0 {
+	if len(oSVersionManagement.OSVersion.ImageURI) == 0 {
 		log.Info("No imageURI to upgrade to was defined. Nothing to do.")
 		return false, nil
 	}
@@ -381,7 +386,7 @@ func (p *ElementalPlugin) ReconcileOSVersion(input []byte) (bool, error) {
 		return false, nil
 	}
 	// Do the upgrade
-	if err := p.cliRunner.Upgrade(oSVersionManagement, correlationID); err != nil {
+	if err := p.cliRunner.Upgrade(oSVersionManagement.OSVersion, correlationID); err != nil {
 		return false, fmt.Errorf("invoking elemental upgrade: %w", err)
 	}
 

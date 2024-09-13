@@ -57,12 +57,12 @@ type HostPatchRequest struct {
 	RegistrationName string `path:"registrationName"`
 	HostName         string `path:"hostName"`
 
-	Annotations    map[string]string `json:"annotations,omitempty"`
-	Labels         map[string]string `json:"labels,omitempty"`
-	Bootstrapped   *bool             `json:"bootstrapped,omitempty"`
-	Installed      *bool             `json:"installed,omitempty"`
-	Reset          *bool             `json:"reset,omitempty"`
-	InPlaceUpgrade *string           `json:"inPlaceUpgrade,omitempty"`
+	Annotations   map[string]string `json:"annotations,omitempty"`
+	Labels        map[string]string `json:"labels,omitempty"`
+	Bootstrapped  *bool             `json:"bootstrapped,omitempty"`
+	Installed     *bool             `json:"installed,omitempty"`
+	Reset         *bool             `json:"reset,omitempty"`
+	InPlaceUpdate *string           `json:"inPlaceUpdate,omitempty"`
 
 	Condition *clusterv1.Condition        `json:"condition,omitempty"`
 	Phase     *infrastructurev1.HostPhase `json:"phase,omitempty"`
@@ -97,8 +97,8 @@ func (h *HostPatchRequest) applyToElementalHost(elementalHost *infrastructurev1.
 	if h.Reset != nil {
 		elementalHost.Labels[infrastructurev1.LabelElementalHostReset] = "true"
 	}
-	if h.InPlaceUpgrade != nil {
-		elementalHost.Labels[infrastructurev1.LabelElementalHostInPlaceUpgrade] = *h.InPlaceUpgrade
+	if h.InPlaceUpdate != nil {
+		elementalHost.Labels[infrastructurev1.LabelElementalHostInPlaceUpdate] = *h.InPlaceUpdate
 	}
 	if elementalHost.Status.Conditions == nil {
 		elementalHost.Status.Conditions = clusterv1.Conditions{}
@@ -143,7 +143,7 @@ func (h *HostResponse) fromElementalHost(elementalHost infrastructurev1.Elementa
 	if value, found := elementalHost.Labels[infrastructurev1.LabelElementalHostNeedsReset]; found && value == "true" {
 		h.NeedsReset = true
 	}
-	if value, found := elementalHost.Labels[infrastructurev1.LabelElementalHostInPlaceUpgrade]; found {
+	if value, found := elementalHost.Labels[infrastructurev1.LabelElementalHostInPlaceUpdate]; found {
 		h.InPlaceUpgrade = value
 	}
 	h.OSVersionManagement = elementalHost.Spec.OSVersionManagement

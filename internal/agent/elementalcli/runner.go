@@ -1,7 +1,6 @@
 package elementalcli
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -156,21 +155,21 @@ func (r *runner) Upgrade(conf Upgrade, correlationID string) error {
 
 func (r *runner) GetState() (State, error) {
 	state := State{}
-	buffer := new(bytes.Buffer)
 
 	log.Debug("Getting elemental state")
 	installerOpts := []string{"elemental", "state"}
 	cmd := exec.Command("elemental")
-	cmd.Stdout = buffer
 	cmd.Args = installerOpts
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr
 	log.Debugf("running: %s", strings.Join(installerOpts, " "))
-	if err := cmd.Run(); err != nil {
+
+	var commandOutput []byte
+	var err error
+	if commandOutput, err = cmd.Output(); err != nil {
 		return state, fmt.Errorf("running elemental state: %w", err)
 	}
-
-	if err := yaml.Unmarshal(buffer.Bytes(), state); err != nil {
+	if err := yaml.Unmarshal(commandOutput, &state); err != nil {
 		return state, fmt.Errorf("unmarshalling elemental state: %w", err)
 	}
 
