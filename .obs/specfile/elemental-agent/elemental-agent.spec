@@ -15,6 +15,10 @@
 # Please submit bugfixes or comments via https://bugs.opensuse.org/
 #
 
+# These variables are coupled to automation scripts
+%define commit _replaceme_
+%define c_date _replaceme_
+
 %define pluginsdir /usr/lib/elemental/plugins
 
 Name:           elemental-agent
@@ -24,9 +28,8 @@ Summary:        Elemental CAPI agent
 License:        Apache-2.0
 Group:          System/Management
 URL:            https://github.com/rancher-sandbox/cluster-api-provider-elemental
-Source:         %{name}-%{version}.tar
-Source1:        %{name}.obsinfo
-Source2:        %{name}.rpmlintrc
+Source:         %{name}.tar.xz
+Source1:        %{name}.rpmlintrc
 Requires:       elemental-plugin
 
 BuildRequires:  make
@@ -70,17 +73,25 @@ that can be used for debugging, or when no other plugin option
 is available.
 
 %prep
-%setup -q -n %{name}-%{version}
-cp %{S:1} .
+%setup -q -n %{name}
 
 %build
 %goprep .
 
-export GIT_TAG=`echo "%{version}" | cut -d "+" -f 1`
-GIT_COMMIT=$(cat %{name}.obsinfo | grep commit: | cut -d" " -f 2)
+if [ "%{commit}" = "_replaceme_" ]; then
+  echo "No commit hash provided"
+  exit 1
+fi
+
+if [ "%{c_date}" = "_replaceme_" ]; then
+  echo "No commit date provided"
+  exit 1
+fi
+
+export GIT_TAG=$(echo "%{version}" | cut -d "+" -f 1)
+GIT_COMMIT=$(echo "%{commit}")
 export GIT_COMMIT=${GIT_COMMIT:0:8}
-MTIME=$(cat %{name}.obsinfo | grep mtime: | cut -d" " -f 2)
-export GIT_COMMIT_DATE=$(date -d @${MTIME} +%Y%m%d)
+export GIT_COMMIT_DATE="%{c_date}"
 
 mkdir -p bin
 make build-agent
