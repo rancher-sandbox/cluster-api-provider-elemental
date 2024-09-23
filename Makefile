@@ -27,7 +27,7 @@ CONTROLLER_TOOLS_VERSION ?= v0.16.1
 CAPI_VERSION?=$(shell grep "sigs.k8s.io/cluster-api" go.mod | awk '{print $$NF}')
 # Dev Image building
 KUBEADM_READY_OS ?= ""
-ELEMENTAL_TOOLKIT_IMAGE ?= ghcr.io/rancher/elemental-toolkit/elemental-cli:nightly
+ELEMENTAL_TOOLKIT_IMAGE ?= ghcr.io/rancher/elemental-toolkit/elemental-cli:v2.2.0
 ELEMENTAL_AGENT_IMAGE ?= ghcr.io/rancher-sandbox/cluster-api-provider-elemental/agent:latest
 ELEMENTAL_OS_IMAGE?=docker.io/local/elemental-capi-os:dev 
 ELEMENTAL_ISO_IMAGE?=docker.io/local/elemental-capi-iso:dev 
