@@ -10,8 +10,10 @@ import (
 	"github.com/twpayne/go-vfs/v4"
 	"github.com/twpayne/go-vfs/v4/vfst"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/conditions"
@@ -166,6 +168,89 @@ var _ = Describe("ElementalHost controller", Label("controller", "elemental-host
 		}).WithTimeout(time.Minute).Should(Equal(corev1.ConditionTrue), "BootstrapReady condition should be true")
 		Expect(conditions.Get(&hostWithConditions, clusterv1.ReadyCondition)).ShouldNot(BeNil(), "Conditions summary should be present")
 		Expect(conditions.Get(&hostWithConditions, clusterv1.ReadyCondition).Status).Should(Equal(corev1.ConditionTrue), "Conditions summary should be true")
+	})
+	It("should reconcile OS version from associated Elemental Machine", func() {
+		// Create a new to-be-associated ElementalHost first
+		associatedHost := host
+		associatedHost.ObjectMeta.Name = "test-os-reconcile"
+		associatedHost.Labels = map[string]string{v1beta1.LabelElementalHostInstalled: "true"}
+		Expect(k8sClient.Create(ctx, &associatedHost)).Should(Succeed())
+		Expect(k8sClient.Get(ctx, types.NamespacedName{
+			Namespace: associatedHost.Namespace,
+			Name:      associatedHost.Name,
+		}, &associatedHost)).Should(Succeed())
+		// Create and associate the ElementalMachine
+		elementalMachine := v1beta1.ElementalMachine{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-os-reconcile",
+				Namespace: namespace.Name,
+			},
+			Spec: v1beta1.ElementalMachineSpec{
+				HostRef: &corev1.ObjectReference{
+					Kind:       associatedHost.Kind,
+					Namespace:  associatedHost.Namespace,
+					Name:       associatedHost.Name,
+					APIVersion: associatedHost.APIVersion,
+					UID:        associatedHost.UID,
+				},
+				OSVersionManagement: map[string]runtime.RawExtension{
+					"test": {Raw: []byte(`"1"`)},
+				},
+			},
+		}
+		Expect(k8sClient.Create(ctx, &elementalMachine)).Should(Succeed())
+		Expect(k8sClient.Get(ctx, types.NamespacedName{
+			Namespace: elementalMachine.Namespace,
+			Name:      elementalMachine.Name,
+		}, &elementalMachine)).Should(Succeed())
+		// Double link the ElementalHost to ElementalMachine
+		associatedHostPatch := associatedHost
+		associatedHostPatch.Spec.MachineRef = &corev1.ObjectReference{
+			Kind:       elementalMachine.Kind,
+			Namespace:  elementalMachine.Namespace,
+			Name:       elementalMachine.Name,
+			APIVersion: elementalMachine.APIVersion,
+			UID:        elementalMachine.UID,
+		}
+		patchObject(ctx, k8sClient, &associatedHost, &associatedHostPatch)
+		// Verify OSVersionManagement has been propagated from the ElementalMachine
+		Eventually(func() map[string]runtime.RawExtension {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      associatedHost.Name,
+				Namespace: associatedHost.Namespace},
+				&associatedHost)).Should(Succeed())
+			return associatedHost.Spec.OSVersionManagement
+		}).WithTimeout(time.Minute).Should(Equal(elementalMachine.Spec.OSVersionManagement),
+			"OSVersionManagement should have been propagated from ElementalMachine")
+		osVersionReadyCondition := conditions.Get(&associatedHost, v1beta1.OSVersionReady)
+		Expect(osVersionReadyCondition.Status).Should(Equal(v1.ConditionFalse))
+		Expect(osVersionReadyCondition.Reason).Should(Equal(v1beta1.WaitingOSReconcileReason))
+		Expect(osVersionReadyCondition.Severity).Should(Equal(v1beta1.WaitingOSReconcileReasonSeverity))
+		Expect(osVersionReadyCondition.Message).Should(Equal(fmt.Sprintf("ElementalMachine %s OSVersionManagement mutated", elementalMachine.Name)))
+		// Mark the host as bootstrapped now. This will be needed to test a different OSVersionReady false reason
+		associatedHostPatch = associatedHost
+		associatedHostPatch.Labels = map[string]string{v1beta1.LabelElementalHostBootstrapped: "true"}
+		patchObject(ctx, k8sClient, &associatedHost, &associatedHostPatch)
+		// Mutate the OSVersion on the ElementalMachine
+		elementalMachinePatch := elementalMachine
+		elementalMachinePatch.Spec.OSVersionManagement = map[string]runtime.RawExtension{
+			"foo": {Raw: []byte(`"2"`)},
+		}
+		patchObject(ctx, k8sClient, &elementalMachine, &elementalMachinePatch)
+		// Verify OSVersionManagement has been propagated again
+		Eventually(func() map[string]runtime.RawExtension {
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      associatedHost.Name,
+				Namespace: associatedHost.Namespace},
+				&associatedHost)).Should(Succeed())
+			return associatedHost.Spec.OSVersionManagement
+		}).WithTimeout(time.Minute).Should(Equal(elementalMachinePatch.Spec.OSVersionManagement),
+			"Updated OSVersionManagement should have been propagated from ElementalMachine")
+		osVersionReadyCondition = conditions.Get(&associatedHost, v1beta1.OSVersionReady)
+		Expect(osVersionReadyCondition.Status).Should(Equal(v1.ConditionFalse))
+		Expect(osVersionReadyCondition.Reason).Should(Equal(v1beta1.InPlaceUpdateNotPendingReason))
+		Expect(osVersionReadyCondition.Severity).Should(Equal(v1beta1.InPlaceUpdateNotPendingReasonSeverity))
+		Expect(osVersionReadyCondition.Message).Should(Equal(fmt.Sprintf("ElementalMachine %s OSVersionManagement mutated, but no in-place-upgrade is pending. Mutation will be ignored.", elementalMachine.Name)))
 	})
 })
 

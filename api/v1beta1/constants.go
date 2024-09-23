@@ -98,9 +98,9 @@ const (
 	// WaitingOSReconcileReason indicates that the Host OS version needs to be reconciled.
 	WaitingOSReconcileReason                                     = "WaitingForOSReconcile"
 	WaitingOSReconcileReasonSeverity clusterv1.ConditionSeverity = clusterv1.ConditionSeverityInfo
-	// InPlaceUpdateNotPending indicates that the Host OS version needs to be reconciled, but no in-place-update is pending.
-	InPlaceUpdateNotPending                                     = "InPlaceUpdateNotPending"
-	InPlaceUpdateNotPendingSeverity clusterv1.ConditionSeverity = clusterv1.ConditionSeverityWarning
+	// InPlaceUpdateNotPendingReason indicates that the Host OS version needs to be reconciled, but no in-place-update is pending.
+	InPlaceUpdateNotPendingReason                                     = "InPlaceUpdateNotPending"
+	InPlaceUpdateNotPendingReasonSeverity clusterv1.ConditionSeverity = clusterv1.ConditionSeverityWarning
 	// OSVersionReconciliationFailedReason indicates that the attempted Host OS version reconciliation failed.
 	OSVersionReconciliationFailedReason = "OSVersionReconciliationFailed"
 	// WaitingForPostReconcileRebootReason indicates that the Host OS version was applied and the Host is going to reboot.

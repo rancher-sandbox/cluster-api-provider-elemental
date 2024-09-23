@@ -87,7 +87,7 @@ var _ = Describe("Dummy Plugin", Label("agent", "plugin", "dummy"), func() {
 		Expect(fs.WriteFile(needsResetPath, []byte("anything"), os.ModePerm)).Should(Succeed())
 		Expect(plugin.Reset([]byte(""))).ShouldNot(Succeed())
 	})
-	It("should reset by dumpint info to file", func() {
+	It("should reset by dumping info to file", func() {
 		input := []byte(`{"foo":{"bar":{"foobar":"barfoo"}}}`)
 		Expect(plugin.Reset(input)).Should(Succeed())
 		wantPath := fmt.Sprintf("%s/%s", pluginContext.WorkDir, resetFile)
@@ -113,6 +113,14 @@ var _ = Describe("Dummy Plugin", Label("agent", "plugin", "dummy"), func() {
 	})
 	It("should fail on unknown bootstrap format", func() {
 		Expect(plugin.Bootstrap("uknown", []byte(""))).ShouldNot(Succeed())
+	})
+	It("should reconcile os version by dumping info to file", func() {
+		input := []byte(`{"foo":{"bar":{"foobar":"barfoo"}}}`)
+		reboot, err := plugin.ReconcileOSVersion(input)
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(reboot).Should(BeFalse())
+		wantPath := fmt.Sprintf("%s/%s", pluginContext.WorkDir, osVersionFile)
+		compareFiles(fs, wantPath, "_testdata/osversion.yaml")
 	})
 })
 

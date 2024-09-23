@@ -212,16 +212,23 @@ func (r *ElementalHostReconciler) reconcileOSVersionManagement(ctx context.Conte
 
 	// If we have a different OS Version to reconcile, then set the `OSVersionReady` false.
 	if !reflect.DeepEqual(host.Spec.OSVersionManagement, machine.Spec.OSVersionManagement) {
+		logger.Info("OSVersionManagement mutated on associated ElementalMachine")
 		// Propagate the OSVersionManagement data
 		host.Spec.OSVersionManagement = machine.Spec.OSVersionManagement
 
+		bootstrapped, bootstrappedFound := host.Labels[infrastructurev1.LabelElementalHostBootstrapped]
+		isAlreadyBootstrapped := bootstrappedFound && bootstrapped == "true"
+
+		inPlaceUpdate, inPlaceUpdateFound := host.Labels[infrastructurev1.LabelElementalHostInPlaceUpdate]
+		isInPlaceUpdatePending := inPlaceUpdateFound && inPlaceUpdate == infrastructurev1.InPlaceUpdatePending
+
 		// Since we are already bootstrapped, mutating the OSVersionManagement should be a warning if the in-place-update label was not set to pending.
-		if value, found := host.Labels[infrastructurev1.LabelElementalHostInPlaceUpdate]; found && value != infrastructurev1.InPlaceUpdatePending {
+		if isAlreadyBootstrapped && !isInPlaceUpdatePending {
 			conditions.Set(host, &v1beta1.Condition{
 				Type:     infrastructurev1.OSVersionReady,
 				Status:   v1.ConditionFalse,
-				Severity: infrastructurev1.InPlaceUpdateNotPendingSeverity,
-				Reason:   infrastructurev1.InPlaceUpdateNotPending,
+				Severity: infrastructurev1.InPlaceUpdateNotPendingReasonSeverity,
+				Reason:   infrastructurev1.InPlaceUpdateNotPendingReason,
 				Message:  fmt.Sprintf("ElementalMachine %s OSVersionManagement mutated, but no in-place-upgrade is pending. Mutation will be ignored.", machine.Name),
 			})
 		} else {
