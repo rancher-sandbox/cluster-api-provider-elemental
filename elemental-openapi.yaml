@@ -337,6 +337,9 @@ components:
           type: boolean
         condition:
           $ref: '#/components/schemas/V1Beta1Condition'
+        inPlaceUpdate:
+          nullable: true
+          type: string
         installed:
           nullable: true
           type: boolean
@@ -361,6 +364,8 @@ components:
           type: boolean
         bootstrapped:
           type: boolean
+        inPlaceUpgrade:
+          type: string
         installed:
           type: boolean
         labels:
@@ -371,6 +376,10 @@ components:
           type: string
         needsReset:
           type: boolean
+        osVersionManagement:
+          additionalProperties:
+            $ref: '#/components/schemas/RuntimeRawExtension'
+          type: object
       type: object
     ApiRegistrationResponse:
       properties:

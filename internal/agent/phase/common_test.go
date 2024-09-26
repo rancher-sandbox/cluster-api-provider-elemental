@@ -83,6 +83,11 @@ var (
 		},
 	}
 
+	OSVersionManagementFixture = map[string]runtime.RawExtension{
+		"foo": {Raw: []byte(`"bar"`)},
+		"bar": {Raw: []byte(`"foo"`)},
+	}
+
 	HostResponseFixture = api.HostResponse{
 		Name:        "test-host",
 		Annotations: map[string]string{"test-annotation": "test"},

@@ -39,6 +39,9 @@ type Plugin interface {
 	// Bootstrap should apply the CAPI bootstrap config to the machine.
 	// The format can be either "cloud-init" or "ignition".
 	Bootstrap(format string, input []byte) error
+	// ReconcileOSVersion should reconcile the OS version on the host according to the input (in JSON format).
+	// You can trigger a Reboot by returning a true value. Note that in case of error this is ignored.
+	ReconcileOSVersion(input []byte) (bool, error)
 	// TriggerReset should prepare the machine for reset.
 	TriggerReset() error
 	// Reset should reset the machine to an installable state, given an input reset config (in JSON format).

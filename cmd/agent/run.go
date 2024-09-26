@@ -7,7 +7,6 @@ import (
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/log"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/agent/phase"
 	"github.com/rancher-sandbox/cluster-api-provider-elemental/internal/api"
-	"github.com/rancher-sandbox/cluster-api-provider-elemental/pkg/agent/osplugin"
 	"github.com/spf13/cobra"
 )
 
@@ -60,6 +59,24 @@ This command will reconcile the remote ElementalHost resource describing this ho
 				return
 			}
 
+			// Handle Upgrade
+			needsInplaceUpdate := host.InPlaceUpgrade == infrastructurev1.InPlaceUpdatePending
+			if !host.Bootstrapped || needsInplaceUpdate {
+				log.Info("Reconciling OS Version")
+				osVersionHandler := phase.NewOSVersionHandler(*agentContext)
+				post, err := osVersionHandler.Reconcile(host.OSVersionManagement, needsInplaceUpdate)
+				if err != nil {
+					log.Error(err, "handling OS reconciliation")
+					log.Debugf("Waiting %s...", agentContext.Config.Agent.Reconciliation.String())
+					time.Sleep(agentContext.Config.Agent.Reconciliation)
+					continue
+				}
+				if handlePost(agentContext.Plugin, post) {
+					// Exit the program if we are rebooting to apply bootstrap
+					return
+				}
+			}
+
 			// Handle bootstrap if needed
 			if host.BootstrapReady && !host.Bootstrapped {
 				log.Info("Handling bootstrap application")
@@ -85,23 +102,4 @@ This command will reconcile the remote ElementalHost resource describing this ho
 
 func init() {
 	rootCmd.AddCommand(runCmd)
-}
-
-// handlePost handles post conditions such as Reboot or PowerOff.
-// A true flag is returned if any of the conditions is true, to highlight the program should exit.
-func handlePost(osPlugin osplugin.Plugin, post infrastructurev1.PostAction) bool {
-	if post.PowerOff {
-		log.Info("Powering off system")
-		if err := osPlugin.PowerOff(); err != nil {
-			log.Error(err, "Powering off system")
-		}
-		return true
-	} else if post.Reboot {
-		log.Info("Rebooting system")
-		if err := osPlugin.Reboot(); err != nil {
-			log.Error(err, "Rebooting system")
-		}
-		return true
-	}
-	return false
 }

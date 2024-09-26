@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -38,6 +39,11 @@ var (
 	ErrBootstrapAlreadyApplied    = errors.New("bootstrap already applied")
 	ErrUnsupportedCloudInitSchema = errors.New("unsupported cloud-init schema")
 )
+
+// OSVersionManagement defines all intstructions to reconcile an OSVersion.
+type OSVersionManagement struct {
+	OSVersion elementalcli.Upgrade `json:"osVersion,omitempty" mapstructure:"osVersion"`
+}
 
 var _ osplugin.Plugin = (*ElementalPlugin)(nil)
 
@@ -349,6 +355,92 @@ func (p *ElementalPlugin) Reset(input []byte) error {
 		return fmt.Errorf("running command '%s': %w", command, err)
 	}
 	return nil
+}
+
+func (p *ElementalPlugin) ReconcileOSVersion(input []byte) (bool, error) {
+	log.Debug("Reconciling Elemental OS Version")
+	oSVersionManagement := OSVersionManagement{}
+	// Try to unmarshal first to validate the config.
+	if err := json.Unmarshal(input, &oSVersionManagement); err != nil {
+		return false, fmt.Errorf("unmarshalling oSVersionManagement config: %w", err)
+	}
+	// No version was defined, nothing to do.
+	if len(oSVersionManagement.OSVersion.ImageURI) == 0 {
+		log.Info("No imageURI to upgrade to was defined. Nothing to do.")
+		return false, nil
+	}
+	// Generate the expected correlation_id value from this config
+	correlationID, err := osVersionHash(input)
+	if err != nil {
+		return false, fmt.Errorf("calculating osVersion hash: %w", err)
+	}
+	log.Debugf("Calculated osVersion hash: %s", correlationID)
+	// Verify current active system has same correlation_id
+	osReconciled, err := p.isCorrelationIDFound(correlationID)
+	if err != nil {
+		return false, fmt.Errorf("verifying correlation_id: %w", err)
+	}
+	// Already reconciled, all good!
+	if osReconciled {
+		log.Info("OSVersion is reconciled. Nothing to do")
+		return false, nil
+	}
+	// Do the upgrade
+	if err := p.cliRunner.Upgrade(oSVersionManagement.OSVersion, correlationID); err != nil {
+		return false, fmt.Errorf("invoking elemental upgrade: %w", err)
+	}
+
+	return true, nil
+}
+
+func (p *ElementalPlugin) isCorrelationIDFound(correlationID string) (bool, error) {
+	elementalState, err := p.cliRunner.GetState()
+	if err != nil {
+		return false, fmt.Errorf("getting elemental state: %w", err)
+	}
+
+	// This is normally not supposed to happen, as we expect at least the first snapshot to be present after install.
+	// However we can still try to upgrade in this case, hoping the upgrade snapshot will be created after that.
+	if elementalState.StatePartition.Snapshots == nil {
+		log.Info("Could not find correlationID in empty snapshots list")
+		return false, nil
+	}
+
+	correlationIDFound := false
+	correlationIDFoundInActiveSnapshot := false
+	for _, snapshot := range elementalState.StatePartition.Snapshots {
+		if snapshot.Labels[elementalcli.CorrelationIDLabelKey] == correlationID {
+			correlationIDFound = true
+			correlationIDFoundInActiveSnapshot = snapshot.Active
+			break
+		}
+	}
+
+	// If the upgrade was already applied, but somehow the system was reverted to a different snapshot,
+	// do not apply the upgrade again. This will prevent a cascade loop effect, for example when the
+	// revert is automatically applied by the boot assessment mechanism.
+	if correlationIDFound && !correlationIDFoundInActiveSnapshot {
+		log.Infof("CorrelationID %s found on a passive snapshot. Not upgrading again.", correlationID)
+		return true, nil
+	}
+
+	// Found on the active snapshot. All good, nothing to do.
+	if correlationIDFound && correlationIDFoundInActiveSnapshot {
+		return true, nil
+	}
+
+	log.Infof("Could not find snapshot with correlationID %s", correlationID)
+	return false, nil
+}
+
+func osVersionHash(osVersion []byte) (string, error) {
+	hash := sha256.New()
+	if _, err := hash.Write(osVersion); err != nil {
+		return "", fmt.Errorf("writing hash: %w", err)
+	}
+
+	result := hash.Sum(nil)
+	return fmt.Sprintf("%x", result), nil
 }
 
 func (p *ElementalPlugin) PowerOff() error {

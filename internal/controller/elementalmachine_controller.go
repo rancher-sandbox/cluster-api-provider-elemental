@@ -598,6 +598,9 @@ func (r *ElementalMachineReconciler) linkElementalHostToElementalMachine(ctx con
 		elementalHostCandidate.Labels[clusterv1.ClusterNameLabel] = name
 	}
 
+	// Propagate OSVersionManagement
+	elementalHostCandidate.Spec.OSVersionManagement = elementalMachine.Spec.OSVersionManagement
+
 	// Reconciliation step #10: Set status.addresses to the provider-specific set of instance addresses
 	// TODO: Fetch the addresses from ElementalHost to update the associated ElementalMachine
 

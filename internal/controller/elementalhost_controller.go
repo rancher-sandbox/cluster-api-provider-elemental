@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -30,6 +31,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	infrastructurev1 "github.com/rancher-sandbox/cluster-api-provider-elemental/api/v1beta1"
@@ -46,10 +48,39 @@ type ElementalHostReconciler struct {
 func (r *ElementalHostReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err := ctrl.NewControllerManagedBy(mgr).
 		For(&infrastructurev1.ElementalHost{}).
+		Watches(
+			&infrastructurev1.ElementalMachine{},
+			handler.EnqueueRequestsFromMapFunc(r.ElementalMachineToElementalHost),
+		).
 		Complete(r); err != nil {
 		return fmt.Errorf("initializing ElementalHostReconciler builder: %w", err)
 	}
 	return nil
+}
+
+func (r *ElementalHostReconciler) ElementalMachineToElementalHost(ctx context.Context, obj client.Object) []ctrl.Request { //nolint: dupl
+	logger := log.FromContext(ctx).
+		WithValues(ilog.KeyNamespace, obj.GetNamespace()).
+		WithValues(ilog.KeyElementalMachine, obj.GetName())
+	logger.Info("Enqueueing ElementalHost reconciliation from ElementalMachine")
+
+	requests := []ctrl.Request{}
+
+	// Verify we are actually handling a ElementalMachine object
+	machine, ok := obj.(*infrastructurev1.ElementalMachine)
+	if !ok {
+		logger.Error(ErrEnqueueing, fmt.Sprintf("Expected a ElementalMachine object, but got %T", obj))
+		return []ctrl.Request{}
+	}
+
+	// Check the ElementalMachine was associated to any ElementalHost
+	if machine.Spec.HostRef != nil {
+		logger.Info("Adding ElementalHost to reconciliation request", ilog.KeyElementalMachine, machine.Spec.HostRef.Name)
+		name := client.ObjectKey{Namespace: machine.Spec.HostRef.Namespace, Name: machine.Spec.HostRef.Name}
+		requests = append(requests, ctrl.Request{NamespacedName: name})
+	}
+
+	return requests
 }
 
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=elementalhosts,verbs=get;list;watch;create;update;patch;delete
@@ -128,6 +159,12 @@ func (r *ElementalHostReconciler) reconcileNormal(ctx context.Context, host *inf
 		WithValues(ilog.KeyElementalHost, host.Name)
 	logger.Info("Normal ElementalHost reconcile")
 
+	if host.Spec.MachineRef != nil {
+		if err := r.reconcileOSVersionManagement(ctx, host); err != nil {
+			return ctrl.Result{}, fmt.Errorf("reconciling OSVersionManagement: %w", err)
+		}
+	}
+
 	// Reconcile Registered/Installed Condition (if the host is installed, assume it is registered as well)
 	if value, found := host.Labels[infrastructurev1.LabelElementalHostInstalled]; found && value == "true" {
 		conditions.Set(host, &v1beta1.Condition{
@@ -152,6 +189,59 @@ func (r *ElementalHostReconciler) reconcileNormal(ctx context.Context, host *inf
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *ElementalHostReconciler) reconcileOSVersionManagement(ctx context.Context, host *infrastructurev1.ElementalHost) error {
+	logger := log.FromContext(ctx).
+		WithValues(ilog.KeyNamespace, host.Namespace).
+		WithValues(ilog.KeyElementalHost, host.Name).
+		WithValues(ilog.KeyElementalMachine, host.Spec.MachineRef.Name)
+	logger.Info("Reconciling OSVersionManagement from associated ElementalMachine")
+	machine := &infrastructurev1.ElementalMachine{}
+	err := r.Client.Get(ctx, client.ObjectKey{
+		Namespace: host.Spec.MachineRef.Namespace,
+		Name:      host.Spec.MachineRef.Name,
+	}, machine)
+	if apierrors.IsNotFound(err) {
+		logger.Info("Not going to reconcile OSVersionManagement for no longer existing ElementalMachine")
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("fetching associated ElementalMachine '%s': %w", host.Spec.MachineRef.Name, err)
+	}
+
+	// If we have a different OS Version to reconcile, then set the `OSVersionReady` false.
+	if !reflect.DeepEqual(host.Spec.OSVersionManagement, machine.Spec.OSVersionManagement) {
+		logger.Info("OSVersionManagement mutated on associated ElementalMachine")
+		// Propagate the OSVersionManagement data
+		host.Spec.OSVersionManagement = machine.Spec.OSVersionManagement
+
+		bootstrapped, bootstrappedFound := host.Labels[infrastructurev1.LabelElementalHostBootstrapped]
+		isAlreadyBootstrapped := bootstrappedFound && bootstrapped == "true"
+
+		inPlaceUpdate, inPlaceUpdateFound := host.Labels[infrastructurev1.LabelElementalHostInPlaceUpdate]
+		isInPlaceUpdatePending := inPlaceUpdateFound && inPlaceUpdate == infrastructurev1.InPlaceUpdatePending
+
+		// Since we are already bootstrapped, mutating the OSVersionManagement should be a warning if the in-place-update label was not set to pending.
+		if isAlreadyBootstrapped && !isInPlaceUpdatePending {
+			conditions.Set(host, &v1beta1.Condition{
+				Type:     infrastructurev1.OSVersionReady,
+				Status:   v1.ConditionFalse,
+				Severity: infrastructurev1.InPlaceUpdateNotPendingReasonSeverity,
+				Reason:   infrastructurev1.InPlaceUpdateNotPendingReason,
+				Message:  fmt.Sprintf("ElementalMachine %s OSVersionManagement mutated, but no in-place-upgrade is pending. Mutation will be ignored.", machine.Name),
+			})
+		} else {
+			conditions.Set(host, &v1beta1.Condition{
+				Type:     infrastructurev1.OSVersionReady,
+				Status:   v1.ConditionFalse,
+				Severity: infrastructurev1.WaitingOSReconcileReasonSeverity,
+				Reason:   infrastructurev1.WaitingOSReconcileReason,
+				Message:  fmt.Sprintf("ElementalMachine %s OSVersionManagement mutated", machine.Name),
+			})
+		}
+	}
+	return nil
 }
 
 func (r *ElementalHostReconciler) reconcileDelete(ctx context.Context, host *infrastructurev1.ElementalHost) (ctrl.Result, error) {

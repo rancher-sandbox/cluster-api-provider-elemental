@@ -6,7 +6,7 @@ kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
 - role: control-plane
-  image: kindest/node:v1.26.6
+  image: kindest/node:v1.31.0
   kubeadmConfigPatches:
   - |
     kind: InitConfiguration
@@ -22,6 +22,9 @@ nodes:
     protocol: TCP
   - containerPort: 30009
     hostPort: 30009
+    protocol: TCP
+  - containerPort: 30000
+    hostPort: 30000
     protocol: TCP
 EOF
 
@@ -129,6 +132,52 @@ spec:
       reset:
         resetOem: true
         resetPersistent: true
+EOF
+
+# Create a test registry 
+cat << EOF | kubectl apply -f -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-registry
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-registry
+  namespace: test-registry
+  labels:
+    app: test-registry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-registry
+  template:
+    metadata:
+      labels:
+        app: test-registry
+    spec:
+      containers:
+      - name: registry
+        image: registry:2
+        ports:
+        - containerPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: registry-nodeport
+  namespace: test-registry
+spec:
+  type: NodePort
+  selector:
+    app: test-registry
+  ports:
+  - nodePort: 30000
+    port: 5000
+    protocol: TCP
+    targetPort: 5000  
 EOF
 
 # Wait for registration to be initialized

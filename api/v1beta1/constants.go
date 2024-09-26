@@ -35,6 +35,9 @@ const (
 	LabelElementalHostBootstrapped         = "elementalhost.infrastructure.cluster.x-k8s.io/bootstrapped"
 	LabelElementalHostNeedsReset           = "elementalhost.infrastructure.cluster.x-k8s.io/needs-reset"
 	LabelElementalHostReset                = "elementalhost.infrastructure.cluster.x-k8s.io/reset"
+	LabelElementalHostInPlaceUpdate        = "elementalhost.infrastructure.cluster.x-k8s.io/in-place-update"
+	InPlaceUpdatePending                   = "pending"
+	InPlaceUpdateDone                      = "done"
 )
 
 // HostPhases.
@@ -48,6 +51,7 @@ const (
 	PhaseRunning                = HostPhase("Running")
 	PhaseTriggeringReset        = HostPhase("Triggering Reset")
 	PhaseResetting              = HostPhase("Resetting")
+	PhaseOSVersionReconcile     = HostPhase("Reconciling OS Version")
 )
 
 // Conditions.
@@ -88,6 +92,20 @@ const (
 	WaitingForResetReasonSeverity clusterv1.ConditionSeverity = clusterv1.ConditionSeverityInfo
 	// ResetFailedReason indicates that the Host reset failed.
 	ResetFailedReason = "ResetFailed"
+
+	// OSVersionReady describes the Host OS version reconciliation phase.
+	OSVersionReady clusterv1.ConditionType = "OSVersionReady"
+	// WaitingOSReconcileReason indicates that the Host OS version needs to be reconciled.
+	WaitingOSReconcileReason                                     = "WaitingForOSReconcile"
+	WaitingOSReconcileReasonSeverity clusterv1.ConditionSeverity = clusterv1.ConditionSeverityInfo
+	// InPlaceUpdateNotPendingReason indicates that the Host OS version needs to be reconciled, but no in-place-update is pending.
+	InPlaceUpdateNotPendingReason                                     = "InPlaceUpdateNotPending"
+	InPlaceUpdateNotPendingReasonSeverity clusterv1.ConditionSeverity = clusterv1.ConditionSeverityWarning
+	// OSVersionReconciliationFailedReason indicates that the attempted Host OS version reconciliation failed.
+	OSVersionReconciliationFailedReason = "OSVersionReconciliationFailed"
+	// WaitingForPostReconcileRebootReason indicates that the Host OS version was applied and the Host is going to reboot.
+	WaitingForPostReconcileRebootReason                                     = "WaitingForPostReconcileReboot"
+	WaitingForPostReconcileRebootReasonSeverity clusterv1.ConditionSeverity = clusterv1.ConditionSeverityInfo
 )
 
 // ElementalMachine Conditions and Reasons.

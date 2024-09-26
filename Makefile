@@ -27,8 +27,10 @@ CONTROLLER_TOOLS_VERSION ?= v0.16.1
 CAPI_VERSION?=$(shell grep "sigs.k8s.io/cluster-api" go.mod | awk '{print $$NF}')
 # Dev Image building
 KUBEADM_READY_OS ?= ""
-ELEMENTAL_TOOLKIT_IMAGE ?= ghcr.io/rancher/elemental-toolkit/elemental-cli:nightly
+ELEMENTAL_TOOLKIT_IMAGE ?= ghcr.io/rancher/elemental-toolkit/elemental-cli:v2.2.0
 ELEMENTAL_AGENT_IMAGE ?= ghcr.io/rancher-sandbox/cluster-api-provider-elemental/agent:latest
+ELEMENTAL_OS_IMAGE?=docker.io/local/elemental-capi-os:dev 
+ELEMENTAL_ISO_IMAGE?=docker.io/local/elemental-capi-iso:dev 
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -266,16 +268,16 @@ endif
 		--build-arg "KUBEADM_READY=${KUBEADM_READY_OS}" \
 		--build-arg "ELEMENTAL_TOOLKIT=${ELEMENTAL_TOOLKIT_IMAGE}" \
 		--build-arg "ELEMENTAL_AGENT=${ELEMENTAL_AGENT_IMAGE}" \
-		-t elemental-os:dev -f Dockerfile.os .
+		-t ${ELEMENTAL_OS_IMAGE} -f Dockerfile.os .
 
 .PHONY: build-iso
 build-iso: build-os
 	$(CONTAINER_TOOL) build \
-			--build-arg ELEMENTAL_OS_IMAGE=docker.io/library/elemental-os:dev \
-			-t docker.io/library/elemental-iso:dev \
+			--build-arg ELEMENTAL_OS_IMAGE=${ELEMENTAL_OS_IMAGE} \
+			-t ${ELEMENTAL_ISO_IMAGE} \
 			-f Dockerfile.iso .
 	$(CONTAINER_TOOL) run -v ./iso:/iso \
-			--entrypoint cp docker.io/library/elemental-iso:dev \
+			--entrypoint cp ${ELEMENTAL_ISO_IMAGE} \
 			-r /elemental-iso/. /iso
 
 .PHONY: update-test-capi-crds

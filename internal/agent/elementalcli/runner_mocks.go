@@ -54,6 +54,21 @@ func (m *MockRunner) EXPECT() *MockRunnerMockRecorder {
 	return m.recorder
 }
 
+// GetState mocks base method.
+func (m *MockRunner) GetState() (State, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetState")
+	ret0, _ := ret[0].(State)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetState indicates an expected call of GetState.
+func (mr *MockRunnerMockRecorder) GetState() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetState", reflect.TypeOf((*MockRunner)(nil).GetState))
+}
+
 // Install mocks base method.
 func (m *MockRunner) Install(arg0 Install) error {
 	m.ctrl.T.Helper()
@@ -80,4 +95,18 @@ func (m *MockRunner) Reset(arg0 Reset) error {
 func (mr *MockRunnerMockRecorder) Reset(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reset", reflect.TypeOf((*MockRunner)(nil).Reset), arg0)
+}
+
+// Upgrade mocks base method.
+func (m *MockRunner) Upgrade(arg0 Upgrade, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Upgrade", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Upgrade indicates an expected call of Upgrade.
+func (mr *MockRunnerMockRecorder) Upgrade(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Upgrade", reflect.TypeOf((*MockRunner)(nil).Upgrade), arg0, arg1)
 }

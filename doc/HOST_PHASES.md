@@ -97,3 +97,13 @@ If the `OSPlugin` resets the host successfully, the remote `ElementalHost` is up
 
 It is expected to re-start the lifecycle of the host at this point if desired.  
 This means running `elemental-agent register --install` to perform a new registration and a fresh installation of the system.  
+
+### Reconciling OS Version
+
+The `Reconciling OS Version` happens during the [Running](#running) phase, if a new OS Version has to be reconciled **and** the host needs to reboot to apply it.  
+
+Note that if the `ElementalHost` does not need to reboot to reconcile an OS Version, then this phase will not be shown and the `ElementalHost` last applied OS Version will be considered reconciled already.  
+
+The `OSPlugin` in use determines whether the host needs a reboot or not, for example to run a new kernel, or to boot from an updated partition.  
+
+For more information, you can read the related [documentation](./OS_VERSION_RECONCILE.md).  
