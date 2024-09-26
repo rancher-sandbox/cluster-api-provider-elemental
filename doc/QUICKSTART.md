@@ -64,6 +64,9 @@
       - containerPort: 30009
         hostPort: 30009
         protocol: TCP
+      - containerPort: 30000
+        hostPort: 30000
+        protocol: TCP
     EOF
     ```
 
