@@ -23,6 +23,14 @@ GOLANCI_LINT_VER := v1.60.3
 KUSTOMIZE_VERSION ?= v5.4.3
 # See: https://github.com/kubernetes-sigs/controller-tools
 CONTROLLER_TOOLS_VERSION ?= v0.16.1
+# See: https://pkg.go.dev/google.golang.org/protobuf/cmd/protoc-gen-go?tab=versions
+PROTOC_GEN_GO_VERSION ?= $(shell grep "google.golang.org/protobuf" go.mod | awk '{print $$NF}')
+# See: https://pkg.go.dev/google.golang.org/grpc/cmd/protoc-gen-go-grpc?tab=versions
+PROTOC_GEN_GO_GRPC_VERSION ?= v1.5.1
+# See: https://github.com/protocolbuffers/protobuf/releases
+# ! Omit the 'v' !
+PROTOC_VERSION ?= 28.3
+
 # CAPI version used for test CRDs
 CAPI_VERSION?=$(shell grep "sigs.k8s.io/cluster-api" go.mod | awk '{print $$NF}')
 # Dev Image building
@@ -94,6 +102,12 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+
+.PHONY: generate-proto
+generate-proto: protoc
+	$(PROTOC) --go_out=. --go_opt=paths=source_relative \
+    --go-grpc_out=. --go-grpc_opt=paths=source_relative \
+    pkg/api/proto/v1/elemental.proto
 
 .PHONY: generate-mocks
 generate-mocks:  
@@ -218,6 +232,7 @@ KUBECTL ?= kubectl
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
+PROTOC ?= $(LOCALBIN)/protoc/bin/protoc
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
@@ -233,6 +248,16 @@ controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessar
 $(CONTROLLER_GEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+
+.PHONY: protoc
+protoc: $(PROTOC)
+$(PROTOC): $(LOCALBIN)
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@$(PROTOC_GEN_GO_VERSION)
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@$(PROTOC_GEN_GO_GRPC_VERSION)
+	test -s $(PROTOC) && $(PROTOC) --version | grep -q $(PROTOC_VERSION) || \
+	(curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip" && \
+	unzip protoc-${PROTOC_VERSION}-linux-x86_64.zip -d $(LOCALBIN)/protoc && \
+	rm protoc-${PROTOC_VERSION}-linux-x86_64.zip)
 
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.

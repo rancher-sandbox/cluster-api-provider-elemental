@@ -1,0 +1,141 @@
+syntax = "proto3";
+option go_package = "github.com/rancher-sandbox/cluster-api-provider-elemental/pkg/api/proto/v1/elemental";
+
+service Elemental {
+    rpc GetRegistration(RegistrationRequest) returns (RegistrationResponse);
+    rpc CreateHost(HostCreateRequest) returns (HostResponse);
+    rpc DeleteHost(HostDeleteRequest) returns (HostDeleteResponse);
+    rpc GetBootstrap(BootstrapRequest) returns (BootstrapResponse);
+    rpc ReconcileHost(stream HostPatchRequest) returns (stream HostResponse);
+}
+
+message RegistrationRequest {
+    string name = 1;
+    string namespace = 2;
+}
+
+message RegistrationResponse {
+    map<string, string> hostAnnotations = 1;
+    map<string, string> hostLabels = 2;
+    bytes cloudConfig = 3;
+    ElementalConfig elemental = 4;
+}
+
+message ElementalConfig {
+    AgentConfig agent = 1;
+    RegistrationConfig registration = 2;
+    bytes install = 3;
+    bytes reset = 4;
+}
+
+message AgentConfig {
+    bool debug = 1;
+    HostnameConfig hostname = 2;
+    bool insecureAllowHttp = 3;
+    bool insecureSkipTlsVerify = 4;
+    string osPlugin = 5;
+    PostAction postInstall = 6;
+    PostAction postReset = 7;
+    uint32 reconciliation = 8;
+    bool useSystemCertPool = 9;
+    string workDir = 10;
+    GrpcServerConfig grpc = 11;
+}
+
+message HostnameConfig {
+    string prefix = 1;
+    bool useExisting = 2;
+}
+
+message PostAction {
+    bool powerOff = 1;
+    bool reboot = 2;
+}
+
+message RegistrationConfig {
+    bytes caCert = 1;
+    string token = 2;
+    string name = 3;
+    string namespace = 4;
+}
+
+message GrpcServerConfig { 
+    string address = 1;
+    uint32 port = 2;
+}
+
+message HostCreateRequest {
+    string name = 1;
+    string namespace = 2;
+    map<string, string> annotations = 3;
+    map<string, string> labels = 4;
+    string pubKey = 5;
+}
+
+message HostDeleteRequest {
+    string name = 1;
+    string namespace = 2;
+}
+
+message HostPatchRequest {
+    string name = 1;
+    string namespace = 2;
+    map<string, string> annotations = 3;
+    map<string, string> labels = 4;
+    HostCondition condition = 5;
+    InPlaceUpdate inPlaceUpdate = 6;
+    bool installed = 7;
+    bool bootstrapped = 8;
+    bool reset = 9;
+    HostPhase phase = 10;
+}
+
+enum InPlaceUpdate {
+    IN_PLACE_UPDATE_UNSPECIFIED = 0;
+    IN_PLACE_UPDATE_DONE = 1;
+    IN_PLACE_UPDATE_PENDING = 2;
+}
+
+enum HostPhase {
+    HOST_PHASE_UNSPECIFIED = 0;
+    HOST_PHASE_REGISTERING = 1;
+    HOST_PHASE_FINALIZING_REGISTRATION = 2;
+    HOST_PHASE_INSTALLING = 3;
+    HOST_PHASE_BOOTSTRAPPING = 4;
+    HOST_PHASE_RUNNING = 5;
+    HOST_PHASE_TRIGGERING_RESET = 6;
+    HOST_PHASE_RESETTING = 7;
+    HOST_PHASE_RECONCILING_OS_VERSION = 8;
+}
+
+message HostCondition {
+    string message = 1;
+    string reason = 2;
+    string severity = 3;
+    string type = 4;
+    string status = 5;
+}
+
+message HostResponse {
+    map<string, string> annotations = 1;
+    map<string, string> labels = 2;
+    bool bootstrapReady = 3;
+    bool boostrapped = 4;
+    InPlaceUpdate inPlaceUpdate = 5;
+    bool installed = 6;
+    string name = 7;
+    bool needsReset = 8;
+    bytes osVersionManagement = 9;
+}
+
+message HostDeleteResponse {}
+
+message BootstrapRequest {
+    string hostName = 1;
+    string hostNamespace = 2;
+}
+
+message BootstrapResponse {
+    string format = 1;
+    bytes config = 2;
+}

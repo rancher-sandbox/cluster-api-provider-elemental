@@ -44,6 +44,7 @@ const (
 type HostPhase string
 
 const (
+	PhaseUnknown                = HostPhase("Unknown")
 	PhaseRegistering            = HostPhase("Registering")
 	PhaseFinalizingRegistration = HostPhase("Finalizing Registration")
 	PhaseInstalling             = HostPhase("Installing")
